@@ -1,0 +1,98 @@
+import { NextResponse } from 'next/server';
+import dbConnect from '../../../lib/mongodb';
+import { Product } from '../../../models/product';
+
+// Get a single product
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await dbConnect();
+    const product = await Product.findById(params.id);
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(product);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch product' },
+      { status: 500 }
+    );
+  }
+}
+
+// Delete a product (soft or permanent)
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await dbConnect();
+    const url = new URL(req.url);
+    const permanent = url.searchParams.get('permanent') === 'true';
+
+    if (permanent) {
+      const result = await Product.findByIdAndDelete(params.id);
+      if (!result) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ message: 'Product permanently deleted successfully' });
+    } else {
+      const result = await Product.findByIdAndUpdate(params.id, {
+        deleted: true,
+        deletedAt: new Date().toISOString()
+      });
+      if (!result) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ message: 'Product moved to recycle bin successfully' });
+    }
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete product' },
+      { status: 500 }
+    );
+  }
+}
+
+// Restore a product from recycle bin
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await dbConnect();
+    const result = await Product.findByIdAndUpdate(params.id, {
+      $unset: { deleted: "", deletedAt: "" }
+    });
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ message: 'Product restored successfully' });
+  } catch (error) {
+    console.error('Error restoring product:', error);
+    return NextResponse.json(
+      { error: 'Failed to restore product' },
+      { status: 500 }
+    );
+  }
+} 
