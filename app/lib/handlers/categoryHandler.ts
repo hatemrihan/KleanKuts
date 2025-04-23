@@ -1,5 +1,5 @@
 import dbConnect from "../mongodb";
-import { Category } from '../../models/Category';
+import { Category } from '../../../models/category';
 import { CategoryRequest } from '../../../types/category';
 import { NextResponse } from "next/server";
 
@@ -17,7 +17,8 @@ export async function getCategories() {
 export async function createCategory(data: any) {
     try {
         await dbConnect();
-        const category = await Category.create(data);
+        const category = await Category.create(data); 
+        
         return { success: true, data: category };
     } catch (error) {
         console.error('Error creating category:', error);
