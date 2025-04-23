@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Open_Sans } from 'next/font/google';
 import { Providers } from "./providers";
 import "./globals.css";
-import { getServerSession } from "next-auth";
 import SessionProvider from "./components/SessionProvider";
 
 const openSans = Open_Sans({ subsets: ['latin'] });
@@ -17,7 +16,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession();
+  let session;
+  try {
+    session = null; // We'll initialize session later after fixing auth
+  } catch (error) {
+    console.error('Session error:', error);
+    session = null;
+  }
 
   return (
     <html lang="en" className={openSans.className}>

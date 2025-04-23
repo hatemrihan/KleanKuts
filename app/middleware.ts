@@ -26,10 +26,10 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
-// Only run middleware on specific paths
+// Only run middleware on API routes and auth endpoints
 export const config = {
   matcher: [
-    // Match all paths except static files and API routes
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/api/:path*',
+    '/auth/:path*'
   ],
 }; 
