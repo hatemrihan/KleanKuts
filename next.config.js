@@ -1,14 +1,39 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['res.cloudinary.com'],
-    remotePatterns: [
+    domains: ['kleankuts.shop', 'kleankuts.netlify.app'],
+  },
+  async headers() {
+    return [
       {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        pathname: '/**',
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          }
+        ],
       },
-    ],
+    ]
+  },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        has: [
+          {
+            type: 'host',
+            value: 'kleankuts.netlify.app',
+          },
+        ],
+        destination: 'https://kleankuts.shop',
+        permanent: true,
+      },
+    ]
   },
   poweredByHeader: false,
   compress: true,
