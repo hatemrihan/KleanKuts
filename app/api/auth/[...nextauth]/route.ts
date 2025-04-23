@@ -26,26 +26,17 @@ const handler = NextAuth({
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Always use the production URL
-      const productionUrl = "https://kleankuts.shop";
-      
-      // If we're in production, use the production URL as base
-      if (process.env.NODE_ENV === "production") {
-        baseUrl = productionUrl;
-      }
-      
-      // Handle relative URLs
+      // Use the NEXTAUTH_URL environment variable
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`;
       }
       
       // Handle absolute URLs on the same origin
       const urlObject = new URL(url);
-      if (urlObject.origin === baseUrl || urlObject.origin === productionUrl) {
+      if (urlObject.origin === baseUrl) {
         return url;
       }
       
-      // Default fallback to base URL
       return baseUrl;
     }
   },
