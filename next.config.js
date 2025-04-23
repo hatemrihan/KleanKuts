@@ -26,29 +26,9 @@ const nextConfig = {
       },
     ]
   },
-  async redirects() {
-    return [
-      {
-        source: '/',
-        has: [
-          {
-            type: 'host',
-            value: 'kleankuts.netlify.app',
-          },
-        ],
-        destination: 'kleankuts.netlify.app',
-        permanent: true,
-      },
-    ]
-  },
   poweredByHeader: false,
   compress: true,
   generateEtags: true,
-  onDemandEntries: {
-    maxInactiveAge: 60 * 1000,
-    pagesBufferLength: 5,
-  },
-  productionBrowserSourceMaps: false,
   swcMinify: true,
   output: 'standalone',
   typescript: {

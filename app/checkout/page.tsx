@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -66,8 +66,13 @@ const CheckoutPage = () => {
   const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0
   const totalWithShipping = cartTotal + shippingCost
 
-  if (cart.length === 0) {
-    router.push('/cart')
+  useEffect(() => {
+    if (cart.length === 0) {
+      router.push('/cart')
+    }
+  }, [cart, router])
+
+  if (typeof window === 'undefined' || cart.length === 0) {
     return null
   }
 
@@ -116,7 +121,7 @@ const CheckoutPage = () => {
 
       if (response.ok) {
         clearCart()
-        window.location.href = '/thank-you'
+        router.push('/thank-you')
       } else {
         throw new Error(data.error || 'Something went wrong')
       }
