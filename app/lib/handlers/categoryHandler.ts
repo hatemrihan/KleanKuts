@@ -1,17 +1,16 @@
-import { mongooseConnect } from "../mongoose";
-import { Category } from '../../models/category';
+import dbConnect from "../mongodb";
+import { Category } from '../../models/Category';
 import { CategoryRequest } from '../../../types/category';
 import { NextResponse } from "next/server";
-import dbConnect from '../mongodb';
 
 export async function getCategories() {
     try {
         await dbConnect();
-        const categories = await Category.find({ deleted: { $ne: true } });
+        const categories = await Category.find();
         return { success: true, data: categories };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching categories:', error);
-        return { success: false, error: 'Failed to fetch categories' };
+        return { success: false, error: error.message || 'Failed to fetch categories' };
     }
 }
 
@@ -28,23 +27,17 @@ export async function createCategory(data: any) {
 
 export async function updateCategory(id: string, data: Partial<CategoryRequest>) {
     try {
-        await mongooseConnect();
+        await dbConnect();
 
         // Validate the ID
         if (!id) {
-            return NextResponse.json(
-                { error: "Category ID is required" },
-                { status: 400 }
-            );
+            return { success: false, error: "Category ID is required" };
         }
 
         // Check if category exists
         const existingCategory = await Category.findById(id);
         if (!existingCategory) {
-            return NextResponse.json(
-                { error: "Category not found" },
-                { status: 404 }
-            );
+            return { success: false, error: "Category not found" };
         }
 
         // If parent is being updated, validate it
@@ -52,17 +45,11 @@ export async function updateCategory(id: string, data: Partial<CategoryRequest>)
             // Check if parent exists
             const parentCategory = await Category.findById(data.parent);
             if (!parentCategory) {
-                return NextResponse.json(
-                    { error: "Parent category not found" },
-                    { status: 400 }
-                );
+                return { success: false, error: "Parent category not found" };
             }
             // Prevent circular references
             if (data.parent === id) {
-                return NextResponse.json(
-                    { error: "Category cannot be its own parent" },
-                    { status: 400 }
-                );
+                return { success: false, error: "Category cannot be its own parent" };
             }
         }
 
@@ -81,28 +68,23 @@ export async function updateCategory(id: string, data: Partial<CategoryRequest>)
         );
 
         if (!updatedCategory) {
-            return NextResponse.json(
-                { error: "Category not found" },
-                { status: 404 }
-            );
+            return { success: false, error: "Category not found" };
         }
 
-        return NextResponse.json({ 
-            message: "Category updated successfully",
-            category: updatedCategory
-        });
+        return { 
+            success: true, 
+            data: updatedCategory,
+            message: "Category updated successfully"
+        };
     } catch (error) {
         console.error("Error updating category:", error);
-        return NextResponse.json(
-            { error: "Failed to update category" },
-            { status: 500 }
-        );
+        return { success: false, error: "Failed to update category" };
     }
 }
 
 export async function deleteCategory(id: string, permanent: boolean = false) {
     try {
-        await mongooseConnect();
+        await dbConnect();
 
         if (permanent) {
             const result = await Category.findByIdAndDelete(id);
@@ -128,7 +110,7 @@ export async function deleteCategory(id: string, permanent: boolean = false) {
 
 export async function restoreCategory(id: string) {
     try {
-        await mongooseConnect();
+        await dbConnect();
 
         const result = await Category.findByIdAndUpdate(id, {
             $unset: { deleted: "", deletedAt: "" }
@@ -147,7 +129,7 @@ export async function restoreCategory(id: string) {
 
 export async function getCategory(id: string) {
     try {
-        await mongooseConnect();
+        await dbConnect();
         const category = await Category.findById(id);
         
         if (!category) {

@@ -30,7 +30,7 @@
     "gsap": "^3.12.7",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.493.0",
-    "mongoose": "^8.0.0",
+    "mongoose": "^8.13.2",
     "next": "14.0.3",
     "next-auth": "^4.24.11",
     "react": "^18",
