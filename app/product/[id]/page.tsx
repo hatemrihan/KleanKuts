@@ -59,8 +59,8 @@ const localProducts: ProductsType = {
     description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
     Material: ['French linen'],
     sizes: [
-      { size: 'Small', stock: 0, isPreOrder: true },
-      { size: 'Medium', stock: 0, isPreOrder: true }
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   2: {
@@ -76,14 +76,14 @@ const localProducts: ProductsType = {
     description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
     Material: ['French linen'],
     sizes: [
-      { size: 'Small', stock: 0, isPreOrder: true },
-      { size: 'Medium', stock: 0, isPreOrder: true }
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   3: {
     _id: "3",
     name: 'Sage top in Rich brown',
-    price: 1000,
+    price: 700,
     images: [
       '/images/modeleight-image.jpg',
       '/images/modelnine-image.jpg'
@@ -91,15 +91,14 @@ const localProducts: ProductsType = {
     description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
     Material: ['French linen'],
     sizes: [
-      { size: 'Small', stock: 0, isPreOrder: true },
-      { size: 'Medium', stock: 0, isPreOrder: true }
-    ],
-    discount: 30
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
+    ]
   },
   4: {
     _id: "4",
     name: 'Sage top in light beige',
-    price: 1000,
+    price: 700,
     images: [
       '/images/malaksix-image.jpg',
       '/images/malak-image.jpg',
@@ -109,15 +108,14 @@ const localProducts: ProductsType = {
     description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
     Material: ['French linen'],
     sizes: [
-      { size: 'Small', stock: 2, isPreOrder: false },
-      { size: 'Medium', stock: 9, isPreOrder: false }
-    ],
-    discount: 30
+      { size: 'S', stock: 2, isPreOrder: false },
+      { size: 'M', stock: 9, isPreOrder: false }
+    ]
   },
   5: {
     _id: "5",
     name: 'Sage pants in rich brown',
-    price: 1000,
+    price: 600,
     images: [
       '/images/pantmodel-image.jpg',
       '/images/pantmodeltwo-image.jpg',
@@ -128,14 +126,14 @@ const localProducts: ProductsType = {
     description: "Designed for effortless style and comfort, these rich brown French linen pants offer a relaxed yet refined fit. Lightweight, breathable, and timeless, they're perfect for any occasion",
     Material: ['French linen'],
     sizes: [
-      { size: 'Small', stock: 0, isPreOrder: true }
-    ],
-    discount: 40
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
+    ]
   },
   6: {
     _id: "6",
     name: 'Sage pants in light beige',
-    price: 1000,
+    price: 600,
     images: [
       '/images/malakpant-image.jpg',
       '/images/pantmalaktwo-image.jpg',
@@ -144,10 +142,9 @@ const localProducts: ProductsType = {
     description: "Designed for effortless style and comfort, these rich brown French linen pants offer a relaxed yet refined fit. Lightweight, breathable, and timeless, they're perfect for any occasion",
     Material: ['French linen'],
     sizes: [
-      { size: 'Small', stock: 0, isPreOrder: true },
-      { size: 'Medium', stock: 0, isPreOrder: true }
-    ],
-    discount: 40
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
+    ]
   }
 }
 
@@ -514,18 +511,7 @@ const ProductPage = ({ params }: Props) => {
                 {/* Product Title & Price */}
                 <div className="space-y-4">
                   <h1 className="text-4xl font-light">{product.name}</h1>
-                  {product.discount ? (
-                    <div className="flex items-center gap-3">
-                      <p className="text-2xl text-red-500">
-                        L.E {(product.price * (1 - product.discount/100)).toFixed(0)}
-                      </p>
-                      <p className="text-xl text-gray-400 line-through">
-                        L.E {product.price}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-2xl">L.E {product.price}</p>
-                  )}
+                  <p className="text-2xl">L.E {product.price}</p>
                 </div>
 
                 {/* Size Selection */}
@@ -537,21 +523,27 @@ const ProductPage = ({ params }: Props) => {
                       <button
                         key={sizeOption.size}
                         onClick={() => setSelectedSize(sizeOption.size)}
-                        className={`flex-1 py-3 px-4 border rounded-lg text-center relative ${
+                        className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
                           selectedSize === sizeOption.size
-                            ? 'border-black'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'text-white'
+                            : 'text-black hover:text-white'
                         }`}
                       >
-                        <span className="block text-lg mb-1">{sizeOption.size}</span>
-                        <span className={`block text-sm ${
+                        <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                          selectedSize === sizeOption.size
+                            ? 'bg-black border-black'
+                            : 'hover:bg-black hover:border-black'
+                        }`}>
+                          {sizeOption.size}
+                        </div>
+                        <span className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 text-xs ${
                           sizeOption.isPreOrder ? 'text-blue-600' :
                           sizeOption.stock === 0 ? 'text-red-500' :
                           'text-green-600'
                         }`}>
                           {sizeOption.isPreOrder ? 'Sold out' :
                            sizeOption.stock === 0 ? 'Out of stock' :
-                           `${sizeOption.stock} left`}
+                           ''}
                         </span>
                       </button>
                     ))}
@@ -737,18 +729,7 @@ const ProductPage = ({ params }: Props) => {
                     <div className="space-y-2">
                       <h3 className="text-lg font-light group-hover:underline">{newestProduct.name}</h3>
                       <div className="flex items-center gap-3">
-                        {newestProduct.discount ? (
-                          <>
-                            <p className="text-red-500">
-                              L.E {((newestProduct.price * (1 - newestProduct.discount/100))).toFixed(0)}
-                            </p>
-                            <p className="text-gray-400 line-through">
-                              L.E {newestProduct.price}
-                            </p>
-                          </>
-                        ) : (
-                          <p>L.E {newestProduct.price}</p>
-                        )}
+                        <p>L.E {newestProduct.price}</p>
                       </div>
                     </div>
                   </Link>
@@ -776,18 +757,7 @@ const ProductPage = ({ params }: Props) => {
                 <div className="space-y-2">
                   <h3 className="text-lg font-light group-hover:underline">{newestProduct.name}</h3>
                   <div className="flex items-center gap-3">
-                    {newestProduct.discount ? (
-                      <>
-                        <p className="text-red-500">
-                          L.E {((newestProduct.price * (1 - newestProduct.discount/100))).toFixed(0)}
-                        </p>
-                        <p className="text-gray-400 line-through">
-                          L.E {newestProduct.price}
-                        </p>
-                      </>
-                    ) : (
-                      <p>L.E {newestProduct.price}</p>
-                    )}
+                    <p>L.E {newestProduct.price}</p>
                   </div>
                 </div>
               </Link>

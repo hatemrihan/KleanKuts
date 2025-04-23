@@ -21,22 +21,10 @@ const handler = NextAuth({
   ],
   callbacks: {
     async session({ session }) {
-      // We'll handle admin status through OTP verification instead of email check
-      session.user.isAdmin = false; // Default to false, will be updated after OTP verification
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Use the NEXTAUTH_URL environment variable
-      if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
-      }
-      
-      // Handle absolute URLs on the same origin
-      const urlObject = new URL(url);
-      if (urlObject.origin === baseUrl) {
-        return url;
-      }
-      
+      // Always redirect to home page after sign in
       return baseUrl;
     }
   },

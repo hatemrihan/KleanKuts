@@ -77,7 +77,7 @@ const localProducts = {
   3: {
     _id: "3",
     name: 'Sage top in Rich brown',
-    price: 1000,
+    price: 700,
     images: [
       '/images/modeleight-image.jpg',
       '/images/modelnine-image.jpg'
@@ -88,13 +88,12 @@ const localProducts = {
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
     ],
-    discount: 30,
     category: 'tops'
   },
   4: {
     _id: "4",
     name: 'Sage top in light beige',
-    price: 1000,
+    price: 700,
     images: [
       '/images/malaksix-image.jpg',
       '/images/malak-image.jpg',
@@ -107,13 +106,12 @@ const localProducts = {
       { size: 'S', stock: 2, isPreOrder: false },
       { size: 'M', stock: 9, isPreOrder: false }
     ],
-    discount: 30,
     category: 'tops'
   },
   5: {
     _id: "5",
     name: 'Sage pants in rich brown',
-    price: 1000,
+    price: 600,
     images: [
       '/images/pantmodel-image.jpg',
       '/images/pantmodeltwo-image.jpg',
@@ -127,13 +125,12 @@ const localProducts = {
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
     ],
-    discount: 40,
     category: 'pants'
   },
   6: {
     _id: "6",
     name: 'Sage pants in light beige',
-    price: 1000,
+    price: 600,
     images: [
       '/images/malakpant-image.jpg',
       '/images/pantmalaktwo-image.jpg',
@@ -145,7 +142,6 @@ const localProducts = {
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
     ],
-    discount: 40,
     category: 'pants'
   }
 };
@@ -315,9 +311,7 @@ export default function Collection() {
 
 // Separate ProductCard component for cleaner code
 const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile?: boolean }) => {
-  const displayPrice = product.discount 
-    ? `${(product.price * (1 - product.discount/100)).toFixed(0)} EGP`
-    : `${product.price} EGP`;
+  const displayPrice = `${product.price} EGP`;
 
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
@@ -541,16 +535,7 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
             {product.name}
           </h3>
           <div className={`font-light ${isMobile ? 'text-xs' : 'text-sm'}`}>
-            {product.discount ? (
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-black">{displayPrice}</span>
-                <span className="text-gray-400 line-through">
-                  {product.price} EGP
-                </span>
-              </div>
-            ) : (
-              <span className="text-black">{displayPrice}</span>
-            )}
+            <span className="text-black">{displayPrice}</span>
           </div>
         </div>
       </Link>
@@ -607,21 +592,27 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
                         setSelectedSize(size.size);
                         setCustomerInfo({...customerInfo, size: size.size});
                       }}
-                      className={`relative p-4 text-left border rounded-lg transition-all ${
+                      className={`relative flex items-center justify-center h-12 transition-all ${
                         customerInfo.size === size.size
-                          ? 'border-black ring-1 ring-black'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'text-white'
+                          : 'text-black hover:text-white'
                       }`}
                     >
-                      <span className="block text-lg mb-1">{size.size}</span>
-                      <span className={`block text-sm ${
+                      <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                        customerInfo.size === size.size
+                          ? 'bg-black border-black'
+                          : 'hover:bg-black hover:border-black'
+                      }`}>
+                        {size.size}
+                      </div>
+                      <span className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 text-xs ${
                         size.isPreOrder ? 'text-blue-600' :
                         size.stock === 0 ? 'text-red-500' :
                         'text-green-600'
                       }`}>
                         {size.isPreOrder ? 'Pre-order' :
                          size.stock === 0 ? 'Out of stock' :
-                         `${size.stock} left`}
+                         ''}
                       </span>
                     </button>
                   ))}

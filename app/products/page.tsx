@@ -177,7 +177,7 @@ export default function ProductsPage() {
                         <div className="flex gap-1 flex-wrap">
                           {product.selectedSizes && product.selectedSizes.map((size) => (
                             <span key={size} className="px-2 py-1 text-xs bg-gray-100 rounded">
-                              {size}
+                              {size === 'medium' ? 'M' : size === 'small' ? 'S' : size}
                             </span>
                           ))}
                         </div>
@@ -271,7 +271,7 @@ export default function ProductsPage() {
                       <div className="flex flex-wrap gap-1 mt-2">
                         {product.selectedSizes.map((size) => (
                           <span key={size} className="px-2 py-1 text-xs bg-gray-100 rounded">
-                            {size}
+                            {size === 'medium' ? 'M' : size === 'small' ? 'S' : size}
                           </span>
                         ))}
                       </div>

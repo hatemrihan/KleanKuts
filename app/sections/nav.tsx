@@ -91,10 +91,8 @@ const Nav = () => {
   }, [isOpen, navScope, navAnimate]);
 
   const handleCartClick = (e: React.MouseEvent) => {
-    if (!session) {
-      e.preventDefault();
-      signIn('google');
-    }
+    // Remove authentication check
+    router.push('/cart');
   };
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, isScroll?: boolean) => {
@@ -145,9 +143,16 @@ const Nav = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <Link href="/" className="flex flex-col items-center text-black transition-opacity duration-300 hover:opacity-70 ">
-                <span className="logo-text text-xl">Kleankuts</span>
-               
+              <Link href="/" className="flex flex-col items-center   duration-300 ">
+                <img 
+                  src="/images/logo-image.jpg" 
+                  alt="Klean Kuts Logo" 
+                  className="h-12 w-auto object-contain"
+                  style={{
+                    filter: '',
+                    maxWidth: '200px'
+                  }}
+                />
               </Link>
             </div>
 
@@ -194,7 +199,7 @@ const Nav = () => {
                 </div>
               ) : (
                 <button
-                  onClick={() => signIn('google')}
+                  onClick={() => signIn('google', { callbackUrl: '/' })}
                   className="text-sm text-black hover:text-red-500 transition-colors"
                 >
                   Sign in
@@ -249,7 +254,7 @@ const Nav = () => {
                 </div>
               ) : (
                 <button
-                  onClick={() => signIn('google')}
+                  onClick={() => signIn('google', { callbackUrl: '/' })}
                   className="text-sm text-black hover:text-red-500"
                 >
                   Sign in

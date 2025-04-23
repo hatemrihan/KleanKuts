@@ -103,7 +103,7 @@ const Footer = () => {
 
               {/* Admin Link */}
               <div className="text-center">
-                <Link href="#" className="text-xs text-black/30 hover:text-black/50 transition-opacity">
+                <Link href="https://kleankutsadmin.netlify.app/" className="text-xs text-black/30 hover:text-black/50 transition-opacity">
                   ad
                 </Link>
               </div>

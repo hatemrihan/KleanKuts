@@ -43,7 +43,7 @@ const NewHeader = () => {
             <Link 
               href="/collection"
               className="inline-block border border-white/30 text-white px-8 py-3 text-sm sm:text-base
-                tracking-wider hover:bg-white hover:text-black transition-all duration-300"
+                tracking-wider hover:bg-white hover:text-black transition-all duration-300 mb-8"
             >
               CHECK COLLECTION
             </Link>
