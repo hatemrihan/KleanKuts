@@ -1,11 +1,11 @@
-import { mongooseConnect } from "@/app/lib/mongoose";
-import Order from "@/app/models/Order";
+import dbConnect from "../mongodb";
+import Order from "../../../models/Order";
 import mongoose from "mongoose";
 
 export async function getOrders() {
   try {
     console.log('Connecting to MongoDB...');
-    await mongooseConnect();
+    await dbConnect();
     console.log('Connected successfully, fetching orders...');
     
     // First try to get all orders without population
@@ -36,7 +36,7 @@ export async function getOrders() {
 
 export async function updateOrderStatus(orderId: string, status: string) {
   try {
-    await mongooseConnect();
+    await dbConnect();
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { status },
@@ -56,7 +56,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
 export async function deleteOrder(orderId: string) {
   try {
-    await mongooseConnect();
+    await dbConnect();
     const deletedOrder = await Order.findByIdAndDelete(orderId);
     if (!deletedOrder) {
       throw new Error('Order not found');
