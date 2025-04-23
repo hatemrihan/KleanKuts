@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 if (!process.env.MONGODB_URI) {
+  console.error('MONGODB_URI is not defined in environment variables');
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
@@ -23,7 +24,10 @@ if (!global.mongoose) {
 }
 
 async function dbConnect() {
+  console.log('Attempting to connect to MongoDB...');
+  
   if (cached.conn) {
+    console.log('Using cached MongoDB connection');
     return cached.conn;
   }
 
@@ -33,6 +37,7 @@ async function dbConnect() {
     };
 
     try {
+      console.log('Initializing new MongoDB connection...');
       cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
         console.log('MongoDB connected successfully');
         return mongoose;
@@ -47,7 +52,9 @@ async function dbConnect() {
   }
 
   try {
+    console.log('Waiting for MongoDB connection promise to resolve...');
     cached.conn = await cached.promise;
+    console.log('MongoDB connection established successfully');
   } catch (error) {
     console.error('Error awaiting MongoDB connection:', error);
     cached.promise = null;
