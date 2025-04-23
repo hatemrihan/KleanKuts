@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['kleankuts.shop', 'kleankuts.netlify.app'],
+    domains: ['kleankuts.netlify.app'],
+    unoptimized: true
   },
   async headers() {
     return [
@@ -30,7 +31,7 @@ const nextConfig = {
             value: 'kleankuts.netlify.app',
           },
         ],
-        destination: 'https://kleankuts.shop',
+        destination: 'kleankuts.netlify.app',
         permanent: true,
       },
     ]
@@ -43,7 +44,8 @@ const nextConfig = {
     pagesBufferLength: 5,
   },
   productionBrowserSourceMaps: false,
-  swcMinify: true
+  swcMinify: true,
+  output: 'standalone'
 };
 
 module.exports = nextConfig; 
