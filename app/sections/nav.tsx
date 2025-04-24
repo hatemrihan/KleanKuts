@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useCart } from '../context/CartContext'
 import { useSession, signIn, signOut } from "next-auth/react"
 import { useRouter } from 'next/navigation'
+import Image from "next/image"
 
 const navItems = [
   {
@@ -70,28 +71,23 @@ const Nav = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [navScope, navAnimate] = useAnimate();
   const { itemCount } = useCart();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
     // Prevent scrolling when menu is open
-    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
-
     if (isOpen) {
-      navAnimate(navScope.current, {
-        height: "100%"
-      }, {
-        duration: 0.7,
-      });
+      document.body.style.overflow = 'hidden';
     } else {
-      navAnimate(navScope.current, {
-        height: 0
-      });
+      document.body.style.overflow = 'unset';
     }
-  }, [isOpen, navScope, navAnimate]);
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const handleCartClick = (e: React.MouseEvent) => {
-    // Remove authentication check
     router.push('/cart');
   };
 
@@ -102,8 +98,8 @@ const Nav = () => {
       const element = document.getElementById(targetId);
       
       if (element) {
-        setIsOpen(false); // Close mobile menu if open
-        const navHeight = 64; // Height of your fixed navbar
+        setIsOpen(false);
+        const navHeight = 64;
         const elementPosition = element.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.pageYOffset - navHeight;
 
@@ -112,14 +108,13 @@ const Nav = () => {
           behavior: "smooth"
         });
       } else if (window.location.pathname !== '/') {
-        // If we're not on the home page, navigate to home first
         router.push(`/${href}`);
       }
     }
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-white">
       <style jsx global>{`
         .logo-text {
           font-family: "League Spartan", sans-serif;
@@ -138,143 +133,80 @@ const Nav = () => {
           opacity: 0.7;
         }
       `}</style>
-      <div className="w-full bg-white transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0 -ml-10">
-              <Link href="/" className="flex flex-col mr-32 ">
-                <img 
-                  src="/images/logo-image.jpg" 
-                  alt="Klean Kuts Logo" 
-                  className="h-12 w-auto object-contain"
-                  style={{
-                    filter: '',
-                    maxWidth: '200px'
-                  }}
-                />
-              </Link>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/images/kleankuts-logo.png"
+                alt="Klean Kuts Logo"
+                width={200}
+                height={48}
+                className="h-12 w-auto object-contain brightness-0"
+              />
+            </Link>
+          </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center justify-between flex-1 pl-8">
+            <div className="flex items-center space-x-8">
+              {navItems.map(({ label, href, isScroll }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={(e) => handleNavClick(e, href, isScroll)}
+                  className="text-black hover:text-gray-600 transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
+              {session?.user?.isAdmin && adminNavItems.map(({ label, href }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="text-black hover:text-gray-600 transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
             </div>
 
-            {/* Navigation Links */}
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-8">
-                {navItems.map(({ label, href, isScroll }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    onClick={(e) => handleNavClick(e, href, isScroll)}
-                    className="relative text-black hover:text-red-500 px-3 py-2 text-sm font-light cursor-pointer group"
-                  >
-                    {label}
-                    <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
-                  </Link>
-                ))}
-                {session?.user?.isAdmin && adminNavItems.map(({ label, href }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    className="relative text-black hover:text-red-500 px-3 py-2 text-sm font-light cursor-pointer group"
-                  >
-                    {label}
-                    <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Auth and Cart Section */}
-            <div className="hidden md:flex items-center space-x-4">
-              {session ? (
+            <div className="flex items-center space-x-6">
+              {status === 'loading' ? (
+                <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full" />
+              ) : session ? (
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-black/70">
-                    {session.user?.name}
-                  </span>
+                  <span className="text-sm">{session.user?.name}</span>
                   <button
                     onClick={() => signOut()}
-                    className="text-sm text-black hover:text-red-500 transition-colors"
+                    className="text-black hover:text-gray-600 transition-colors"
                   >
                     Sign out
                   </button>
                 </div>
               ) : (
                 <button
-                  onClick={() => signIn('google', { callbackUrl: '/' })}
-                  className="text-sm text-black hover:text-red-500 transition-colors"
+                  onClick={() => signIn('google')}
+                  className="text-black hover:text-gray-600 transition-colors"
                 >
                   Sign in
                 </button>
               )}
 
-              <Link 
-                href="/cart" 
-                className="relative text-black hover:text-red-500 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
+              <Link
+                href="/cart"
+                className="text-black hover:text-gray-600 transition-colors"
                 onClick={handleCartClick}
               >
                 <div className="relative">
-                  <svg 
-                    className="w-5 h-5" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  >
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <path d="M16 10a4 4 0 0 1-8 0" />
-                  </svg>
-                  {itemCount > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                      {itemCount}
-                    </span>
-                  )}
-                </div>
-                <span className="relative">
-                  Cart
-                  <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
-                </span>
-              </Link>
-            </div>
-
-            {/* Mobile Cart and Menu */}
-            <div className="md:hidden flex items-center gap-4">
-              {session ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-black/70 truncate max-w-[100px]">
-                    {session.user?.name}
-                  </span>
-                  <button
-                    onClick={() => signOut()}
-                    className="text-sm text-black hover:text-red-500"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => signIn('google', { callbackUrl: '/' })}
-                  className="text-sm text-black hover:text-red-500"
-                >
-                  Sign in
-                </button>
-              )}
-
-              {/* Mobile Cart Icon */}
-              <Link 
-                href="/cart" 
-                className="flex items-center justify-center text-black hover:text-red-500 transition-colors"
-                onClick={handleCartClick}
-              >
-                <div className="relative">
-                  <svg 
-                    className="w-6 h-6" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
+                  <svg
+                    className="w-6 h-6"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
                     strokeLinejoin="round"
                   >
                     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -288,88 +220,25 @@ const Nav = () => {
                   )}
                 </div>
               </Link>
-
-              {/* Mobile Menu Button */}
-              {!isOpen && (
-                <button 
-                  className="flex items-center justify-center w-6 h-6 relative cursor-pointer"
-                  onClick={() => setIsOpen(true)}
-                  aria-label="Open Menu"
-                >
-                  <motion.div
-                    initial={{ opacity: 0, rotate: 90 }}
-                    animate={{ opacity: 1, rotate: 0 }}
-                    exit={{ opacity: 0, rotate: -90 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="7" width="18" height="2" fill="black" />
-                      <rect x="3" y="15" width="18" height="2" fill="black" />
-                    </svg>
-                  </motion.div>
-                </button>
-              )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Mobile menu */}
-      <div 
-        className="fixed inset-0 bg-white z-40 overflow-hidden transition-all duration-300"
-        style={{ height: 0 }}
-        ref={navScope}
-      >
-        {/* Close button positioned on top */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.button 
-              initial={{ opacity: 0, rotate: -90 }}
-              animate={{ opacity: 1, rotate: 0 }}
-              exit={{ opacity: 0, rotate: 90 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-5 right-4 z-50 md:hidden flex items-center justify-center w-6 h-6 cursor-pointer text-black"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close Menu"
-            >
-              <CloseIcon />
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        <div className="h-full flex flex-col items-center justify-center">
-          <div className="space-y-8">
-            {navItems.map(({ label, href, isScroll }) => (
-              <Link
-                key={label}
-                href={href}
-                onClick={(e) => {
-                  handleNavClick(e, href, isScroll);
-                  setIsOpen(false);
-                }}
-                className="relative block text-black text-3xl font-light hover:text-gray-600 transition-colors cursor-pointer text-center group"
-              >
-                {label}
-                <span className="absolute left-1/2 -translate-x-1/2 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
-              </Link>
-            ))}
-            {/* Mobile Cart Link */}
+          {/* Mobile Navigation */}
+          <div className="flex md:hidden items-center space-x-4">
+            {/* Mobile Cart Icon */}
             <Link
               href="/cart"
-              className="relative text-black text-3xl font-light hover:text-gray-600 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
-              onClick={(e) => {
-                setIsOpen(false);
-                handleCartClick(e);
-              }}
+              className="text-black hover:text-gray-600 transition-colors"
+              onClick={handleCartClick}
             >
               <div className="relative">
-                <svg 
-                  className="w-6 h-6" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                <svg
+                  className="w-6 h-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -382,11 +251,91 @@ const Nav = () => {
                   </span>
                 )}
               </div>
-              <span>Cart</span>
             </Link>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsOpen(true)}
+              className="text-black hover:text-gray-600 transition-colors"
+              aria-label="Open Menu"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-50 md:hidden"
+          >
+            <div className="flex flex-col h-full">
+              <div className="flex justify-end p-4">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="text-black hover:text-gray-600 transition-colors"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+
+              <div className="flex flex-col items-center justify-center flex-1 space-y-8">
+                {navItems.map(({ label, href, isScroll }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    onClick={(e) => {
+                      handleNavClick(e, href, isScroll);
+                      setIsOpen(false);
+                    }}
+                    className="text-3xl text-black hover:text-gray-600 transition-colors"
+                  >
+                    {label}
+                  </Link>
+                ))}
+
+                {status === 'loading' ? (
+                  <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full" />
+                ) : session ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <span className="text-xl">{session.user?.name}</span>
+                    <button
+                      onClick={() => signOut()}
+                      className="text-xl text-black hover:text-gray-600 transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => signIn('google')}
+                    className="text-xl text-black hover:text-gray-600 transition-colors"
+                  >
+                    Sign in
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 };
