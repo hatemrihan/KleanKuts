@@ -237,21 +237,16 @@ const Nav = () => {
             </div>
 
             {/* Mobile Cart and Menu */}
-            <div className="md:hidden flex items-center gap-4">
+            <div className="md:hidden flex items-center gap-2">
               {status === 'loading' ? (
                 <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full"></div>
               ) : session ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-black/70 truncate max-w-[100px]">
-                    {session.user?.name}
-                  </span>
-                  <button
-                    onClick={() => signOut()}
-                    className="text-sm text-black hover:text-red-500"
-                  >
-                    Sign out
-                  </button>
-                </div>
+                <button
+                  onClick={() => signOut()}
+                  className="text-sm text-black hover:text-red-500"
+                >
+                  Sign out
+                </button>
               ) : (
                 <button
                   onClick={() => signIn('google')}
@@ -288,7 +283,6 @@ const Nav = () => {
                 </div>
               </Link>
 
-              {/* Mobile Menu Button */}
               {!isOpen && (
                 <button 
                   className="flex items-center justify-center w-6 h-6 relative cursor-pointer"
