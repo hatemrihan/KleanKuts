@@ -16,7 +16,7 @@ export default function Home() {
       <Introducing />
       <MovingWords />
       <Products />
-      <FAQs />
+      <FAQs /> 
       <Footer />
     </Suspense>
   );
