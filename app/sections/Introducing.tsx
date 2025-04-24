@@ -14,8 +14,7 @@ const Introducing = () => {
             <h1 className="text-white lg:text-black text-4xl md:text-7xl lg:text-8xl font-bold leading-none">SAGE-25</h1>
           </div>
           <p className="text-white lg:text-black text-sm md:text-lg font-light leading-relaxed">
-            Get ready to level up the scene with pieces that redefines the clothing market,
-            balancing provocative edge with sleek sophistication. Elevate your style, Trust.
+          Get ready to change the scene with pieces that redefine the fashion landscape, blending daring edge with modern sophistication, Elevate your style.
           </p>
           <Link 
             href="/collection" 

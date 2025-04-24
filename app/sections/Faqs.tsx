@@ -9,12 +9,12 @@ const faqs = [
   {
     question: "How can I make an exchange?",
     answer:
-      "To exchange an item, the customer must return it to the courier while they are at the door and place a new order for the desired item.",
+      "To exchange an item, the customer must return it to the courier while they are at the door and place a new order for the desired item.",
   },
   {
     question: "How can I make a return/refund?",
     answer:
-      "Customers can try on items at the time of delivery while the courier is present. If unsatisfied, they must return the item immediately to the courier. Once the courier leaves, the sale is final—no returns, exchanges, or refunds will be accepted. Items must be undamaged and in original packaging for a valid return. By ordering, customers agree to these terms. For help, contact @kleankuts on Instagram.",
+      "Customers can try on items at the time of delivery while the courier is present. If unsatisfied, they must return the item immediately to the courier. Once the courier leaves, the sale is final—no returns, exchanges, or refunds will be accepted. Items must be undamaged and in original packaging for a valid return. By ordering, customers agree to these terms. For help, contact @kleankuts on Instagram.",
   },
   {
     question: "How do I know my size?",
@@ -24,7 +24,7 @@ const faqs = [
   {
     question: "How long do orders take to be delivered?",
     answer:
-      "Standard delivery typically takes 3-7 days business days within the country. Express shipping options are available at checkout.",
+      "Standard delivery typically takes 3-7 days business days within the country. Express shipping options are available at checkout.",
   },
 ];
 

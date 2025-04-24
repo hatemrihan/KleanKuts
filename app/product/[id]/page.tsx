@@ -503,10 +503,7 @@ const ProductPage = ({ params }: Props) => {
             {/* Right - Product Material */}
             <div className="w-full lg:w-1/3">
               <div className="sticky top-24 space-y-8">
-                {/* Brand */}
-                <Link href="/" className="text-gray-500 hover:text-black">
-                  25 - KLEANKUTS
-                </Link>
+               
 
                 {/* Product Title & Price */}
                 <div className="space-y-4">
@@ -536,8 +533,8 @@ const ProductPage = ({ params }: Props) => {
                         }`}>
                           {sizeOption.size}
                         </div>
-                        <span className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 text-xs ${
-                          sizeOption.isPreOrder ? 'text-blue-600' :
+                        <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
+                          sizeOption.isPreOrder ? 'text-red-500' :
                           sizeOption.stock === 0 ? 'text-red-500' :
                           'text-green-600'
                         }`}>
@@ -556,6 +553,7 @@ const ProductPage = ({ params }: Props) => {
                     <button 
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition-colors"
+                      disabled={product.sizes.every(size => size.isPreOrder)}
                     >
                       -
                     </button>
@@ -563,6 +561,7 @@ const ProductPage = ({ params }: Props) => {
                     <button 
                       onClick={() => setQuantity(quantity + 1)}
                       className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition-colors"
+                      disabled={product.sizes.every(size => size.isPreOrder)}
                     >
                       +
                     </button>
@@ -570,17 +569,19 @@ const ProductPage = ({ params }: Props) => {
 
                   <button 
                     onClick={handleAddToCart}
-                    className="w-full bg-gray-900 text-white py-4 hover:bg-black transition-colors relative overflow-hidden group"
+                    disabled={!selectedSize || product.sizes.every(size => size.isPreOrder)}
+                    className={`w-full py-4 relative overflow-hidden group transition-colors ${
+                      !selectedSize || product.sizes.every(size => size.isPreOrder)
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-900 text-white hover:bg-black'
+                    }`}
                   >
-                    <span className="relative z-10">ADD TO CART</span>
-                    <div className="absolute inset-0 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-                  </button>
-                  
-                  <button 
-                    onClick={handleBuyNow}
-                    className="w-full border border-gray-300 py-4 hover:border-black transition-colors"
-                  >
-                    BUY IT NOW
+                    <span className="relative z-10">
+                      {product.sizes.every(size => size.isPreOrder) ? 'SOLD OUT' : 'ADD TO CART'}
+                    </span>
+                    {!product.sizes.every(size => size.isPreOrder) && (
+                      <div className="absolute inset-0 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                    )}
                   </button>
                 </div>
 
@@ -596,7 +597,7 @@ const ProductPage = ({ params }: Props) => {
                         title: "SHIPPING & RETURNS",
                         content: (
                           <ul className="list-disc pl-4 space-y-3 text-sm text-gray-600">
-                            <li>Ships in 10-14 days when available</li>
+                            <li>Shipping in 3-7 days</li>
                             <li><strong>On-the-Spot Trying:</strong> Customers have the ability to try on the item while the courier is present at the time of delivery.</li>
                             <li><strong>Immediate Return Requirement:</strong> If the customer is not satisfied, they must return the item immediately to the courier. Once the courier leaves, the item is considered accepted, and no returns or refunds will be processed.</li>
                             <li><strong>Condition of Return:</strong> The item must be undamaged, and in its original packaging for a successful return.</li>

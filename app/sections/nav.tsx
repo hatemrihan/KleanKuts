@@ -142,8 +142,8 @@ const Nav = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex flex-col items-center   duration-300 ">
+            <div className="flex-shrink-0 -ml-10">
+              <Link href="/" className="flex flex-col mr-32 ">
                 <img 
                   src="/images/logo-image.jpg" 
                   alt="Klean Kuts Logo" 

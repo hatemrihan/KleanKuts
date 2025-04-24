@@ -1,7 +1,19 @@
 'use client';
 
 import { CartProvider } from '@/app/context/CartContext';
+import { SessionProvider } from "next-auth/react";
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  return <CartProvider>{children}</CartProvider>;
+type Props = {
+  children: React.ReactNode;
+  session: any;
+};
+
+export function Providers({ children, session }: Props) {
+  return (
+    <SessionProvider session={session}>
+      <CartProvider>
+        {children}
+      </CartProvider>
+    </SessionProvider>
+  );
 } 

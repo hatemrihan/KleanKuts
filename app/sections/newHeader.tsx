@@ -25,16 +25,16 @@ const NewHeader = () => {
       {/* Content Container */}
       <div className="relative z-10 w-full min-h-screen flex flex-col">
         {/* Desktop Content Positioning */}
-        <div className="flex-1 flex flex-col justify-end pb-40 px-4">
+        <div className="flex-1 flex flex-col justify-end pb-40 px-4 ml-10">
           {/* Sponsor Text */}
-          <div className="text-center mb-4">
+          <div className="text-center mb-2">
             <p className="text-white/90 text-sm sm:text-base md:text-lg tracking-widest">
             EST. 2025
             </p>
           </div>
 
           {/* Main Title */}
-          <h1 className="text-white text-5xl sm:text-7xl md:text-8xl lg:text-[9rem]  tracking-wider text-center mb-8 font-extrabold">
+          <h1 className="text-white text-5xl sm:text-7xl md:text-8xl lg:text-[9rem]  tracking-wider text-center mb-8 font-bold">
             KLEAN KUTS
           </h1>
 

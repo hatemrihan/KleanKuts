@@ -339,7 +339,7 @@ const CheckoutPage = () => {
 
               <div className="space-y-4 py-4 border-t border-b">
                 <div className="flex justify-between text-sm">
-                  <span>Shipping (3-5 Business Days)</span>
+                  <span>Shipping (3-7 Business Days)</span>
                   <span>Free</span>
                 </div>
                 <div className="flex justify-between text-sm">

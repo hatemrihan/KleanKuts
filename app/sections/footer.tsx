@@ -30,8 +30,8 @@ const Footer = () => {
           <div className="space-y-12">
             <div id="about" className="space-y-2">
               <h3 className="font-medium">ABOUT</h3>
-              <p className="text-sm text-black/70">
-                EXPERIENCE UNMATCHED LUXURY WITH OUR PREMIUM LEATHER SETS, EXPERTLY CRAFTED FOR EXCEPTIONAL COMFORT AND ENDURING STYLE
+              <p className="text-sm text-black/70 ">
+              experience unmatched luxury with our premium leather sets, expertly crafted for exceptional comfort and enduring style.
               </p>
             </div>
             
@@ -63,7 +63,7 @@ const Footer = () => {
               <div className="space-y-2">
                 <h3 className="font-medium">Place</h3>
                 <p className="text-sm text-black/70">
-                  CAIRO &&  Delieving  all over Egypt
+                  CAIRO &&  Delivering all over Egypt.
                 </p>
               </div>
             </div>
@@ -87,14 +87,12 @@ const Footer = () => {
             <div className="mt-12 space-y-12">
               {/* Social Links */}
               <div className="flex gap-6 text-sm">
-                <Link href="https://www.facebook.com" className="hover:opacity-70 transition-opacity">
-                  FACEBOOK
-                </Link>
-                <Link href="https://www.instagram.com" className="hover:opacity-70 transition-opacity">
+               
+                <Link href="https://www.instagram.com/kleankuts_?igsh=MWJiaG40ZDVubDVhNA==" className="hover:opacity-70 transition-opacity">
                   INSTAGRAM
                 </Link>
-                <Link href="https://www.twitter.com" className="hover:opacity-70 transition-opacity">
-                  TWITTER
+                <Link href="https://www.tiktok.com/@kleankuts?_t=ZS-8viW6yr2prk&_r=1" className="hover:opacity-70 transition-opacity">
+                  TIKTOK
                 </Link>
                 <Link href="mailto:kenzyzayed04@gmail.com" className="hover:opacity-70 transition-opacity">
                   GMAIL
