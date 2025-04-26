@@ -23,7 +23,7 @@ const NewHeader = () => {
       </div>
 
       {/* Content Container */}
-      <div className="relative z-10 w-full min-h-screen flex flex-col">
+      <div className="relative z-10 w-full min-h-screen flex flex-col -ml-8">
         {/* Desktop Content Positioning */}
         <div className="flex-1 flex flex-col justify-end pb-44 px-4 ml-10">
           {/* Sponsor Text */}

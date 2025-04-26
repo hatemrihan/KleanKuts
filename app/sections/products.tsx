@@ -78,8 +78,8 @@ const products: Product[] = [
       '/images/malakthree-image.jpg'
     ],
     sizes: [
-      { size: 'S', stock: 2, isPreOrder: false },
-      { size: 'M', stock: 9, isPreOrder: false }
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   {
@@ -168,7 +168,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           
           {/* Status Badge */}
           {stockStatus && (
-            <div className={`absolute top-2 right-2 px-2 py-1 text-xs ${stockStatus.class}`}>
+            <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
               {stockStatus.text}
             </div>
           )}

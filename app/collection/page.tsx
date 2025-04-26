@@ -103,8 +103,8 @@ const localProducts = {
     description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
     Material: ['French linen'],
     sizes: [
-      { size: 'S', stock: 2, isPreOrder: false },
-      { size: 'M', stock: 9, isPreOrder: false }
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
     ],
     category: 'tops'
   },
@@ -341,7 +341,7 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
               unoptimized={true}
             />
             {stockStatus && (
-              <div className={`absolute top-2 right-2 px-2 py-1 text-xs ${stockStatus.class}`}>
+              <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
                 {stockStatus.text}
               </div>
             )}

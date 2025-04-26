@@ -68,10 +68,10 @@ const localProducts: ProductsType = {
     name: '02 Sage set in light beige',
     price: 1300,
     images: [
-      '/images/malakfive-image.jpg',
+      '/images/malak-image.jpg',
       '/images/malakfour-image.jpg',
       '/images/malakthree-image.jpg',
-      '/images/malak-image.jpg'
+      '/images/malakfive-image.jpg'
     ],
     description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
     Material: ['French linen'],
@@ -86,7 +86,8 @@ const localProducts: ProductsType = {
     price: 700,
     images: [
       '/images/modeleight-image.jpg',
-      '/images/modelnine-image.jpg'
+      '/images/modelseven-image.jpg',
+      '/images/modelsix-image.jpg'
     ],
     description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
     Material: ['French linen'],
@@ -100,7 +101,7 @@ const localProducts: ProductsType = {
     name: 'Sage top in light beige',
     price: 700,
     images: [
-      '/images/malaksix-image.jpg',
+      '/images/malakfive-image.jpg',
       '/images/malak-image.jpg',
       '/images/malaktwo-image.jpg',
       '/images/malakthree-image.jpg'
@@ -108,8 +109,8 @@ const localProducts: ProductsType = {
     description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
     Material: ['French linen'],
     sizes: [
-      { size: 'S', stock: 2, isPreOrder: false },
-      { size: 'M', stock: 9, isPreOrder: false }
+      { size: 'S', stock: 0, isPreOrder: true },
+      { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   5: {
@@ -471,6 +472,12 @@ const ProductPage = ({ params }: Props) => {
                   <div className="flex space-x-4">
                     {product.images.map((image, index) => (
                       <div key={index} className="flex-none w-[85vw] relative aspect-[4/5]">
+                        {/* SOLD OUT Badge */}
+                        {product.sizes.every(size => size.isPreOrder) && index === 0 && (
+                          <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
+                            SOLD OUT
+                          </div>
+                        )}
                         <Image
                           src={image}
                           alt={`${product.name} - View ${index + 1}`}
@@ -488,6 +495,12 @@ const ProductPage = ({ params }: Props) => {
               <div className="hidden lg:flex flex-col space-y-4">
                 {product.images.map((image, index) => (
                   <div key={index} className="relative aspect-[4/5] w-full">
+                    {/* SOLD OUT Badge */}
+                    {product.sizes.every(size => size.isPreOrder) && index === 0 && (
+                      <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
+                        SOLD OUT
+                      </div>
+                    )}
                     <Image
                       src={image}
                       alt={`${product.name} - View ${index + 1}`}
