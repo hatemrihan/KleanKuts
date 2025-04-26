@@ -102,7 +102,7 @@ const localProducts: ProductsType = {
     price: 700,
     images: [
       '/images/malakfive-image.jpg',
-      '/images/malak-image.jpg',
+      '/images/malakfour-image.jpg',
       '/images/malaktwo-image.jpg',
       '/images/malakthree-image.jpg'
     ],

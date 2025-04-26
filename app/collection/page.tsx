@@ -61,7 +61,7 @@ const localProducts = {
     name: '02 Sage set in light beige',
     price: 1300,
     images: [
-      '/images/malakfive-image.jpg',
+      '/images/malak-image.jpg',
       '/images/malakfour-image.jpg',
       '/images/malakthree-image.jpg',
       '/images/malak-image.jpg'
@@ -95,8 +95,8 @@ const localProducts = {
     name: 'Sage top in light beige',
     price: 700,
     images: [
+     '/images/malakfive-image.jpg',
       '/images/malaksix-image.jpg',
-      '/images/malak-image.jpg',
       '/images/malaktwo-image.jpg',
       '/images/malakthree-image.jpg'
     ],
@@ -194,7 +194,7 @@ export default function Collection() {
               }
               
               // For all other cases, assume it's a relative path and construct the full URL
-              return `http://localhost:3002/uploads/${img.replace(/^\/+/, '')}`;
+              return `https://kleankuts.shop/uploads/${img.replace(/^\/+/, '')}`;
             }) || [],
             category: (product.categories?.[0] || 'other').toLowerCase(),
             price: product.price || 0,
