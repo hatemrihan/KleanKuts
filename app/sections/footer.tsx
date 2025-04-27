@@ -31,7 +31,7 @@ const Footer = () => {
             <div id="about" className="space-y-2">
               <h3 className="font-medium">ABOUT</h3>
               <p className="text-sm text-black/70 ">
-              experience unmatched luxury with our premium leather sets, expertly crafted for exceptional comfort and enduring style.
+              experience unmatched luxury with our premium sets, expertly crafted for exceptional comfort and enduring style.
               </p>
             </div>
             
