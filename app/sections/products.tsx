@@ -49,8 +49,8 @@ const products: Product[] = [
       '/images/malaksix-image.jpg'
     ],
     sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
+      { size: 'S', stock: 7, isPreOrder: false },
+      { size: 'M', stock: 20, isPreOrder: false }
     ]
   },
   {
@@ -64,8 +64,8 @@ const products: Product[] = [
       '/images/modelnine-image.jpg'
     ],
     sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
+      { size: 'S', stock: 9, isPreOrder: false },
+      { size: 'M', stock: 13, isPreOrder: false }
     ]
   },
   {

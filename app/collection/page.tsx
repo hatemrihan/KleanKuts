@@ -69,8 +69,8 @@ const localProducts = {
     description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
     Material: ['French linen'],
     sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
+      { size: 'S', stock: 7, isPreOrder: false },
+      { size: 'M', stock: 20, isPreOrder: false }
     ],
     category: 'sets'
   },
@@ -85,8 +85,8 @@ const localProducts = {
     description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
     Material: ['French linen'],
     sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
+      { size: 'S', stock: 9, isPreOrder: false },
+      { size: 'M', stock: 13, isPreOrder: false }
     ],
     category: 'tops'
   },
