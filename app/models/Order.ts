@@ -1,53 +1,51 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 interface IOrder extends Document {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  apartment: string;
-  city: string;
-  notes?: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
   products: Array<{
-    id: number;
+    productId: string;
     name: string;
     price: number;
     quantity: number;
     size: string;
-    image: string;
-    discount?: number;
+    image?: string;
   }>;
+  totalAmount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  total: number;
+  notes?: string;
+  orderDate: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const orderSchema = new Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  email: { type: String, required: true },
-  phone: { type: String, required: true },
-  address: { type: String, required: true },
-  apartment: { type: String, required: true },
-  city: { type: String, required: true },
-  notes: String,
+  customer: {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+    address: { type: String, required: true }
+  },
   products: [{
-    id: Number,
-    name: String,
-    price: Number,
-    quantity: Number,
-    size: String,
-    image: String,
-    discount: Number
+    productId: { type: String, required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    size: { type: String, required: true },
+    image: String
   }],
+  totalAmount: { type: Number, required: true },
   status: {
     type: String,
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
-  total: Number
+  notes: String,
+  orderDate: { type: Date, default: Date.now }
 }, {
   timestamps: true
 });

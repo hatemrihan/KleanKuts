@@ -276,29 +276,42 @@ const ProductPage = ({ params }: Props) => {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
+    
+    // Validate required fields
+    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.address) {
+      setOrderError('Please fill in all required fields');
+      return;
+    }
+
     setIsSubmitting(true);
     setOrderError('');
 
+    const productPrice = product.discount 
+      ? (product.price * (1 - product.discount/100))
+      : product.price;
+    
+    const totalAmount = quantity * productPrice;
+
+    // Format the order data according to the mongoose schema
     const orderData = {
-      customer: customerInfo,
+      customer: {
+        name: customerInfo.name.trim(),
+        email: customerInfo.email.trim(),
+        phone: customerInfo.phone.trim(),
+        address: customerInfo.address.trim()
+      },
       products: [{
         productId: product._id,
         name: product.name,
         quantity: quantity,
-        price: product.discount 
-          ? (product.price * (1 - product.discount/100))
-          : product.price,
+        price: productPrice,
         size: selectedSize,
         image: product.images[0]
       }],
-      totalAmount: quantity * (product.discount 
-        ? (product.price * (1 - product.discount/100))
-        : product.price),
-      paymentMethod: "Cash on Delivery",
-      shippingMethod: "Standard Delivery",
-      status: "pending",
-      orderDate: new Date().toISOString(),
-      notes: ""
+      totalAmount: totalAmount,
+      status: 'pending',
+      notes: '',
+      orderDate: new Date().toISOString()
     };
 
     try {
@@ -317,9 +330,14 @@ const ProductPage = ({ params }: Props) => {
           router.push('/cart');
         }, 2000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting order:', error);
-      setOrderError('Failed to submit order. Please try again.');
+      const errorMessage = error.response?.data?.error || 
+                         error.response?.data?.message || 
+                         'Failed to submit order. Please try again.';
+      setOrderError(Array.isArray(error.response?.data?.details) 
+        ? error.response.data.details.join(', ') 
+        : errorMessage);
     } finally {
       setIsSubmitting(false);
     }

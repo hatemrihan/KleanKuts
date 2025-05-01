@@ -102,18 +102,24 @@ const CheckoutPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          customer: {
+            name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            address: `${formData.address.trim()}${formData.apartment ? ', ' + formData.apartment.trim() : ''}${formData.city ? ', ' + formData.city : ''}`
+          },
           products: cart.map(item => ({
-            id: item.id,
+            productId: item.id,
             name: item.name,
             price: item.price,
             quantity: item.quantity,
             size: item.size,
-            image: item.image,
-            discount: item.discount
+            image: item.image
           })),
-          total: totalWithShipping,
-          shippingCost
+          totalAmount: totalWithShipping,
+          status: 'pending',
+          notes: formData.notes || '',
+          orderDate: new Date().toISOString()
         }),
       })
 
@@ -121,12 +127,12 @@ const CheckoutPage = () => {
 
       if (response.ok) {
         clearCart()
-        router.push('/thank-you')
+        window.location.href = '/thank-you'
       } else {
-        throw new Error(data.error || 'Something went wrong')
+        throw new Error(data.error || data.details?.join(', ') || 'Something went wrong')
       }
-    } catch (error) {
-      alert('Failed to place order. Please try again.')
+    } catch (error: any) {
+      alert(error.message || 'Failed to place order. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

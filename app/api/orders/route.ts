@@ -3,27 +3,28 @@ import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
 
 interface OrderProduct {
-  id: string;
+  productId: string;
   name: string;
   price: number;
   quantity: number;
   size: string;
   image?: string;
-  discount?: number;
 }
 
-interface OrderData {
-  firstName: string;
-  lastName: string;
+interface CustomerInfo {
+  name: string;
   email: string;
   phone: string;
   address: string;
-  apartment: string;
-  city: string;
-  notes?: string;
+}
+
+interface OrderData {
+  customer: CustomerInfo;
   products: OrderProduct[];
-  total: number;
+  totalAmount: number;
   status?: string;
+  notes?: string;
+  orderDate?: string;
 }
 
 export async function POST(req: Request) {
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     const body = await req.json() as OrderData;
 
     // Validate required fields
-    if (!body.firstName || !body.lastName || !body.email || !body.phone) {
+    if (!body.customer?.name || !body.customer?.email || !body.customer?.phone) {
       return NextResponse.json(
         { 
           success: false,
@@ -57,17 +58,24 @@ export async function POST(req: Request) {
 
     // Create the order with the exact schema structure
     const order = await Order.create({
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email,
-      phone: body.phone,
-      address: body.address,
-      apartment: body.apartment,
-      city: body.city,
-      notes: body.notes,
-      products: body.products,
-      total: body.total,
-      status: body.status || 'pending'
+      customer: {
+        name: body.customer.name,
+        email: body.customer.email,
+        phone: body.customer.phone,
+        address: body.customer.address || ''
+      },
+      products: body.products.map(product => ({
+        productId: product.productId,
+        name: product.name,
+        quantity: product.quantity,
+        price: product.price,
+        size: product.size,
+        image: product.image
+      })),
+      totalAmount: body.totalAmount,
+      status: body.status || 'pending',
+      notes: body.notes || '',
+      orderDate: body.orderDate ? new Date(body.orderDate) : new Date()
     });
 
     // Return success response
