@@ -11,18 +11,23 @@ interface SizeStock {
 }
 
 interface Product {
-  id: number;
+  _id: string;
   name: string;
+  title?: string;
   price: number;
   images: string[];
-  discount?: number;
+  selectedImages?: string[];
+  description: string;
+  Material: string[];
   sizes: SizeStock[];
+  discount?: number;
+  categories?: string[];
 }
 
 // Updated product data with size-specific stock information
 const products: Product[] = [
   {
-    id: 1,
+    _id: "1",
     name: '01 Sage set in Rich brown',
     price: 1300,
     images: [
@@ -31,13 +36,15 @@ const products: Product[] = [
       '/images/modelthree-image.jpg',
       '/images/modelfour-image.jpg'
     ],
+    description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
+    Material: ['French linen'],
     sizes: [
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   {
-    id: 2,
+    _id: "2",
     name: '02 Sage set in light beige',
     price: 1300,
     images: [
@@ -48,13 +55,15 @@ const products: Product[] = [
       '/images/malakfive-image.jpg',
       '/images/malaksix-image.jpg'
     ],
+    description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
+    Material: ['French linen'],
     sizes: [
       { size: 'S', stock: 7, isPreOrder: false },
       { size: 'M', stock: 20, isPreOrder: false }
     ]
   },
   {
-    id: 3,
+    _id: "3",
     name: 'Sage top in Rich brown',
     price: 700,
     images: [
@@ -63,13 +72,15 @@ const products: Product[] = [
       '/images/modelseven-image.jpg',
       '/images/modelnine-image.jpg'
     ],
+    description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
+    Material: ['French linen'],
     sizes: [
       { size: 'S', stock: 9, isPreOrder: false },
       { size: 'M', stock: 13, isPreOrder: false }
     ]
   },
   {
-    id: 4,
+    _id: "4",
     name: 'Sage top in light beige',
     price: 700,
     images: [
@@ -77,13 +88,15 @@ const products: Product[] = [
       '/images/malaksix-image.jpg',
       '/images/malakthree-image.jpg'
     ],
+    description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
+    Material: ['French linen'],
     sizes: [
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   {
-    id: 5,
+    _id: "5",
     name: 'Sage pants in rich brown',
     price: 600,
     images: [
@@ -93,13 +106,15 @@ const products: Product[] = [
       '/images/pantmodelfour-image.jpg',
       '/images/pantmodelfive-image.jpg'
     ],
+    description: "Designed for effortless style and comfort, these rich brown French linen pants offer a relaxed yet refined fit. Lightweight, breathable, and timeless, they're perfect for any occasion",
+    Material: ['French linen'],
     sizes: [
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
     ]
   },
   {
-    id: 6,
+    _id: "6",
     name: 'Sage pants in light beige',
     price: 600,
     images: [
@@ -107,6 +122,8 @@ const products: Product[] = [
       '/images/pantmalaktwo-image.jpg',
       '/images/pantmalakthree-image.jpg'
     ],
+    description: "Designed for effortless style and comfort, these rich brown French linen pants offer a relaxed yet refined fit. Lightweight, breathable, and timeless, they're perfect for any occasion",
+    Material: ['French linen'],
     sizes: [
       { size: 'S', stock: 0, isPreOrder: true },
       { size: 'M', stock: 0, isPreOrder: true }
@@ -134,7 +151,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <div className="relative">
       <Link 
-        href={`/product/${product.id}`}
+        href={`/product/${product._id}`}
         className="group relative block bg-gray-100 overflow-hidden"
       >
         {/* Product Images */}
@@ -144,7 +161,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             alt={`${product.name} - Image ${currentImageIndex + 1}`}
             fill
             className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
-            priority={product.id <= 3}
+            priority={product._id === "1" || product._id === "2"}
           />
           
           {/* Image Thumbnails */}
@@ -217,8 +234,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 };
 
 const Products = () => {
-  const tops = products.filter(product => product.id === 3 || product.id === 4);
-  const pants = products.filter(product => product.id === 5 || product.id === 6);
+  const tops = products.filter(product => product._id === "3" || product._id === "4");
+  const pants = products.filter(product => product._id === "5" || product._id === "6");
 
   return (
     <section className="w-full bg-white py-16 px-4 md:px-8">
@@ -232,7 +249,7 @@ const Products = () => {
       <div className="max-w-7xl mx-auto hidden md:block">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product._id} product={product} />
           ))}
         </div>
       </div>
@@ -242,7 +259,7 @@ const Products = () => {
         {/* Sets */}
         <div className="grid grid-cols-1 gap-6">
           {products.slice(0, 2).map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product._id} product={product} />
           ))}
         </div>
 
@@ -252,7 +269,7 @@ const Products = () => {
           <div className="relative w-full overflow-x-auto hide-scrollbar">
             <div className="flex space-x-4">
               {tops.map((product) => (
-                <div key={product.id} className="flex-none w-[85vw]">
+                <div key={product._id} className="flex-none w-[85vw]">
                   <ProductCard product={product} />
                 </div>
               ))}
@@ -266,7 +283,7 @@ const Products = () => {
           <div className="relative w-full overflow-x-auto hide-scrollbar">
             <div className="flex space-x-4">
               {pants.map((product) => (
-                <div key={product.id} className="flex-none w-[85vw]">
+                <div key={product._id} className="flex-none w-[85vw]">
                   <ProductCard product={product} />
                 </div>
               ))}
