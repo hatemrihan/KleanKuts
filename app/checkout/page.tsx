@@ -96,6 +96,7 @@ const CheckoutPage = () => {
     setIsSubmitting(true)
 
     try {
+      // First, send to our main API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -126,12 +127,51 @@ const CheckoutPage = () => {
       const data = await response.json()
 
       if (response.ok) {
-        clearCart()
-        window.location.href = '/thank-you'
+        try {
+          // Then, send to admin panel API
+          console.log('Sending order to admin panel...');
+          const adminResponse = await fetch('https://kleankuts.netlify.app/api/orders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Origin': 'https://kleankuts.shop'
+            },
+            body: JSON.stringify({
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              phone: formData.phone.trim(),
+              email: formData.email.trim(),
+              address: formData.address.trim(),
+              apartment: formData.apartment.trim(),
+              city: formData.city,
+              notes: formData.notes || '',
+              products: cart.map(item => item.id),
+              total: Number(totalWithShipping.toFixed(0))
+            })
+          });
+
+          console.log('Admin panel response status:', adminResponse.status);
+          const adminData = await adminResponse.json();
+          console.log('Admin panel response:', adminData);
+
+          if (!adminResponse.ok) {
+            throw new Error(adminData.error || 'Failed to sync with admin panel');
+          }
+
+          clearCart()
+          window.location.href = '/thank-you'
+        } catch (adminError: any) {
+          console.error('Admin panel error:', adminError);
+          // Even if admin panel fails, we still want to proceed since the main order was successful
+          clearCart()
+          window.location.href = '/thank-you'
+        }
       } else {
         throw new Error(data.error || data.details?.join(', ') || 'Something went wrong')
       }
     } catch (error: any) {
+      console.error('Order submission error:', error);
       alert(error.message || 'Failed to place order. Please try again.')
     } finally {
       setIsSubmitting(false)
