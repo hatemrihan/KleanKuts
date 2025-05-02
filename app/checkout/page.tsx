@@ -166,8 +166,9 @@ const CheckoutPage = () => {
             throw new Error(adminData.error || 'Failed to sync with admin panel');
           }
 
-          clearCart()
-          window.location.href = '/thank-you'
+          // First clear cart and redirect to thank you page
+          clearCart();
+          router.push('/thank-you');
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           // Even if admin panel fails, we still want to proceed since the main order was successful
@@ -329,11 +330,13 @@ const CheckoutPage = () => {
                     onChange={handleInputChange}
                     className={`w-full p-3 border ${
                       errors.city ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black`}
+                    } focus:outline-none focus:border-black bg-white`}
                   >
                     <option value="">Select a city</option>
-                    {Object.keys(shippingCosts).map(city => (
-                      <option key={city} value={city}>{city}</option>
+                    {Object.entries(shippingCosts).map(([city, cost]) => (
+                      <option key={city} value={city}>
+                        {city} (Shipping: L.E {cost})
+                      </option>
                     ))}
                   </select>
                   {errors.city && (
