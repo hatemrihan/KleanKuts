@@ -130,7 +130,7 @@ const CheckoutPage = () => {
         try {
           // Then, send to admin panel API
           console.log('Sending order to admin panel...');
-          const adminResponse = await fetch('https://kleankuts.netlify.app/api/orders', {
+          const adminResponse = await fetch('https://kleankutsadmin.netlify.app/api/orders', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -146,7 +146,14 @@ const CheckoutPage = () => {
               apartment: formData.apartment.trim(),
               city: formData.city,
               notes: formData.notes || '',
-              products: cart.map(item => item.id),
+              products: cart.map(item => ({
+                productId: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                size: item.size,
+                image: item.image
+              })),
               total: Number(totalWithShipping.toFixed(0))
             })
           });
@@ -296,7 +303,7 @@ const CheckoutPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Apartment *
+                    Apartment
                   </label>
                   <input
                     type="text"
@@ -322,13 +329,11 @@ const CheckoutPage = () => {
                     onChange={handleInputChange}
                     className={`w-full p-3 border ${
                       errors.city ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black bg-white`}
+                    } focus:outline-none focus:border-black`}
                   >
                     <option value="">Select a city</option>
-                    {Object.entries(shippingCosts).map(([city, cost]) => (
-                      <option key={city} value={city}>
-                        {city} (Shipping: L.E {cost})
-                      </option>
+                    {Object.keys(shippingCosts).map(city => (
+                      <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
                   {errors.city && (
@@ -338,79 +343,29 @@ const CheckoutPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Order Notes (optional)
+                    Notes
                   </label>
                   <textarea
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    rows={4}
-                    className="w-full p-3 border border-gray-300 focus:outline-none focus:border-black"
+                    className={`w-full p-3 border ${
+                      errors.notes ? 'border-red-500' : 'border-gray-300'
+                    } focus:outline-none focus:border-black`}
                   />
+                  {errors.notes && (
+                    <p className="text-red-500 text-sm mt-1">{errors.notes}</p>
+                  )}
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full p-3 bg-black text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black"
+                >
+                  {isSubmitting ? 'Processing...' : 'Place Order'}
+                </button>
               </form>
-            </div>
-
-            {/* Order Summary */}
-            <div className="w-full lg:w-80 space-y-6">
-              <h2 className="text-xl font-light">ORDER SUMMARY</h2>
-              
-              <div className="space-y-4">
-                {cart.map((item) => (
-                  <div key={`${item.id}-${item.size}`} className="flex gap-4">
-                    <div className="relative w-16 h-16">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-light">{item.name}</p>
-                      <p className="text-sm text-gray-500">
-                        Size: {item.size} × {item.quantity}
-                      </p>
-                      {item.discount ? (
-                        <p className="text-red-500">
-                          L.E {((item.price * (1 - item.discount/100)) * item.quantity).toFixed(0)}
-                        </p>
-                      ) : (
-                        <p>L.E {(item.price * item.quantity).toFixed(0)}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-4 py-4 border-t border-b">
-                <div className="flex justify-between text-sm">
-                  <span>Shipping (3-7 Business Days)</span>
-                  <span>Free</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>L.E {cartTotal.toFixed(0)}</span>
-                </div>
-              </div>
-
-              <div className="flex justify-between font-medium">
-                <span>Total</span>
-                <span>L.E {totalWithShipping.toFixed(0)}</span>
-              </div>
-
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="w-full bg-black text-white py-4 hover:bg-gray-900 transition-colors disabled:bg-gray-400"
-              >
-                {isSubmitting ? 'PLACING ORDER...' : 'PLACE ORDER'}
-              </button>
-
-              <p className="text-sm text-gray-500 text-center">
-                Pay on delivery
-              </p>
             </div>
           </div>
         </div>
@@ -419,4 +374,4 @@ const CheckoutPage = () => {
   )
 }
 
-export default CheckoutPage 
+export default CheckoutPage
