@@ -175,14 +175,20 @@ const CheckoutPage = () => {
           clearCart();
           // Set flag that order was completed successfully
           sessionStorage.setItem('orderCompleted', 'true');
-          router.push('/thank-you');
+          // Use a tiny delay to ensure the flag is saved before navigation
+          setTimeout(() => {
+            router.push('/thank-you');
+          }, 100);
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           // Even if admin panel fails, we still want to proceed since the main order was successful
-          clearCart()
+          clearCart();
           // Set flag that order was completed successfully
           sessionStorage.setItem('orderCompleted', 'true');
-          router.push('/thank-you')
+          // Use a tiny delay to ensure the flag is saved before navigation
+          setTimeout(() => {
+            router.push('/thank-you');
+          }, 100);
         }
       } else {
         // Main API order failed

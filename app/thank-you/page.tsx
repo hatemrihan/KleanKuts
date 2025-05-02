@@ -10,28 +10,45 @@ const ThankYouPage = () => {
   const router = useRouter()
   const { cart } = useCart()
   const [orderCompleted, setOrderCompleted] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   
   useEffect(() => {
-    // Check if order was just completed by verifying that cart is empty
+    // Check if order was just completed
     const checkOrderCompleted = () => {
-      const isOrderCompleted = cart.length === 0 && sessionStorage.getItem('orderCompleted') === 'true'
+      // Get the completion flag from sessionStorage
+      const completionFlag = sessionStorage.getItem('orderCompleted')
       
-      if (!isOrderCompleted) {
-        // Redirect to home page if someone tries to access thank you page directly
-        router.push('/')
-        return
+      if (completionFlag === 'true') {
+        // Order was completed successfully
+        setOrderCompleted(true)
+        setIsLoading(false)
+      } else {
+        // No valid completion flag found - redirect after a short delay
+        // This prevents flashing content before redirect
+        setTimeout(() => {
+          router.push('/')
+        }, 300)
       }
-      
-      setOrderCompleted(true)
     }
     
     checkOrderCompleted()
     
-    // Cleanup
+    // Cleanup on component unmount
     return () => {
-      sessionStorage.removeItem('orderCompleted')
+      // Only remove the flag when navigating away from the page
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('orderCompleted')
+      }
     }
-  }, [cart, router])
+  }, [router])
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+      </div>
+    )
+  }
   
   if (!orderCompleted) {
     return null // Don't render anything during validation/redirect
