@@ -1,10 +1,42 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Nav from '../sections/nav'
+import { useCart } from '../context/CartContext'
 
 const ThankYouPage = () => {
+  const router = useRouter()
+  const { cart } = useCart()
+  const [orderCompleted, setOrderCompleted] = useState(false)
+  
+  useEffect(() => {
+    // Check if order was just completed by verifying that cart is empty
+    const checkOrderCompleted = () => {
+      const isOrderCompleted = cart.length === 0 && sessionStorage.getItem('orderCompleted') === 'true'
+      
+      if (!isOrderCompleted) {
+        // Redirect to home page if someone tries to access thank you page directly
+        router.push('/')
+        return
+      }
+      
+      setOrderCompleted(true)
+    }
+    
+    checkOrderCompleted()
+    
+    // Cleanup
+    return () => {
+      sessionStorage.removeItem('orderCompleted')
+    }
+  }, [cart, router])
+  
+  if (!orderCompleted) {
+    return null // Don't render anything during validation/redirect
+  }
+  
   return (
     <>
       <Nav />

@@ -62,6 +62,7 @@ const CheckoutPage = () => {
   })
   const [errors, setErrors] = useState<Partial<FormData>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [orderError, setOrderError] = useState<string | null>(null)
 
   const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0
   const totalWithShipping = cartTotal + shippingCost
@@ -90,6 +91,9 @@ const CheckoutPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Reset any previous error
+    setOrderError(null)
     
     if (!validateForm()) return
 
@@ -163,24 +167,32 @@ const CheckoutPage = () => {
           console.log('Admin panel response:', adminData);
 
           if (!adminResponse.ok) {
-            throw new Error(adminData.error || 'Failed to sync with admin panel');
+            console.error('Admin panel error:', adminData.error || 'Failed to sync with admin panel');
+            // Main order was successful, so we still proceed
           }
 
           // First clear cart and redirect to thank you page
           clearCart();
+          // Set flag that order was completed successfully
+          sessionStorage.setItem('orderCompleted', 'true');
           router.push('/thank-you');
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           // Even if admin panel fails, we still want to proceed since the main order was successful
           clearCart()
-          window.location.href = '/thank-you'
+          // Set flag that order was completed successfully
+          sessionStorage.setItem('orderCompleted', 'true');
+          router.push('/thank-you')
         }
       } else {
-        throw new Error(data.error || data.details?.join(', ') || 'Something went wrong')
+        // Main API order failed
+        const errorMessage = data.error || data.details?.join(', ') || 'Something went wrong with your order'
+        setOrderError(errorMessage)
+        throw new Error(errorMessage)
       }
     } catch (error: any) {
-      console.error('Order submission error:', error);
-      alert(error.message || 'Failed to place order. Please try again.')
+      console.error('Order submission error:', error)
+      setOrderError(error.message || 'Failed to place order. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -191,6 +203,10 @@ const CheckoutPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
     if (errors[name as keyof FormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+    // Clear order error when user changes any form field
+    if (orderError) {
+      setOrderError(null)
     }
   }
 
@@ -205,6 +221,14 @@ const CheckoutPage = () => {
           </Link>
 
           <h1 className="text-4xl md:text-5xl font-light mb-12">CHECKOUT</h1>
+
+          {orderError && (
+            <div className="mb-8 p-4 bg-red-50 border border-red-300 text-red-700 rounded">
+              <h3 className="font-medium mb-2">Order Submission Failed</h3>
+              <p>{orderError}</p>
+              <p className="mt-2 text-sm">Please check your information and try again, or contact support if the problem persists.</p>
+            </div>
+          )}
 
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Checkout Form */}
