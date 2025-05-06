@@ -10,6 +10,7 @@ import { useCart } from '@/app/context/CartContext'
 import { AnimatePresence, motion } from "framer-motion"
 import { twMerge } from "tailwind-merge"
 import { optimizeCloudinaryUrl, processImageUrl } from '@/app/utils/imageUtils';
+import { initStockSync, forceRefreshStock } from '@/app/utils/stockSync';
 import axios from 'axios'
 
 // Types
@@ -103,7 +104,7 @@ const ProductPage = ({ params }: Props) => {
     }
   }, [product, selectedSize, selectedColor])
 
-  // Function to refresh stock data
+  // Function to refresh stock data using the stockSync utility
   const refreshStockData = async (showMessage = false) => {
     if (product && product._id) {
       try {
@@ -111,37 +112,33 @@ const ProductPage = ({ params }: Props) => {
         setRefreshing(true);
         
         console.log('Refreshing stock data for product:', product._id);
-        const response = await fetch(`/api/products/${product._id}/stock?t=${Date.now()}`, {
-          cache: 'no-store'
+        
+        // Use the forceRefreshStock function from stockSync utility
+        const stockData = await forceRefreshStock(product._id);
+        console.log('Received updated stock data:', stockData);
+        
+        // Update the product with new stock information
+        setProduct(prevProduct => {
+          if (!prevProduct) return prevProduct;
+          
+          // Create a deep copy of the product
+          const updatedProduct = {...prevProduct};
+          
+          // Update size variants with new stock data
+          if (stockData.sizeVariants && updatedProduct.sizeVariants) {
+            updatedProduct.sizeVariants = stockData.sizeVariants;
+          }
+          
+          return updatedProduct;
         });
         
-        if (response.ok) {
-          const stockData = await response.json();
-          console.log('Received updated stock data:', stockData);
-          
-          // Update the product with new stock information
-          setProduct(prevProduct => {
-            if (!prevProduct) return prevProduct;
-            
-            // Create a deep copy of the product
-            const updatedProduct = {...prevProduct};
-            
-            // Update size variants with new stock data
-            if (stockData.sizeVariants && updatedProduct.sizeVariants) {
-              updatedProduct.sizeVariants = stockData.sizeVariants;
-            }
-            
-            return updatedProduct;
-          });
-          
-          // Show success message if requested
-          if (showMessage) {
-            setRefreshMessage('Stock information updated!');
-            // Clear message after 3 seconds
-            setTimeout(() => {
-              setRefreshMessage('');
-            }, 3000);
-          }
+        // Show success message if requested
+        if (showMessage) {
+          setRefreshMessage('Stock information updated!');
+          // Clear message after 3 seconds
+          setTimeout(() => {
+            setRefreshMessage('');
+          }, 3000);
         }
       } catch (error) {
         console.error('Error refreshing stock data:', error);
@@ -158,27 +155,48 @@ const ProductPage = ({ params }: Props) => {
     }
   };
   
-  // Refresh stock data when the component becomes visible
+  // Initialize real-time stock synchronization
   useEffect(() => {
-    // Create a visibility change listener to refresh data when tab becomes active
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshStockData();
-      }
-    };
-    
-    // Add event listener for page visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Also refresh when the component mounts
-    if (typeof window !== 'undefined' && document.visibilityState === 'visible') {
-      refreshStockData();
+    if (product && product._id) {
+      console.log('Initializing real-time stock sync for product:', product._id);
+      
+      // Initialize stock synchronization
+      const cleanup = initStockSync(product._id, (stockData) => {
+        console.log('Real-time stock update received:', stockData);
+        
+        // Update the product with new stock information
+        setProduct(prevProduct => {
+          if (!prevProduct) return prevProduct;
+          
+          // Create a deep copy of the product
+          const updatedProduct = {...prevProduct};
+          
+          // Update size variants with new stock data
+          if (stockData.sizeVariants && updatedProduct.sizeVariants) {
+            updatedProduct.sizeVariants = stockData.sizeVariants;
+          }
+          
+          return updatedProduct;
+        });
+      });
+      
+      // Also handle page visibility changes
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          refreshStockData(false); // Refresh without showing message
+        }
+      };
+      
+      // Add event listener for page visibility changes
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        // Clean up stock sync and event listener
+        cleanup();
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [product]);
+  }, [product?._id]); // Only re-initialize when product ID changes
 
   // Fetch product data
   useEffect(() => {

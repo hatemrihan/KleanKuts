@@ -174,10 +174,46 @@ export async function POST(request: Request) {
       }
     }
     
+    // Add a timestamp to indicate when the stock was last updated
+    const timestamp = new Date().toISOString();
+    const now = Date.now();
+    
+    // Notify the sync endpoint about stock changes for each product
+    try {
+      // Get unique product IDs from the results
+      const productIds = Array.from(new Set(results.map(result => result.productId)));
+      
+      // Notify sync endpoint for each product
+      await Promise.all(productIds.map(async (productId) => {
+        try {
+          // Make a POST request to the sync endpoint
+          const syncResponse = await fetch(`${new URL(request.url).origin}/api/stock/sync`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ productId })
+          });
+          
+          if (!syncResponse.ok) {
+            console.warn(`Failed to notify sync endpoint for product ${productId}:`, syncResponse.status);
+          }
+        } catch (syncError) {
+          console.error(`Error notifying sync endpoint for product ${productId}:`, syncError);
+          // Don't throw the error, just log it
+        }
+      }));
+    } catch (syncError) {
+      console.error('Error notifying sync endpoints:', syncError);
+      // Don't throw the error, just log it
+    }
+    
     return NextResponse.json({ 
       success: true, 
       message: 'Stock levels updated successfully',
-      results
+      results,
+      timestamp,
+      updatedAt: now
     });
     
   } catch (error: any) {
