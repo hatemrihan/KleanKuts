@@ -86,6 +86,51 @@ const ProductPage = ({ params }: Props) => {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState('')
 
+  // Function to get available stock for the current selected size and color
+  const getAvailableStock = (): number => {
+    // Default max stock if we can't determine actual stock
+    const DEFAULT_MAX_STOCK = 10;
+    
+    // If no product or no size selected, return default
+    if (!product || !selectedSize) {
+      return DEFAULT_MAX_STOCK;
+    }
+    
+    // If using size variants and color is selected
+    if (product.sizeVariants && selectedSize && selectedColor) {
+      // Find the selected size variant
+      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize);
+      if (sizeVariant && sizeVariant.colorVariants) {
+        // Find the selected color variant
+        const colorVariant = sizeVariant.colorVariants.find(cv => cv.color === selectedColor);
+        if (colorVariant) {
+          // Return the actual stock for this size/color combination
+          return colorVariant.stock;
+        }
+      }
+    }
+    
+    // If using size variants but no color selected
+    if (product.sizeVariants && selectedSize) {
+      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize);
+      if (sizeVariant && sizeVariant.colorVariants) {
+        // Calculate total stock across all colors for this size
+        return sizeVariant.colorVariants.reduce((sum, cv) => sum + cv.stock, 0);
+      }
+    }
+    
+    // If using simple sizes
+    if (product.sizes && selectedSize) {
+      const sizeOption = product.sizes.find(s => s.size === selectedSize);
+      if (sizeOption) {
+        return sizeOption.stock;
+      }
+    }
+    
+    // Fallback to default max stock
+    return DEFAULT_MAX_STOCK;
+  };
+  
   // Effect to update available colors when size changes
   useEffect(() => {
     if (product && product.sizeVariants && selectedSize) {
@@ -103,51 +148,174 @@ const ProductPage = ({ params }: Props) => {
       setAvailableColors([])
     }
   }, [product, selectedSize, selectedColor])
+  
+  // Effect to preserve selected size when product updates
+  useEffect(() => {
+    if (product) {
+      console.log('Product updated:', product._id);
+      console.log('Size variants available:', product.sizeVariants ? product.sizeVariants.length : 0);
+      
+      if (product.sizeVariants && Array.isArray(product.sizeVariants) && product.sizeVariants.length > 0) {
+        // Log all available sizes for debugging
+        console.log('Available sizes:', product.sizeVariants.map(sv => sv.size).join(', '));
+        
+        // If we already have a selected size, check if it still exists in the updated product
+        if (selectedSize) {
+          console.log('Current selected size:', selectedSize);
+          const sizeStillExists = product.sizeVariants.some(sv => sv.size === selectedSize);
+          console.log('Size still exists:', sizeStillExists);
+          
+          if (!sizeStillExists) {
+            // If the previously selected size no longer exists, select the first available size
+            console.log('Selecting first available size:', product.sizeVariants[0].size);
+            setSelectedSize(product.sizeVariants[0].size);
+          }
+        } else {
+          // If no size is selected yet, select the first available size
+          console.log('No size selected, selecting first available:', product.sizeVariants[0].size);
+          setSelectedSize(product.sizeVariants[0].size);
+        }
+      } else {
+        console.warn('No size variants available for product:', product._id);
+      }
+    }
+  }, [product])
+  
+  // Effect to adjust quantity if it exceeds available stock
+  useEffect(() => {
+    // Get current available stock
+    const availableStock = getAvailableStock();
+    
+    // If quantity exceeds available stock, reduce it
+    if (quantity > availableStock) {
+      setQuantity(Math.max(1, availableStock));
+    }
+  }, [selectedSize, selectedColor, product]);
 
-  // Function to refresh stock data using the stockSync utility
+  // Function to refresh stock data using the stockSync utility with retry logic and admin panel integration
   const refreshStockData = async (showMessage = false) => {
     if (product && product._id) {
       try {
         // Set refreshing state
         setRefreshing(true);
+        setRefreshMessage('');
         
         console.log('Refreshing stock data for product:', product._id);
         
-        // Use the forceRefreshStock function from stockSync utility
-        const stockData = await forceRefreshStock(product._id);
-        console.log('Received updated stock data:', stockData);
+        // Implement retry logic for stock refresh
+        let refreshSuccess = false;
+        let refreshAttempts = 0;
+        const MAX_REFRESH_ATTEMPTS = 3;
+        let stockData = null;
         
-        // Update the product with new stock information
-        setProduct(prevProduct => {
-          if (!prevProduct) return prevProduct;
-          
-          // Create a deep copy of the product
-          const updatedProduct = {...prevProduct};
-          
-          // Update size variants with new stock data
-          if (stockData.sizeVariants && updatedProduct.sizeVariants) {
-            updatedProduct.sizeVariants = stockData.sizeVariants;
+        while (refreshAttempts < MAX_REFRESH_ATTEMPTS && !refreshSuccess) {
+          try {
+            console.log(`Attempting to refresh stock (attempt ${refreshAttempts + 1}/${MAX_REFRESH_ATTEMPTS})`);
+            // Use the forceRefreshStock function from stockSync utility
+            stockData = await forceRefreshStock(product._id);
+            
+            if (stockData && stockData.success) {
+              refreshSuccess = true;
+              console.log('Stock refresh successful:', stockData);
+              break;
+            } else {
+              throw new Error(`Stock refresh failed: ${stockData?.message || 'Unknown error'}`);
+            }
+          } catch (refreshError) {
+            refreshAttempts++;
+            console.warn(`Stock refresh attempt ${refreshAttempts} failed:`, refreshError);
+            
+            if (refreshAttempts < MAX_REFRESH_ATTEMPTS) {
+              // Wait before retrying (exponential backoff)
+              const delay = Math.min(1000 * Math.pow(2, refreshAttempts - 1), 3000);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
           }
-          
-          return updatedProduct;
-        });
+        }
         
-        // Show success message if requested
-        if (showMessage) {
-          setRefreshMessage('Stock information updated!');
-          // Clear message after 3 seconds
-          setTimeout(() => {
-            setRefreshMessage('');
-          }, 3000);
+        // Now fetch the latest product data regardless of refresh success
+        // This provides a fallback mechanism if the stock refresh fails
+        try {
+          // Add cache busting parameter and no-cache headers
+          const response = await fetch(`/api/products/${product._id}?_t=${Date.now()}`, {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.product) {
+              // Save current size and color selection before processing new data
+              const currentSize = selectedSize;
+              const currentColor = selectedColor;
+              
+              // Process the updated product data
+              processProductData(data.product);
+              
+              // Restore size selection if it still exists in the updated product
+              if (currentSize) {
+                const sizeExists = data.product.sizeVariants?.some((sv: any) => sv.size === currentSize);
+                if (sizeExists) {
+                  setSelectedSize(currentSize);
+                  
+                  // Try to restore color selection if the size still has this color
+                  if (currentColor) {
+                    const sizeVariant = data.product.sizeVariants?.find((sv: any) => sv.size === currentSize);
+                    const colorExists = sizeVariant?.colorVariants?.some((cv: any) => cv.color === currentColor);
+                    if (colorExists) {
+                      setSelectedColor(currentColor);
+                    }
+                  }
+                }
+              }
+              
+              // Show appropriate success message
+              if (showMessage) {
+                setRefreshMessage(refreshSuccess 
+                  ? 'Stock levels updated successfully!' 
+                  : 'Stock levels refreshed from server!');
+                // Clear message after 5 seconds
+                setTimeout(() => setRefreshMessage(''), 5000);
+              }
+            } else {
+              throw new Error('Invalid product data received');
+            }
+          } else {
+            throw new Error(`Error fetching product: ${response.status}`);
+          }
+        } catch (fetchError) {
+          console.error('Error fetching updated product data:', fetchError);
+          
+          // Even if we can't fetch new data, we can still update the product with the stock data
+          if (refreshSuccess && stockData && stockData.sizeVariants) {
+            setProduct(prevProduct => {
+              if (!prevProduct) return prevProduct;
+              
+              // Create a deep copy of the product
+              const updatedProduct = {...prevProduct};
+              
+              // Update size variants with new stock data
+              updatedProduct.sizeVariants = stockData.sizeVariants;
+              
+              return updatedProduct;
+            });
+            
+            if (showMessage) {
+              setRefreshMessage('Stock updated successfully!');
+              setTimeout(() => setRefreshMessage(''), 5000);
+            }
+          } else if (showMessage) {
+            setRefreshMessage('Could not update stock levels. Please try again later.');
+            setTimeout(() => setRefreshMessage(''), 5000);
+          }
         }
       } catch (error) {
-        console.error('Error refreshing stock data:', error);
+        console.error('Unexpected error refreshing stock:', error);
         if (showMessage) {
-          setRefreshMessage('Failed to update stock information');
-          // Clear message after 3 seconds
-          setTimeout(() => {
-            setRefreshMessage('');
-          }, 3000);
+          setRefreshMessage('Error updating stock. Please try again.');
+          setTimeout(() => setRefreshMessage(''), 5000);
         }
       } finally {
         setRefreshing(false);
@@ -164,6 +332,10 @@ const ProductPage = ({ params }: Props) => {
       const cleanup = initStockSync(product._id, (stockData) => {
         console.log('Real-time stock update received:', stockData);
         
+        // Save current selections before updating
+        const currentSize = selectedSize;
+        const currentColor = selectedColor;
+        
         // Update the product with new stock information
         setProduct(prevProduct => {
           if (!prevProduct) return prevProduct;
@@ -172,12 +344,54 @@ const ProductPage = ({ params }: Props) => {
           const updatedProduct = {...prevProduct};
           
           // Update size variants with new stock data
-          if (stockData.sizeVariants && updatedProduct.sizeVariants) {
+          if (stockData.sizeVariants && Array.isArray(stockData.sizeVariants) && stockData.sizeVariants.length > 0) {
+            console.log(`Updating product with ${stockData.sizeVariants.length} size variants`);
             updatedProduct.sizeVariants = stockData.sizeVariants;
+            
+            // Also update the simple sizes array for compatibility
+            updatedProduct.sizes = stockData.sizeVariants.map((sv: any) => {
+              // Calculate total stock across all colors for this size
+              const totalStock = Array.isArray(sv.colorVariants) 
+                ? sv.colorVariants.reduce((sum: number, cv: any) => sum + (cv.stock || 0), 0)
+                : sv.stock || 0;
+                
+              return {
+                size: sv.size,
+                stock: totalStock,
+                isPreOrder: totalStock <= 0 // Mark as pre-order if no stock
+              };
+            });
           }
           
           return updatedProduct;
         });
+        
+        // After product update, restore selections if they still exist
+        setTimeout(() => {
+          // Check if the current size still exists in the updated product
+          if (currentSize && product?.sizeVariants) {
+            const sizeStillExists = product.sizeVariants.some(sv => sv.size === currentSize);
+            
+            if (sizeStillExists) {
+              // If we need to re-select the same size to trigger UI updates
+              setSelectedSize(currentSize);
+              
+              // Check if the current color still exists for this size
+              if (currentColor) {
+                const sizeVariant = product.sizeVariants.find(sv => sv.size === currentSize);
+                if (sizeVariant && sizeVariant.colorVariants) {
+                  const colorStillExists = sizeVariant.colorVariants.some(cv => cv.color === currentColor);
+                  if (colorStillExists) {
+                    setSelectedColor(currentColor);
+                  }
+                }
+              }
+            } else if (product.sizeVariants.length > 0) {
+              // If current size no longer exists, select the first available size
+              setSelectedSize(product.sizeVariants[0].size);
+            }
+          }
+        }, 0); // Use setTimeout with 0 delay to ensure this runs after state updates
       });
       
       // Also handle page visibility changes
@@ -198,53 +412,185 @@ const ProductPage = ({ params }: Props) => {
     }
   }, [product?._id]); // Only re-initialize when product ID changes
 
-  // Fetch product data
+  // Helper function to process product data
+  const processProductData = (data: any) => {
+    try {
+      console.log('Processing product data:', data);
+      
+      // Process images safely
+      const productImages = []
+      try {
+        if (Array.isArray(data.selectedImages) && data.selectedImages.length > 0) {
+          productImages.push(...data.selectedImages.map((img: string) => processImageUrl(img)))
+        } else if (Array.isArray(data.images) && data.images.length > 0) {
+          productImages.push(...data.images.map((img: string) => processImageUrl(img)))
+        } else if (typeof data.image === 'string') {
+          productImages.push(processImageUrl(data.image))
+        }
+      } catch (imgErr) {
+        console.error('Error processing images:', imgErr)
+      }
+      
+      // If no images were found, add a default image
+      if (productImages.length === 0) {
+        productImages.push('/images/model-image.jpg')
+      }
+      
+      // Process sizes and size variants
+      let productSizes = []
+      let productSizeVariants = undefined
+      
+      try {
+        // Check if we have sizeVariants in the data (admin panel format)
+        if (data.sizeVariants && Array.isArray(data.sizeVariants) && data.sizeVariants.length > 0) {
+          console.log('Found size variants in data:', data.sizeVariants);
+          // Use the exact size variants from the admin panel without modification
+          productSizeVariants = JSON.parse(JSON.stringify(data.sizeVariants));
+          console.log('Using exact size variants from admin panel:', productSizeVariants);
+          
+          // Also create simple sizes array for compatibility
+          productSizes = data.sizeVariants.map((sv: any) => {
+            // Calculate total stock across all colors for this size
+            const totalStock = Array.isArray(sv.colorVariants) 
+              ? sv.colorVariants.reduce((sum: number, cv: any) => sum + (cv.stock || 0), 0)
+              : 0;
+              
+            return {
+              size: sv.size,
+              stock: totalStock,
+              isPreOrder: totalStock <= 0 // Mark as pre-order if no stock
+            };
+          });
+        }
+        // If no size variants but we have selectedSizes
+        else if (Array.isArray(data.selectedSizes) && data.selectedSizes.length > 0) {
+          productSizes = data.selectedSizes.map((size: string) => ({
+            size,
+            stock: 10, // Default stock value
+            isPreOrder: false
+          }));
+        } 
+        // If we have a sizes array
+        else if (Array.isArray(data.sizes) && data.sizes.length > 0) {
+          productSizes = data.sizes.map((sizeStock: any) => ({
+            size: sizeStock.size || 'One Size',
+            stock: typeof sizeStock.stock === 'number' ? sizeStock.stock : 10,
+            isPreOrder: Boolean(sizeStock.isPreOrder)
+          }));
+        } 
+        // Default fallback
+        else {
+          productSizes = [{ size: 'One Size', stock: 10, isPreOrder: false }];
+        }
+      } catch (sizeErr) {
+        console.error('Error processing sizes:', sizeErr);
+        productSizes = [{ size: 'One Size', stock: 10, isPreOrder: false }];
+      }
+
+      // Create the transformed product
+      const transformedProduct: Product = {
+        _id: data._id || data.id || id, // Support both _id and id fields, fallback to URL id
+        name: data.title || data.name || 'Untitled Product',
+        price: typeof data.price === 'number' ? data.price : 0,
+        images: productImages,
+        description: data.description || '',
+        Material: Array.isArray(data.material) ? data.material : ['French linen'],
+        sizes: productSizes,
+        sizeVariants: productSizeVariants,
+        discount: typeof data.discount === 'number' ? data.discount : 0,
+        categories: Array.isArray(data.categories) ? data.categories : []
+      }
+
+      console.log('Transformed product:', transformedProduct)
+      setProduct(transformedProduct)
+      
+      // If there's only one size, select it automatically
+      if (productSizes.length > 0) {
+        setSelectedSize(productSizes[0].size)
+      }
+    } catch (processError) {
+      console.error('Error processing product data:', processError)
+      throw new Error('Failed to process product data')
+    }
+  }
+
+  // Fetch product data with retry logic and better admin panel integration
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true)
+        setError('')
         console.log('Fetching product with ID:', id)
         
-        // Try to fetch from our API first
-        try {
-          // Add cache busting parameter to avoid stale data
-          const response = await fetch(`/api/products/${id}?t=${Date.now()}`, {
-            cache: 'no-store'
-          })
-          
-          if (!response.ok) {
-            throw new Error(`API returned status ${response.status}`)
+        // Implement retry logic for product fetching
+        let fetchAttempts = 0;
+        const MAX_FETCH_ATTEMPTS = 3;
+        let productData = null;
+        let fetchError = null;
+        
+        // Try to fetch from our API with retries
+        while (fetchAttempts < MAX_FETCH_ATTEMPTS && !productData) {
+          try {
+            console.log(`Fetching product data (attempt ${fetchAttempts + 1}/${MAX_FETCH_ATTEMPTS})`);
+            
+            // Add cache busting parameter and no-cache headers
+            const response = await fetch(`/api/products/${id}?_t=${Date.now()}`, {
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`API returned status ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Received product data:', data);
+            
+            if (data && (data.product || data)) {
+              productData = data.product || data;
+              break; // Success, exit retry loop
+            } else {
+              throw new Error('Invalid product data received');
+            }
+          } catch (error) {
+            fetchError = error;
+            fetchAttempts++;
+            console.warn(`Fetch attempt ${fetchAttempts} failed:`, error);
+            
+            if (fetchAttempts < MAX_FETCH_ATTEMPTS) {
+              // Wait before retrying (exponential backoff)
+              const delay = Math.min(1000 * Math.pow(2, fetchAttempts - 1), 5000);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
           }
-
-          const data = await response.json()
-          console.log('Received product data:', data)
-          
+        }
+        
+        if (productData) {
           // Process product data
-          processProductData(data)
-          console.log('Successfully processed product data')
-          return
-        } catch (apiError) {
-          console.error('Error fetching from API:', apiError)
-          // Continue to fallback
+          processProductData(productData);
+          console.log('Successfully processed product data');
+        } else {
+          console.error('All fetch attempts failed:', fetchError);
+          
+          // If we're here, the API fetch failed, try local data
+          console.log('Falling back to local data');
+          
+          // Create a placeholder product
+          const placeholderProduct: Product = {
+            _id: id,
+            name: 'Product ' + id,
+            price: 0,
+            images: ['/images/model-image.jpg'],
+            description: 'Product description not available.',
+            Material: ['Unknown'],
+            sizes: [{ size: 'One Size', stock: 10, isPreOrder: false }]
+          }
+          
+          setProduct(placeholderProduct)
+          setSelectedSize(placeholderProduct.sizes[0].size)
         }
-
-        // If we're here, the API fetch failed, try local data
-        console.log('Falling back to local data')
-        
-        // Create a placeholder product
-        const placeholderProduct: Product = {
-          _id: id,
-          name: 'Product ' + id,
-          price: 0,
-          images: ['/images/model-image.jpg'],
-          description: 'Product description not available.',
-          Material: ['Unknown'],
-          sizes: [{ size: 'One Size', stock: 10, isPreOrder: false }]
-        }
-        
-        setProduct(placeholderProduct)
-        setSelectedSize(placeholderProduct.sizes[0].size)
-        
       } catch (err) {
         console.error('Error fetching product:', err)
         setError('Failed to load product')
@@ -253,172 +599,102 @@ const ProductPage = ({ params }: Props) => {
       }
     }
 
-    // Helper function to process product data
-    const processProductData = (data: any) => {
-      try {
-        console.log('Processing product data:', data);
-        
-        // Process images safely
-        const productImages = []
-        try {
-          if (Array.isArray(data.selectedImages) && data.selectedImages.length > 0) {
-            productImages.push(...data.selectedImages.map((img: string) => processImageUrl(img)))
-          } else if (Array.isArray(data.images) && data.images.length > 0) {
-            productImages.push(...data.images.map((img: string) => processImageUrl(img)))
-          } else if (typeof data.image === 'string') {
-            productImages.push(processImageUrl(data.image))
-          }
-        } catch (imgErr) {
-          console.error('Error processing images:', imgErr)
-        }
-        
-        // If no images were found, add a default image
-        if (productImages.length === 0) {
-          productImages.push('/images/model-image.jpg')
-        }
-        
-        // Process sizes and size variants
-        let productSizes = []
-        let productSizeVariants = undefined
-        
-        try {
-          // Check if we have sizeVariants in the data (admin panel format)
-          if (data.sizeVariants && Array.isArray(data.sizeVariants) && data.sizeVariants.length > 0) {
-            console.log('Found size variants in data:', data.sizeVariants);
-            productSizeVariants = data.sizeVariants;
-            
-            // Also create simple sizes array for compatibility
-            productSizes = data.sizeVariants.map((sv: any) => {
-              // Calculate total stock across all colors for this size
-              const totalStock = Array.isArray(sv.colorVariants) 
-                ? sv.colorVariants.reduce((sum: number, cv: any) => sum + (cv.stock || 0), 0)
-                : 0;
-                
-              return {
-                size: sv.size,
-                stock: totalStock,
-                isPreOrder: totalStock <= 0 // Mark as pre-order if no stock
-              };
-            });
-          }
-          // If no size variants but we have selectedSizes
-          else if (Array.isArray(data.selectedSizes) && data.selectedSizes.length > 0) {
-            productSizes = data.selectedSizes.map((size: string) => ({
-              size,
-              stock: 10, // Default stock value
-              isPreOrder: false
-            }));
-          } 
-          // If we have a sizes array
-          else if (Array.isArray(data.sizes) && data.sizes.length > 0) {
-            productSizes = data.sizes.map((sizeStock: any) => ({
-              size: sizeStock.size || 'One Size',
-              stock: typeof sizeStock.stock === 'number' ? sizeStock.stock : 10,
-              isPreOrder: Boolean(sizeStock.isPreOrder)
-            }));
-          } 
-          // Default fallback
-          else {
-            productSizes = [{ size: 'One Size', stock: 10, isPreOrder: false }];
-          }
-        } catch (sizeErr) {
-          console.error('Error processing sizes:', sizeErr);
-          productSizes = [{ size: 'One Size', stock: 10, isPreOrder: false }];
-        }
-
-        // Create the transformed product
-        const transformedProduct: Product = {
-          _id: data._id || data.id || id, // Support both _id and id fields, fallback to URL id
-          name: data.title || data.name || 'Untitled Product',
-          price: typeof data.price === 'number' ? data.price : 0,
-          images: productImages,
-          description: data.description || '',
-          Material: Array.isArray(data.material) ? data.material : ['French linen'],
-          sizes: productSizes,
-          sizeVariants: productSizeVariants,
-          discount: typeof data.discount === 'number' ? data.discount : 0,
-          categories: Array.isArray(data.categories) ? data.categories : []
-        }
-
-        console.log('Transformed product:', transformedProduct)
-        setProduct(transformedProduct)
-        
-        // If there's only one size, select it automatically
-        if (productSizes.length > 0) {
-          setSelectedSize(productSizes[0].size)
-        }
-      } catch (processError) {
-        console.error('Error processing product data:', processError)
-        throw new Error('Failed to process product data')
-      }
-    }
+    // Call the fetchProduct function
 
     fetchProduct()
   }, [id])
 
-  // Handle adding to cart
-  const handleAddToCart = () => {
-    if (!product) return
+  // Add to cart function with stock validation
+  const handleAddToCart = async () => {
+    if (!product) return;
     
     if (!selectedSize) {
-      alert('Please select a size')
-      return
+      alert('Please select a size');
+      return;
     }
 
     // If product has sizeVariants and colors are available, require color selection
     if (product.sizeVariants && availableColors.length > 0 && !selectedColor) {
-      alert('Please select a color')
-      return
+      alert('Please select a color');
+      return;
     }
     
-    // Get the selected color variant to include stock information
-    let selectedColorStock = 0
-    let selectedColorData = null
+    // Get current available stock
+    const availableStock = getAvailableStock();
     
-    if (product.sizeVariants && selectedSize && selectedColor) {
-      // Find the selected size variant
-      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize)
-      if (sizeVariant) {
-        // Find the selected color within this size
-        const colorVariant = sizeVariant.colorVariants.find(cv => cv.color === selectedColor)
-        if (colorVariant) {
-          selectedColorStock = colorVariant.stock
-          selectedColorData = colorVariant
-          console.log(`Adding to cart: ${selectedSize} in ${selectedColor}, stock: ${selectedColorStock}`)
-        }
+    // Validate stock one more time before adding to cart
+    if (quantity > availableStock) {
+      // Adjust quantity to match available stock
+      setQuantity(availableStock);
+      
+      if (availableStock <= 0) {
+        alert('Sorry, this item is out of stock.');
+        return;
       }
+      
+      alert(`Only ${availableStock} items available. We've adjusted your quantity.`);
     }
     
-    // Check if we have enough stock
-    if (selectedColorData && selectedColorStock < quantity) {
-      alert(`Sorry, we only have ${selectedColorStock} items in stock for ${selectedSize} in ${selectedColor}.`)
-      return
-    }
-
+    // Create cart item
     const cartItem: CartItem = {
       id: product._id,
-      name: product.name || product.title || '',
+      name: product.name,
       price: product.price,
-      quantity: quantity,
+      quantity: Math.min(quantity, availableStock), // Ensure we don't exceed available stock
       size: selectedSize,
       color: selectedColor || undefined,
-      image: product.images[0] || '/images/model-image.jpg',
+      image: product.images[0],
       discount: product.discount,
-      // Include stock information to help with inventory management
-      _stockInfo: selectedColorData ? {
-        originalStock: selectedColorStock,
+      _stockInfo: {
+        originalStock: availableStock,
         size: selectedSize,
-        color: selectedColor
-      } : undefined
+        color: selectedColor || ''
+      }
+    };
+    
+    try {
+      // Try to validate stock with the server before adding to cart
+      const response = await fetch('/api/stock/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          items: [{
+            productId: product._id,
+            size: selectedSize,
+            color: selectedColor || undefined,
+            quantity: Math.min(quantity, availableStock)
+          }]
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.valid) {
+        // If server says stock is not valid, refresh stock and show error
+        refreshStockData(false);
+        alert(`Stock issue: ${result.message}. The page will refresh with updated stock information.`);
+        return;
+      }
+      
+      // Stock is valid, add to cart
+      addToCart(cartItem);
+      
+      // Show added animation
+      setShowAddedAnimation(true);
+      setTimeout(() => setShowAddedAnimation(false), 2000);
+      
+      // Refresh stock data in the background
+      refreshStockData(false);
+    } catch (error) {
+      console.error('Error validating stock:', error);
+      // If server validation fails, still add to cart but refresh stock
+      addToCart(cartItem);
+      setShowAddedAnimation(true);
+      setTimeout(() => setShowAddedAnimation(false), 2000);
+      refreshStockData(false);
     }
-
-    addToCart(cartItem)
-
-    // Show animation
-    setShowAddedAnimation(true)
-    setTimeout(() => {
-      setShowAddedAnimation(false)
-    }, 2000)
   }
 
   // Loading state
@@ -598,8 +874,8 @@ const ProductPage = ({ params }: Props) => {
                 <div>
                   <h2 className="text-sm font-medium mb-2">Size</h2>
                   <div className="flex flex-wrap gap-2">
-                    {/* Use sizeVariants if available, otherwise fall back to sizes */}
-                    {product.sizeVariants ? (
+                    {/* Always display size variants, with a fallback if they're not available */}
+                    {(product.sizeVariants && Array.isArray(product.sizeVariants) && product.sizeVariants.length > 0) ? (
                       product.sizeVariants.map((sizeVariant) => (
                         <button
                           key={sizeVariant.size}
@@ -693,25 +969,49 @@ const ProductPage = ({ params }: Props) => {
                   </div>
                 )}
 
-                {/* Quantity */}
-                <div>
-                  <h2 className="text-sm font-medium mb-2">Quantity</h2>
-                  <div className="flex items-center border border-gray-300 w-32">
+                {/* Quantity Selector with Stock Indicator */}
+                <div className="flex items-center mt-4">
+                  <span className="mr-4 font-medium">Quantity</span>
+                  <div className="flex items-center border border-gray-300 rounded-md">
                     <button
-                      className="px-3 py-1 border-r border-gray-300"
-                      onClick={() => quantity > 1 && setQuantity(quantity - 1)}
-                      disabled={quantity <= 1}
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      className="px-3 py-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      aria-label="Decrease quantity"
                     >
                       -
                     </button>
-                    <span className="flex-1 text-center py-1">{quantity}</span>
+                    <span className="px-3 py-1">{quantity}</span>
                     <button
-                      className="px-3 py-1 border-l border-gray-300"
-                      onClick={() => quantity < 10 && setQuantity(quantity + 1)}
-                      disabled={quantity >= 10}
+                      onClick={() => {
+                        // Get current available stock for selected size and color
+                        const availableStock = getAvailableStock();
+                        // Only increment if below available stock
+                        if (quantity < availableStock) {
+                          setQuantity(quantity + 1);
+                        }
+                      }}
+                      disabled={quantity >= getAvailableStock()}
+                      className={`px-3 py-1 focus:outline-none ${
+                        quantity >= getAvailableStock()
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                      aria-label="Increase quantity"
                     >
                       +
                     </button>
+                  </div>
+                  
+                  {/* Stock Indicator */}
+                  <div className="ml-4 text-sm">
+                    {getAvailableStock() > 0 ? (
+                      <span className={`${getAvailableStock() <= 5 ? 'text-amber-600' : 'text-green-600'}`}>
+                        {getAvailableStock() <= 5 ? 'Only ' : ''}
+                        {getAvailableStock()} {getAvailableStock() === 1 ? 'item' : 'items'} left
+                      </span>
+                    ) : (
+                      <span className="text-red-600">Out of stock</span>
+                    )}
                   </div>
                 </div>
 

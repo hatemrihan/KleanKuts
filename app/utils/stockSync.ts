@@ -113,6 +113,45 @@ export async function fetchLatestStock(productId: string): Promise<any> {
     
     const stockData = await response.json();
     
+    // Ensure we have valid size variants
+    if (!stockData.sizeVariants || !Array.isArray(stockData.sizeVariants) || stockData.sizeVariants.length === 0) {
+      console.warn(`Received invalid size variants for product ${productId}. Using cached data if available.`);
+      
+      // If we have cached data with size variants, use that instead
+      if (stockCache[productId] && stockCache[productId].sizeVariants && 
+          Array.isArray(stockCache[productId].sizeVariants) && 
+          stockCache[productId].sizeVariants.length > 0) {
+        
+        console.log(`Using cached size variants for product ${productId}`);
+        stockData.sizeVariants = stockCache[productId].sizeVariants;
+      } else {
+        // Create a default size variant if we don't have any
+        console.log(`Creating default size variant for product ${productId}`);
+        stockData.sizeVariants = [{
+          size: 'One Size',
+          stock: 10,
+          colorVariants: [{
+            color: 'Default',
+            stock: 10
+          }]
+        }];
+      }
+    }
+    
+    // Ensure each size variant has color variants
+    stockData.sizeVariants = stockData.sizeVariants.map((sv: any) => {
+      if (!sv.colorVariants || !Array.isArray(sv.colorVariants) || sv.colorVariants.length === 0) {
+        return {
+          ...sv,
+          colorVariants: [{
+            color: 'Default',
+            stock: sv.stock || 10
+          }]
+        };
+      }
+      return sv;
+    });
+    
     // Update cache and timestamp
     stockCache[productId] = stockData;
     if (stockData.timestamp) {
@@ -120,6 +159,7 @@ export async function fetchLatestStock(productId: string): Promise<any> {
     }
     
     console.log(`Updated stock for product ${productId}, timestamp: ${stockData.timestamp}`);
+    console.log(`Size variants count: ${stockData.sizeVariants.length}`);
     return stockData;
   } catch (error) {
     console.error('Error fetching stock data:', error);
@@ -140,21 +180,42 @@ function hasStockChanged(productId: string, newData: any): boolean {
   
   // Compare size variants
   if (newData.sizeVariants && oldData.sizeVariants) {
+    // First check if the number of size variants has changed
+    if (newData.sizeVariants.length !== oldData.sizeVariants.length) {
+      console.log(`Size variant count changed for ${productId}: ${oldData.sizeVariants.length} -> ${newData.sizeVariants.length}`);
+      return true;
+    }
+    
     for (const newSizeVariant of newData.sizeVariants) {
       const oldSizeVariant = oldData.sizeVariants.find(
         (sv: any) => sv.size === newSizeVariant.size
       );
       
-      if (!oldSizeVariant) return true;
+      if (!oldSizeVariant) {
+        console.log(`New size variant found: ${newSizeVariant.size}`);
+        return true;
+      }
       
       // Compare color variants
       if (newSizeVariant.colorVariants && oldSizeVariant.colorVariants) {
+        // Check if the number of color variants has changed
+        if (newSizeVariant.colorVariants.length !== oldSizeVariant.colorVariants.length) {
+          console.log(`Color variant count changed for size ${newSizeVariant.size}`);
+          return true;
+        }
+        
         for (const newColorVariant of newSizeVariant.colorVariants) {
           const oldColorVariant = oldSizeVariant.colorVariants.find(
             (cv: any) => cv.color === newColorVariant.color
           );
           
-          if (!oldColorVariant || oldColorVariant.stock !== newColorVariant.stock) {
+          if (!oldColorVariant) {
+            console.log(`New color variant found: ${newColorVariant.color} for size ${newSizeVariant.size}`);
+            return true;
+          }
+          
+          if (oldColorVariant.stock !== newColorVariant.stock) {
+            console.log(`Stock changed for ${newSizeVariant.size}/${newColorVariant.color}: ${oldColorVariant.stock} -> ${newColorVariant.stock}`);
             return true;
           }
         }
@@ -162,6 +223,7 @@ function hasStockChanged(productId: string, newData: any): boolean {
       
       // Compare overall size stock
       if (oldSizeVariant.stock !== newSizeVariant.stock) {
+        console.log(`Overall stock changed for size ${newSizeVariant.size}: ${oldSizeVariant.stock} -> ${newSizeVariant.stock}`);
         return true;
       }
     }

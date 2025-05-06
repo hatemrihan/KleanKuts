@@ -4,6 +4,25 @@ import Product from '../../../../models/Product';
 import { handleDatabaseError, handleApiError } from '../../../utils/errorHandling';
 import { addToBlacklist, removeFromBlacklist } from '../../../utils/productBlacklist';
 
+// Define interfaces for product data
+interface ColorVariant {
+  color: string;
+  hexCode?: string;
+  stock: number;
+}
+
+interface SizeVariant {
+  size: string;
+  stock: number;
+  colorVariants: ColorVariant[];
+}
+
+interface SizeStock {
+  size: string;
+  stock: number;
+  isPreOrder?: boolean;
+}
+
 // Get a single product
 export async function GET(
   req: Request,
@@ -45,7 +64,62 @@ export async function GET(
     }
 
     console.log('Found product:', product.title || product.name);
-    return NextResponse.json(product);
+    
+    // Ensure the product has sizeVariants properly structured
+    if (!product.sizeVariants || !Array.isArray(product.sizeVariants) || product.sizeVariants.length === 0) {
+      console.log('Product has no size variants, checking if we can create them from sizes');
+      
+      // Try to create sizeVariants from sizes if available
+      if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+        console.log('Creating size variants from sizes array');
+        product.sizeVariants = product.sizes.map((size: string | SizeStock) => {
+          // If size is a string, convert to object
+          const sizeObj: SizeStock = typeof size === 'string' 
+            ? { size, stock: 10, isPreOrder: false }
+            : size;
+            
+          return {
+            size: sizeObj.size,
+            stock: sizeObj.stock || 10,
+            colorVariants: [{
+              color: 'Default',
+              stock: sizeObj.stock || 10
+            }]
+          };
+        });
+      } else {
+        // Create a default size variant
+        console.log('Creating default size variant');
+        product.sizeVariants = [{
+          size: 'One Size',
+          stock: 10,
+          colorVariants: [{
+            color: 'Default',
+            stock: 10
+          }]
+        }];
+      }
+    } else {
+      // Ensure each size variant has colorVariants
+      product.sizeVariants = product.sizeVariants.map((sv: any) => {
+        if (!sv.colorVariants || !Array.isArray(sv.colorVariants) || sv.colorVariants.length === 0) {
+          return {
+            ...sv,
+            colorVariants: [{
+              color: 'Default',
+              stock: sv.stock || 10
+            }]
+          };
+        }
+        return sv;
+      });
+    }
+    
+    console.log('Returning product with size variants:', product.sizeVariants.length);
+    return NextResponse.json({
+      product,
+      success: true
+    });
   } catch (error: any) {
     console.error('Error fetching product:', error);
     

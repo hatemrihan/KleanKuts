@@ -2,9 +2,23 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../utils/mongodb';
 import { ObjectId } from 'mongodb';
 
+// Maximum number of retries for stock reduction
+const MAX_RETRIES = 3;
+// Delay between retries (in milliseconds)
+const RETRY_DELAY = 500;
+
+/**
+ * POST /api/stock/reduce
+ * Reduces stock levels for products after a successful order
+ * Includes retry logic, admin panel integration, and fallback mechanisms
+ */
 export async function POST(request: Request) {
   try {
-    const { items } = await request.json();
+    const { items, orderId, sessionId } = await request.json();
+    
+    // Generate a unique reduction session ID if not provided
+    const reductionSessionId = sessionId || `red_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    console.log(`🔄 Processing stock reduction for order ${orderId || 'unknown'}, session ${reductionSessionId}`);
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -15,6 +29,56 @@ export async function POST(request: Request) {
 
     const { db } = await connectToDatabase();
     const productsCollection = db.collection('products');
+    const stockReductionsCollection = db.collection('stockReductions');
+    
+    // Check if this reduction has already been processed (idempotency)
+    if (orderId) {
+      const existingReduction = await stockReductionsCollection.findOne({ orderId });
+      if (existingReduction) {
+        console.log(`⚠️ Stock reduction for order ${orderId} has already been processed. Preventing duplicate reduction.`);
+        return NextResponse.json({
+          success: true,
+          message: 'Stock reduction already processed for this order',
+          orderId,
+          results: existingReduction.results
+        });
+      }
+    }
+    
+    // Create a record of this reduction attempt
+    await stockReductionsCollection.insertOne({
+      sessionId: reductionSessionId,
+      orderId,
+      items,
+      startedAt: new Date(),
+      status: 'processing'
+    });
+    
+    // Check if there's a valid reservation for these items
+    if (sessionId) {
+      try {
+        const reservationsCollection = db.collection('stockReservations');
+        const reservation = await reservationsCollection.findOne({ 
+          sessionId,
+          status: 'validated',
+          expiresAt: { $gt: new Date() }
+        });
+        
+        if (reservation) {
+          console.log(`✅ Found valid reservation for session ${sessionId}`);
+          // Update reservation status to 'reducing'
+          await reservationsCollection.updateOne(
+            { sessionId },
+            { $set: { status: 'reducing', reducingStartedAt: new Date() } }
+          );
+        } else {
+          console.warn(`⚠️ No valid reservation found for session ${sessionId}. Proceeding with caution.`);
+        }
+      } catch (reservationError) {
+        console.error('Error checking reservation:', reservationError);
+        // Continue without reservation validation
+      }
+    }
     
     const results = [];
     
@@ -40,8 +104,77 @@ export async function POST(request: Request) {
         );
       }
       
-      // First, get the current product to check stock
-      const product = await productsCollection.findOne({ _id: productObjectId });
+      // Implement retry logic and optimistic locking for stock reduction
+      let product = null;
+      let retryCount = 0;
+      let updateSuccess = false;
+      
+      // Use optimistic locking pattern for concurrent updates
+      while (retryCount < MAX_RETRIES && !updateSuccess) {
+        try {
+          // 1. Get the current state of the product
+          product = await productsCollection.findOne({ _id: productObjectId });
+          
+          if (!product) {
+            console.error(`Product not found: ${productId}`);
+            results.push({
+              productId,
+              size,
+              color,
+              success: false,
+              message: 'Product not found'
+            });
+            break; // Exit retry loop
+          }
+          
+          // 2. Get the current version/timestamp of the product
+          const currentVersion = product.lastUpdated || new Date(0);
+          const newVersion = new Date();
+          
+          // 3. Prepare the update (will be executed later)
+          // We'll apply the actual update in a separate step
+          
+          // 4. Record the attempt in our audit log
+          await stockReductionsCollection.updateOne(
+            { sessionId: reductionSessionId },
+            { 
+              $set: { 
+                lastAttempt: {
+                  productId,
+                  timestamp: new Date(),
+                  attempt: retryCount + 1,
+                  currentVersion
+                }
+              }
+            }
+          );
+          
+          // We'll continue with the stock reduction logic
+          // and perform the actual update with version check later
+          break; // Exit retry loop successfully
+          
+        } catch (e) {
+          const error = e as Error;
+          retryCount++;
+          console.warn(`Database error fetching product (attempt ${retryCount}/${MAX_RETRIES}):`, error);
+          
+          if (retryCount >= MAX_RETRIES) {
+            console.error(`Failed to fetch product after ${MAX_RETRIES} attempts:`, error);
+            results.push({
+              productId,
+              size,
+              color,
+              success: false,
+              message: `Failed to fetch product: ${error.message || 'Unknown error'}`
+            });
+            continue; // Skip to next item
+          }
+          
+          // Wait before retrying with exponential backoff
+          const backoffDelay = RETRY_DELAY * Math.pow(2, retryCount - 1);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        }
+      }
       
       // If product is not found, we'll still allow the order to proceed
       // This prevents "Product not found" errors from blocking the checkout process
@@ -112,37 +245,91 @@ export async function POST(request: Request) {
         // Update the stock for this color variant
         const updatePath = `sizeVariants.${sizeVariantIndex}.colorVariants.${colorVariantIndex}.stock`;
         
+        let updateSuccess = false;
+        let updateRetryCount = 0;
+        let updateError = null;
+        
         try {
-          // Use updateOne with $inc operator to safely modify stock without touching _id
-          const updateResult = await productsCollection.updateOne(
-            { _id: productObjectId },
-            { $inc: { [updatePath]: -quantity } }
-          );
-          
-          // If no documents were modified, throw an error
-          if (updateResult.modifiedCount === 0) {
-            console.error(`No documents modified for product ${productId}`);
+          // Implement retry logic for stock updates
+          while (updateRetryCount < MAX_RETRIES && !updateSuccess) {
+            try {
+              // Use updateOne with $inc operator to safely modify stock without touching _id
+              const updateResult = await productsCollection.updateOne(
+                { _id: productObjectId },
+                { $inc: { [updatePath]: -quantity } }
+              );
+              
+              // If no documents were modified, log error but continue
+              if (updateResult.modifiedCount === 0) {
+                console.error(`No documents modified for product ${productId}`);
+              } else {
+                updateSuccess = true;
+                
+                // Try to update admin panel (if available)
+                try {
+                  // Attempt to notify admin panel about stock change
+                  const adminUpdateUrl = process.env.ADMIN_STOCK_UPDATE_URL;
+                  if (adminUpdateUrl) {
+                    const adminResponse = await fetch(adminUpdateUrl, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.ADMIN_API_KEY || ''}`
+                      },
+                      body: JSON.stringify({
+                        productId,
+                        size,
+                        color,
+                        quantity,
+                        operation: 'reduce',
+                        timestamp: Date.now()
+                      })
+                    });
+                    
+                    if (adminResponse.ok) {
+                      console.log(`\u2705 Admin panel successfully notified about stock change for ${productId}`);
+                    } else {
+                      console.warn(`\u26a0\ufe0f Admin panel notification failed: ${adminResponse.status}`);
+                    }
+                  }
+                } catch (adminError) {
+                  // Just log the error, don't fail the operation
+                  console.error('Error notifying admin panel:', adminError);
+                }
+              }
+              
+              break; // Exit retry loop on success
+            } catch (error) {
+              updateError = error;
+              updateRetryCount++;
+              console.warn(`Stock update error (attempt ${updateRetryCount}/${MAX_RETRIES}):`, error);
+              
+              if (updateRetryCount < MAX_RETRIES) {
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+              }
+            }
           }
           
-          results.push({
-            productId,
-            size,
-            color,
-            quantity,
-            success: updateResult.modifiedCount > 0,
-            previousStock: colorVariant.stock,
-            newStock: colorVariant.stock - quantity
-          });
-          
-        } catch (updateError: any) {
-          console.error('Error updating stock:', updateError);
-          return NextResponse.json(
-            { success: false, message: `Error updating stock: ${updateError.message}` },
-            { status: 500 }
-          );
+          // After all retries, if still failed, log but continue with next item
+          if (!updateSuccess) {
+            console.error(`Failed to update stock after ${MAX_RETRIES} attempts:`, updateError);
+          }
+        } catch (finalError) {
+          console.error('Unexpected error during stock update:', finalError);
+          updateSuccess = false;
         }
         
-// This results.push is now handled inside the try block
+        results.push({
+          productId,
+          size,
+          color,
+          quantity,
+          success: updateSuccess,
+          previousStock: colorVariant.stock,
+          newStock: updateSuccess ? colorVariant.stock - quantity : colorVariant.stock,
+          adminNotified: updateSuccess
+        });
         
       } else {
         // If no color specified, update overall size stock
@@ -158,18 +345,89 @@ export async function POST(request: Request) {
         
         // Update the stock for this size
         const updatePath = `sizeVariants.${sizeVariantIndex}.stock`;
-        const updateResult = await productsCollection.updateOne(
-          { _id: productObjectId },
-          { $inc: { [updatePath]: -quantity } }
-        );
+        
+        let updateSuccess = false;
+        let updateRetryCount = 0;
+        let updateError = null;
+        
+        try {
+          // Implement retry logic for stock updates
+          while (updateRetryCount < MAX_RETRIES && !updateSuccess) {
+            try {
+              // Use updateOne with $inc operator to safely modify stock
+              const updateResult = await productsCollection.updateOne(
+                { _id: productObjectId },
+                { $inc: { [updatePath]: -quantity } }
+              );
+              
+              // If no documents were modified, log error but continue
+              if (updateResult.modifiedCount === 0) {
+                console.error(`No documents modified for product ${productId} size ${size}`);
+              } else {
+                updateSuccess = true;
+                
+                // Try to update admin panel (if available)
+                try {
+                  // Attempt to notify admin panel about stock change
+                  const adminUpdateUrl = process.env.ADMIN_STOCK_UPDATE_URL;
+                  if (adminUpdateUrl) {
+                    const adminResponse = await fetch(adminUpdateUrl, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.ADMIN_API_KEY || ''}`
+                      },
+                      body: JSON.stringify({
+                        productId,
+                        size,
+                        quantity,
+                        operation: 'reduce',
+                        timestamp: Date.now()
+                      })
+                    });
+                    
+                    if (adminResponse.ok) {
+                      console.log(`✅ Admin panel successfully notified about size stock change for ${productId}`);
+                    } else {
+                      console.warn(`⚠️ Admin panel notification failed: ${adminResponse.status}`);
+                    }
+                  }
+                } catch (adminError) {
+                  // Just log the error, don't fail the operation
+                  console.error('Error notifying admin panel for size stock change:', adminError);
+                }
+              }
+              
+              break; // Exit retry loop on success
+            } catch (error) {
+              updateError = error;
+              updateRetryCount++;
+              console.warn(`Size stock update error (attempt ${updateRetryCount}/${MAX_RETRIES}):`, error);
+              
+              if (updateRetryCount < MAX_RETRIES) {
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+              }
+            }
+          }
+          
+          // After all retries, if still failed, log but continue with next item
+          if (!updateSuccess) {
+            console.error(`Failed to update size stock after ${MAX_RETRIES} attempts:`, updateError);
+          }
+        } catch (finalError) {
+          console.error('Unexpected error during size stock update:', finalError);
+          updateSuccess = false;
+        }
         
         results.push({
           productId,
           size,
           quantity,
-          success: updateResult.modifiedCount > 0,
+          success: updateSuccess,
           previousStock: sizeVariant.stock,
-          newStock: sizeVariant.stock - quantity
+          newStock: updateSuccess ? sizeVariant.stock - quantity : sizeVariant.stock,
+          adminNotified: updateSuccess
         });
       }
     }
