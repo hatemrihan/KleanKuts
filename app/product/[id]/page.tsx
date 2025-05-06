@@ -594,65 +594,82 @@ const ProductPage = ({ params }: Props) => {
                   )}
                 </div>
 
-                {/* Size Selection */}
-                <div>
-                  <h2 className="text-sm font-medium mb-2">Size</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {/* Use sizeVariants if available, otherwise fall back to sizes */}
-                    {product.sizeVariants ? (
-                      product.sizeVariants.map((sizeVariant) => (
+                {/* Size Selection - Always visible */}
+                <div className="mb-6 border-t border-b border-gray-200 py-4 my-4">
+                  <h2 className="text-sm font-medium mb-3">Size</h2>
+                  <div className="flex flex-wrap gap-3">
+                    {/* Always show size options - with hardcoded default sizes */}
+                    <div className="grid grid-cols-4 gap-2 w-full">
+                      {/* Standard sizes that always display */}
+                      {['S', 'M', 'L', 'XL'].map((size) => (
                         <button
-                          key={sizeVariant.size}
-                          onClick={() => setSelectedSize(sizeVariant.size)}
-                          className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
-                            selectedSize === sizeVariant.size
-                              ? 'text-white'
-                              : 'text-black hover:text-white'
-                          }`}
+                          key={size}
+                          onClick={() => setSelectedSize(size)}
+                          className={`px-4 py-2 border text-center ${selectedSize === size ? 'border-black bg-black text-white' : 'border-gray-300 hover:border-gray-500'}`}
                         >
-                          <div className="relative">
-                            <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* Original size options - hidden for now until we fix the issue */}
+                    <div className="hidden">
+                      {(product?.sizeVariants && product.sizeVariants.length > 0) ? (
+                        product.sizeVariants.map((sizeVariant) => (
+                          <button
+                            key={sizeVariant.size}
+                            onClick={() => setSelectedSize(sizeVariant.size)}
+                            className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
                               selectedSize === sizeVariant.size
-                                ? 'bg-black border-black'
-                                : 'hover:bg-black hover:border-black'
-                            }`}>
-                              {sizeVariant.size}
-                            </div>
-                            
-                            {/* Show total stock for this size */}
-                            {sizeVariant.colorVariants && (
-                              <div className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs px-1 rounded-full">
-                                {sizeVariant.colorVariants.reduce((total, cv) => total + cv.stock, 0)}
+                                ? 'text-white'
+                                : 'text-black hover:text-white'
+                            }`}
+                          >
+                            <div className="relative">
+                              <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                                selectedSize === sizeVariant.size
+                                  ? 'bg-black border-black'
+                                  : 'hover:bg-black hover:border-black'
+                              }`}>
+                                {sizeVariant.size}
                               </div>
-                            )}
-                          </div>
-                          <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
-                            sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'text-red-500' : 'text-green-600'
-                          }`}>
-                            {sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'Out of stock' : ''}
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      product.sizes.map((sizeOption) => (
-                        <button
-                          key={sizeOption.size}
-                          onClick={() => setSelectedSize(sizeOption.size)}
-                          className={`px-4 py-2 border ${
-                            selectedSize === sizeOption.size
-                              ? 'border-black bg-black text-white'
-                              : 'border-gray-300 hover:border-gray-500'
-                          } ${
-                            sizeOption.stock <= 0 && !sizeOption.isPreOrder
-                              ? 'opacity-50 cursor-not-allowed'
-                              : ''
-                          }`}
-                          disabled={sizeOption.stock <= 0 && !sizeOption.isPreOrder}
-                        >
-                          {sizeOption.size}
-                        </button>
-                      ))
-                    )}
+                              
+                              {/* Show total stock for this size */}
+                              {sizeVariant.colorVariants && (
+                                <div className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs px-1 rounded-full">
+                                  {sizeVariant.colorVariants.reduce((total, cv) => total + cv.stock, 0)}
+                                </div>
+                              )}
+                            </div>
+                            <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
+                              sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'text-red-500' : 'text-green-600'
+                            }`}>
+                              {sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'Out of stock' : ''}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        // If no sizeVariants, use sizes array or create a default size
+                        (product?.sizes && product.sizes.length > 0 ? product.sizes : [{ size: 'One Size', stock: 10, isPreOrder: false }]).map((sizeOption) => (
+                          <button
+                            key={sizeOption.size}
+                            onClick={() => setSelectedSize(sizeOption.size)}
+                            className={`px-4 py-2 border ${
+                              selectedSize === sizeOption.size
+                                ? 'border-black bg-black text-white'
+                                : 'border-gray-300 hover:border-gray-500'
+                            } ${
+                              sizeOption.stock <= 0 && !sizeOption.isPreOrder
+                                ? 'opacity-50 cursor-not-allowed'
+                                : ''
+                            }`}
+                            disabled={sizeOption.stock <= 0 && !sizeOption.isPreOrder}
+                          >  
+                            {sizeOption.size}
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
 
