@@ -150,17 +150,20 @@ export async function POST(request: Request) {
       );
     }
     
-    // Update the timestamp for this product
+    // Update the timestamp for this product with a buffer to ensure it's newer than any cached data
     const currentTime = timestamp || Date.now();
-    productUpdateTimestamps[productId] = currentTime;
+    // Add a random buffer (50-200ms) to ensure unique timestamps and force cache invalidation
+    const timeBuffer = Math.floor(Math.random() * 150) + 50;
+    productUpdateTimestamps[productId] = currentTime + timeBuffer;
     
-    console.log(`🔄 Stock sync timestamp updated for product ${productId}: ${currentTime}`);
+    console.log(`🔄 Stock sync timestamp updated for product ${productId}: ${currentTime} (with buffer: ${currentTime + timeBuffer})`);
     
     // If forceUpdate is true, invalidate any cached data and try to sync with admin panel
     if (forceUpdate) {
       console.log(`⚡ Force update requested for product ${productId} - invalidating cache`);
       // This will force all clients to refresh their data immediately
-      productUpdateTimestamps[productId] = currentTime + 1000; // Add buffer to ensure it's newer
+      // Use an even larger buffer for force updates to ensure priority
+      productUpdateTimestamps[productId] = currentTime + 2000; // Add larger buffer for force updates
       
       // Try to sync with admin panel if available
       let adminSyncSuccess = false;

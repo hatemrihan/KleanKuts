@@ -12,10 +12,10 @@ let stockCache: Record<string, any> = {};
 let lastUpdateTimestamps: Record<string, number> = {};
 
 // Interval for regular polling (fallback)
-const POLL_INTERVAL = 10000; // 10 seconds
+const POLL_INTERVAL = 3000; // 3 seconds - faster polling for better responsiveness
 
 // Shorter interval for active products (ones being viewed)
-const ACTIVE_POLL_INTERVAL = 1000; // 1 second - more aggressive polling
+const ACTIVE_POLL_INTERVAL = 300; // 300 milliseconds - very aggressive polling for real-time updates
 
 /**
  * Initialize stock synchronization for a product
@@ -92,19 +92,38 @@ export async function fetchLatestStock(productId: string): Promise<any> {
     // Get the last update timestamp for this product
     const lastUpdate = lastUpdateTimestamps[productId] || 0;
     
-    // Use the sync endpoint for real-time updates
-    const response = await fetch(`/api/stock/sync?productId=${productId}&lastUpdate=${lastUpdate}&t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    });
+    // Add cache-busting parameters to ensure we get fresh data
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 10);
     
-    // If status is 304 Not Modified, use cached data
+    // Use the sync endpoint for real-time updates with enhanced cache busting
+    const response = await fetch(
+      `/api/stock/sync?productId=${productId}&lastUpdate=${lastUpdate}&t=${timestamp}&r=${random}`, 
+      {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    );
+    
+    // If status is 304 Not Modified, use cached data but check if it's too old
     if (response.status === 304) {
+      const cachedData = stockCache[productId];
+      const now = Date.now();
+      
+      // If we have cached data but it's older than 5 seconds, force a refresh
+      if (cachedData && cachedData.timestamp && (now - cachedData.timestamp > 5000)) {
+        console.log(`Cached data for product ${productId} is older than 5 seconds, forcing refresh`);
+        delete stockCache[productId];
+        delete lastUpdateTimestamps[productId];
+        return fetchLatestStock(productId); // Recursive call with cleared cache
+      }
+      
       console.log(`Stock for product ${productId} is up to date`);
-      return stockCache[productId] || { sizeVariants: [] };
+      return cachedData || { sizeVariants: [] };
     }
     
     if (!response.ok) {
@@ -178,6 +197,18 @@ function hasStockChanged(productId: string, newData: any): boolean {
   const oldData = stockCache[productId];
   if (!oldData) return true;
   
+  // Check if the timestamp is newer - this is critical for real-time updates
+  if (newData.timestamp && oldData.timestamp && newData.timestamp > oldData.timestamp) {
+    console.log(`Newer timestamp detected for ${productId}: ${oldData.timestamp} -> ${newData.timestamp}`);
+    return true;
+  }
+  
+  // Check for stockUpdateTimestamp which is set by the server after stock reduction
+  if (newData.stockUpdateTimestamp && (!oldData.stockUpdateTimestamp || newData.stockUpdateTimestamp > oldData.stockUpdateTimestamp)) {
+    console.log(`Stock update timestamp changed for ${productId}: ${oldData.stockUpdateTimestamp || 'none'} -> ${newData.stockUpdateTimestamp}`);
+    return true;
+  }
+  
   // Compare size variants
   if (newData.sizeVariants && oldData.sizeVariants) {
     // First check if the number of size variants has changed
@@ -214,6 +245,7 @@ function hasStockChanged(productId: string, newData: any): boolean {
             return true;
           }
           
+          // This is the most important check for real-time stock updates
           if (oldColorVariant.stock !== newColorVariant.stock) {
             console.log(`Stock changed for ${newSizeVariant.size}/${newColorVariant.color}: ${oldColorVariant.stock} -> ${newColorVariant.stock}`);
             return true;
@@ -229,16 +261,92 @@ function hasStockChanged(productId: string, newData: any): boolean {
     }
   }
   
+  // Always return true for force refreshes (after orders)
+  if (newData.forceRefresh || newData.afterOrder) {
+    console.log(`Force refresh flag detected for ${productId}`);
+    return true;
+  }
+  
   return false;
 }
 
 /**
  * Force refresh stock for a product
  * @param productId - The ID of the product
+ * @param afterOrder - Flag indicating if this refresh is triggered after an order
  * @returns Promise with the latest stock data
  */
-export async function forceRefreshStock(productId: string): Promise<any> {
-  // Remove from cache to force a fresh fetch
+export async function forceRefreshStock(productId: string, afterOrder: boolean = false): Promise<any> {
+  console.log(`Force refreshing stock for product ${productId}${afterOrder ? ' after order' : ''}`);
+  
+  // Always clear cache for force refreshes
   delete stockCache[productId];
-  return fetchLatestStock(productId);
+  // Reset the last update timestamp to force a fresh fetch
+  delete lastUpdateTimestamps[productId];
+  
+  // First, force a server-side cache invalidation
+  try {
+    // Notify the server to invalidate its cache for this product
+    const response = await fetch(`/api/stock/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      body: JSON.stringify({
+        productId,
+        forceUpdate: true,
+        afterOrder: afterOrder, // Pass the afterOrder flag to the API
+        timestamp: Date.now()
+      })
+    });
+    
+    if (response.ok) {
+      console.log(`Server cache invalidation successful for ${productId}`);
+      // Wait a moment for the server to process the invalidation
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } else {
+      console.warn(`Server cache invalidation failed with status ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error requesting cache invalidation:', error);
+  }
+  
+  // Now fetch with aggressive cache-busting
+  try {
+    // Add multiple cache-busting techniques
+    const timestamp = Date.now();
+    const randomParam = Math.random().toString(36).substring(2, 10);
+    
+    // Include afterOrder flag in the URL if applicable
+    const afterOrderParam = afterOrder ? '&afterOrder=true' : '';
+    
+    const response = await fetch(`/api/stock/sync?productId=${productId}&t=${timestamp}&r=${randomParam}${afterOrderParam}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch fresh stock data: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Successfully fetched fresh stock data for ${productId}`);
+    
+    // Update cache with fresh data
+    stockCache[productId] = data;
+    if (data.timestamp) {
+      lastUpdateTimestamps[productId] = data.timestamp;
+    }
+    
+    return data;
+  } catch (fetchError) {
+    console.error('Error fetching fresh stock data:', fetchError);
+    // Fall back to regular fetch as a last resort
+    return fetchLatestStock(productId);
+  }
 }

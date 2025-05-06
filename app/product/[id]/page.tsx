@@ -176,7 +176,7 @@ const ProductPage = ({ params }: Props) => {
   }, [selectedSize, selectedColor, product]);
 
   // Function to refresh stock data using the stockSync utility with retry logic and admin panel integration
-  const refreshStockData = async (showMessage = false) => {
+  const refreshStockData = async (showMessage = false, afterOrder = false) => {
     if (product && product._id) {
       try {
         // Set refreshing state
@@ -194,8 +194,8 @@ const ProductPage = ({ params }: Props) => {
         while (refreshAttempts < MAX_REFRESH_ATTEMPTS && !refreshSuccess) {
           try {
             console.log(`Attempting to refresh stock (attempt ${refreshAttempts + 1}/${MAX_REFRESH_ATTEMPTS})`);
-            // Use the forceRefreshStock function from stockSync utility
-            stockData = await forceRefreshStock(product._id);
+            // Use the forceRefreshStock function from stockSync utility with afterOrder flag
+            stockData = await forceRefreshStock(product._id, afterOrder);
             
             if (stockData && stockData.success) {
               refreshSuccess = true;
@@ -258,7 +258,7 @@ const ProductPage = ({ params }: Props) => {
               if (showMessage) {
                 setRefreshMessage(refreshSuccess 
                   ? 'Stock levels updated successfully!' 
-                  : 'Stock levels refreshed from server!');
+                  : 'Stock levels refreshed from ADMIN.');
                 // Clear message after 5 seconds
                 setTimeout(() => setRefreshMessage(''), 5000);
               }
@@ -654,15 +654,15 @@ const ProductPage = ({ params }: Props) => {
       setShowAddedAnimation(true);
       setTimeout(() => setShowAddedAnimation(false), 2000);
       
-      // Refresh stock data in the background
-      refreshStockData(false);
+      // Refresh stock data in the background with afterOrder flag for real-time updates
+      refreshStockData(false, true);
     } catch (error) {
       console.error('Error validating stock:', error);
       // If server validation fails, still add to cart but refresh stock
       addToCart(cartItem);
       setShowAddedAnimation(true);
       setTimeout(() => setShowAddedAnimation(false), 2000);
-      refreshStockData(false);
+      refreshStockData(false, true);
     }
   }
 

@@ -436,37 +436,106 @@ export async function POST(request: Request) {
     const timestamp = new Date().toISOString();
     const now = Date.now();
     
-    // Notify the sync endpoint about stock changes for each product
+    // Notify the sync endpoint about stock changes for each product with enhanced notification
     try {
       // Get unique product IDs from the results
       const productIds = Array.from(new Set(results.map(result => result.productId)));
+      const origin = new URL(request.url).origin;
       
-      // Notify sync endpoint for each product
-      await Promise.all(productIds.map(async (productId) => {
+      // First, update the products collection with a timestamp to force cache invalidation
+      for (const productId of productIds) {
         try {
-          // Make a POST request to the sync endpoint
-          const syncResponse = await fetch(`${new URL(request.url).origin}/api/stock/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            },
-            body: JSON.stringify({ 
-              productId,
-              timestamp: Date.now(),
-              forceUpdate: true // Force immediate update
-            })
-          });
-          
-          if (!syncResponse.ok) {
-            console.warn(`Failed to notify sync endpoint for product ${productId}:`, syncResponse.status);
-          } else {
-            console.log(`✅ Successfully notified sync endpoint for product ${productId} - stock updated`);
+          let productObjectId;
+          try {
+            productObjectId = new ObjectId(productId);
+          } catch (error) {
+            console.warn(`Invalid ObjectId format for product ${productId}, skipping timestamp update`);
+            continue;
           }
-        } catch (syncError) {
-          console.error(`Error notifying sync endpoint for product ${productId}:`, syncError);
-          // Don't throw the error, just log it
+          
+          await productsCollection.updateOne(
+            { _id: productObjectId },
+            { 
+              $set: { 
+                lastStockUpdate: new Date(),
+                stockUpdateTimestamp: Date.now() 
+              } 
+            }
+          );
+          console.log(`Updated timestamp for product ${productId} to force cache invalidation`);
+        } catch (error) {
+          console.error(`Error updating timestamp for product ${productId}:`, error);
+        }
+      }
+      
+      // Notify sync endpoint for each product with multiple attempts
+      await Promise.all(productIds.map(async (productId) => {
+        let syncSuccess = false;
+        let syncAttempts = 0;
+        const MAX_SYNC_ATTEMPTS = 3;
+        
+        while (syncAttempts < MAX_SYNC_ATTEMPTS && !syncSuccess) {
+          try {
+            // Make a POST request to the sync endpoint with afterOrder flag
+            const syncResponse = await fetch(`${origin}/api/stock/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              },
+              body: JSON.stringify({ 
+                productId,
+                timestamp: Date.now(),
+                forceUpdate: true, // Force immediate update
+                afterOrder: true, // Flag to indicate this is after an order for better real-time updates
+                orderId: orderId || 'unknown' // Include order ID for tracking
+              })
+            });
+            
+            if (syncResponse.ok) {
+              syncSuccess = true;
+              console.log(`✅ Successfully notified sync endpoint for product ${productId} - stock updated`);
+              
+              // Send a second notification after a delay to ensure all clients get updated
+              setTimeout(async () => {
+                try {
+                  await fetch(`${origin}/api/stock/sync`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Cache-Control': 'no-cache, no-store, must-revalidate',
+                      'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({ 
+                      productId,
+                      timestamp: Date.now() + 1000, // Ensure it's newer than the previous timestamp
+                      forceUpdate: true,
+                      afterOrder: true, // Flag to indicate this is after an order
+                      orderId: orderId || 'unknown'
+                    })
+                  });
+                  console.log(`✅ Sent follow-up sync notification for product ${productId}`);
+                } catch (error) {
+                  console.error(`Error sending follow-up sync notification for product ${productId}:`, error);
+                }
+              }, 1000); // Send a second notification after 1 second
+            } else {
+              throw new Error(`Sync endpoint returned status ${syncResponse.status}`);
+            }
+          } catch (attemptError) {
+            syncAttempts++;
+            console.warn(`Sync attempt ${syncAttempts}/${MAX_SYNC_ATTEMPTS} failed for product ${productId}:`, attemptError);
+            
+            if (syncAttempts < MAX_SYNC_ATTEMPTS) {
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+        }
+        
+        if (!syncSuccess) {
+          console.error(`Failed to notify sync endpoint for product ${productId} after ${MAX_SYNC_ATTEMPTS} attempts`);
         }
       }));
     } catch (syncError) {
