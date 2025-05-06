@@ -12,11 +12,42 @@ export default function CartPage() {
   const [checkoutInProgress, setCheckoutInProgress] = React.useState(false)
   const [checkoutError, setCheckoutError] = React.useState('')
   
+  // Validate that all products in cart exist
+  const validateCartProducts = async () => {
+    try {
+      // Check each product in the cart to ensure it exists
+      for (const item of cart) {
+        const response = await fetch(`/api/products/${item.id}`);
+        if (!response.ok) {
+          return {
+            valid: false,
+            message: `Product not found: ${item.id}`
+          };
+        }
+      }
+      return { valid: true };
+    } catch (error) {
+      console.error('Error validating cart products:', error);
+      return {
+        valid: false,
+        message: 'Error validating products. Please try again.'
+      };
+    }
+  };
+
   const handleCheckout = async () => {
     setCheckoutInProgress(true)
     setCheckoutError('')
     try {
-      // First, directly validate stock with the API
+      // First, validate that all products exist
+      const productsValidation = await validateCartProducts();
+      if (!productsValidation.valid) {
+        setCheckoutError(productsValidation.message || 'Product validation failed');
+        setCheckoutInProgress(false);
+        return;
+      }
+      
+      // Then, validate stock with the API
       const items = cart.map(item => ({
         productId: item.id,
         size: item.size,

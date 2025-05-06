@@ -102,20 +102,38 @@ export async function POST(request: Request) {
         
         // Update the stock for this color variant
         const updatePath = `sizeVariants.${sizeVariantIndex}.colorVariants.${colorVariantIndex}.stock`;
-        const updateResult = await productsCollection.updateOne(
-          { _id: productObjectId },
-          { $inc: { [updatePath]: -quantity } }
-        );
         
-        results.push({
-          productId,
-          size,
-          color,
-          quantity,
-          success: updateResult.modifiedCount > 0,
-          previousStock: colorVariant.stock,
-          newStock: colorVariant.stock - quantity
-        });
+        try {
+          // Use updateOne with $inc operator to safely modify stock without touching _id
+          const updateResult = await productsCollection.updateOne(
+            { _id: productObjectId },
+            { $inc: { [updatePath]: -quantity } }
+          );
+          
+          // If no documents were modified, throw an error
+          if (updateResult.modifiedCount === 0) {
+            console.error(`No documents modified for product ${productId}`);
+          }
+          
+          results.push({
+            productId,
+            size,
+            color,
+            quantity,
+            success: updateResult.modifiedCount > 0,
+            previousStock: colorVariant.stock,
+            newStock: colorVariant.stock - quantity
+          });
+          
+        } catch (updateError: any) {
+          console.error('Error updating stock:', updateError);
+          return NextResponse.json(
+            { success: false, message: `Error updating stock: ${updateError.message}` },
+            { status: 500 }
+          );
+        }
+        
+// This results.push is now handled inside the try block
         
       } else {
         // If no color specified, update overall size stock
