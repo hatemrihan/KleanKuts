@@ -190,13 +190,21 @@ export async function POST(request: Request) {
           const syncResponse = await fetch(`${new URL(request.url).origin}/api/stock/sync`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
             },
-            body: JSON.stringify({ productId })
+            body: JSON.stringify({ 
+              productId,
+              timestamp: Date.now(),
+              forceUpdate: true // Force immediate update
+            })
           });
           
           if (!syncResponse.ok) {
             console.warn(`Failed to notify sync endpoint for product ${productId}:`, syncResponse.status);
+          } else {
+            console.log(`✅ Successfully notified sync endpoint for product ${productId} - stock updated`);
           }
         } catch (syncError) {
           console.error(`Error notifying sync endpoint for product ${productId}:`, syncError);

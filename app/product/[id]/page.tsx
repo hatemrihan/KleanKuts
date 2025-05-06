@@ -610,12 +610,21 @@ const ProductPage = ({ params }: Props) => {
                               : 'text-black hover:text-white'
                           }`}
                         >
-                          <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
-                            selectedSize === sizeVariant.size
-                              ? 'bg-black border-black'
-                              : 'hover:bg-black hover:border-black'
-                          }`}>
-                            {sizeVariant.size}
+                          <div className="relative">
+                            <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                              selectedSize === sizeVariant.size
+                                ? 'bg-black border-black'
+                                : 'hover:bg-black hover:border-black'
+                            }`}>
+                              {sizeVariant.size}
+                            </div>
+                            
+                            {/* Show total stock for this size */}
+                            {sizeVariant.colorVariants && (
+                              <div className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs px-1 rounded-full">
+                                {sizeVariant.colorVariants.reduce((total, cv) => total + cv.stock, 0)}
+                              </div>
+                            )}
                           </div>
                           <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
                             sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'text-red-500' : 'text-green-600'
@@ -668,8 +677,8 @@ const ProductPage = ({ params }: Props) => {
                             />
                           )}
                           {colorVariant.color}
-                          {/* Always show stock count */}
-                          <span className={`ml-1 text-xs font-medium ${selectedColor === colorVariant.color ? 'text-white' : colorVariant.stock <= 5 ? 'text-red-500' : 'text-green-600'}`}>
+                          {/* Always show stock count with more emphasis */}
+                          <span className={`ml-1 text-xs font-bold ${selectedColor === colorVariant.color ? 'text-white' : colorVariant.stock <= 5 ? 'text-red-500' : 'text-green-600'}`}>
                             ({colorVariant.stock} left)
                           </span>
                           {/* Low stock warning badge */}

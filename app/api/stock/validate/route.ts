@@ -48,6 +48,27 @@ export async function POST(request: Request) {
         continue;
       }
       
+      // Force refresh the stock data in the cache to ensure we have the latest
+      try {
+        // Notify the sync endpoint about this product to invalidate caches
+        await fetch(`${new URL(request.url).origin}/api/stock/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          body: JSON.stringify({ 
+            productId,
+            timestamp: Date.now(),
+            forceUpdate: true // Force immediate update
+          })
+        });
+      } catch (syncError) {
+        console.error(`Error refreshing stock data for ${productId}:`, syncError);
+        // Continue with validation using the data we have
+      }
+      
       // Check if the product has size variants
       if (!product.sizeVariants || !Array.isArray(product.sizeVariants)) {
         return NextResponse.json(

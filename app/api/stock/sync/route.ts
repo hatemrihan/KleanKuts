@@ -84,7 +84,7 @@ export async function GET(request: Request) {
 // When stock is reduced, call this function to update the timestamp
 export async function POST(request: Request) {
   try {
-    const { productId } = await request.json();
+    const { productId, timestamp, forceUpdate } = await request.json();
     
     if (!productId) {
       return NextResponse.json(
@@ -94,12 +94,23 @@ export async function POST(request: Request) {
     }
     
     // Update the timestamp for this product
-    productUpdateTimestamps[productId] = Date.now();
+    const currentTime = timestamp || Date.now();
+    productUpdateTimestamps[productId] = currentTime;
+    
+    console.log(`Stock sync timestamp updated for product ${productId}: ${currentTime}`);
+    
+    // If forceUpdate is true, invalidate any cached data
+    if (forceUpdate) {
+      console.log(`Force update requested for product ${productId} - invalidating cache`);
+      // This will force all clients to refresh their data immediately
+      productUpdateTimestamps[productId] = currentTime + 1000; // Add buffer to ensure it's newer
+    }
     
     return NextResponse.json({
       success: true,
       message: 'Stock update notification sent',
-      timestamp: productUpdateTimestamps[productId]
+      timestamp: productUpdateTimestamps[productId],
+      forceUpdate: !!forceUpdate
     });
     
   } catch (error: any) {

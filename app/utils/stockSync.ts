@@ -15,7 +15,7 @@ let lastUpdateTimestamps: Record<string, number> = {};
 const POLL_INTERVAL = 10000; // 10 seconds
 
 // Shorter interval for active products (ones being viewed)
-const ACTIVE_POLL_INTERVAL = 3000; // 3 seconds
+const ACTIVE_POLL_INTERVAL = 1000; // 1 second - more aggressive polling
 
 /**
  * Initialize stock synchronization for a product
