@@ -7,7 +7,28 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, cartTotal } = useCart()
+  const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart } = useCart()
+  const [checkoutInProgress, setCheckoutInProgress] = React.useState(false)
+  const [checkoutError, setCheckoutError] = React.useState('')
+  
+  const handleCheckout = async () => {
+    setCheckoutInProgress(true)
+    setCheckoutError('')
+    try {
+      const success = await checkoutCart()
+      if (success) {
+        // Redirect to checkout page
+        window.location.href = '/checkout'
+      } else {
+        setCheckoutError('There was an issue processing your order. Please try again.')
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      setCheckoutError('An unexpected error occurred. Please try again later.')
+    } finally {
+      setCheckoutInProgress(false)
+    }
+  }
 
   return (
     <>
@@ -27,7 +48,7 @@ export default function CartPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-6">
                 {cart.map((item) => (
-                  <div key={`${item.id}-${item.size}`} className="flex gap-6 pb-6 border-b">
+                  <div key={`${item.id}-${item.size}-${item.color || 'default'}`} className="flex gap-6 pb-6 border-b">
                     <div className="relative w-24 h-24">
                       <Image src={item.image} alt={item.name} fill className="object-cover" />
                     </div>
@@ -35,24 +56,25 @@ export default function CartPage() {
                       <div className="flex justify-between">
                         <h3 className="font-light">{item.name}</h3>
                         <button 
-                          onClick={() => removeFromCart(item.id, item.size)}
+                          onClick={() => removeFromCart(item.id, item.size, item.color)}
                           className="text-sm text-red-500 hover:text-red-700"
                         >
                           Remove
                         </button>
                       </div>
                       <p className="text-sm text-gray-500 mt-1">Size: {item.size === 'medium' ? 'M' : item.size === 'small' ? 'S' : item.size}</p>
+                      {item.color && <p className="text-sm text-gray-500">Color: {item.color}</p>}
                       <div className="flex justify-between items-center mt-2">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => updateQuantity(item.id, item.size, Math.max(1, item.quantity - 1))}
+                            onClick={() => updateQuantity(item.id, item.size, Math.max(1, item.quantity - 1), item.color)}
                             className="text-gray-500 hover:text-black"
                           >
                             -
                           </button>
                           <span className="w-8 text-center">{item.quantity}</span>
                           <button 
-                            onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.id, item.size, item.quantity + 1, item.color)}
                             className="text-gray-500 hover:text-black"
                           >
                             +
@@ -88,12 +110,18 @@ export default function CartPage() {
                     <span>Total</span>
                     <span>L.E {cartTotal.toFixed(0)}</span>
                   </div>
-                  <Link
-                    href="/checkout"
-                    className="block w-full bg-black text-white text-center py-4 hover:bg-gray-900 transition-colors"
+                  {checkoutError && (
+                    <div className="mb-4 p-3 bg-red-50 text-red-500 text-sm rounded">
+                      {checkoutError}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleCheckout}
+                    disabled={checkoutInProgress}
+                    className="block w-full bg-black text-white text-center py-4 hover:bg-gray-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    PROCEED TO CHECKOUT
-                  </Link>
+                    {checkoutInProgress ? 'PROCESSING...' : 'PROCEED TO CHECKOUT'}
+                  </button>
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState } from 'react';
+import { updateInventoryAfterPurchase, checkProductStock } from '../utils/inventory';
 
 interface CartItem {
   id: string;
@@ -8,6 +9,7 @@ interface CartItem {
   price: number;
   quantity: number;
   size: string;
+  color?: string;
   image: string;
   discount?: number;
 }
@@ -17,9 +19,10 @@ interface CartContextType {
   cartTotal: number;
   itemCount: number;
   addToCart: (item: CartItem) => void;
-  removeFromCart: (id: string, size: string) => void;
-  updateQuantity: (id: string, size: string, quantity: number) => void;
+  removeFromCart: (id: string, size: string, color?: string) => void;
+  updateQuantity: (id: string, size: string, quantity: number, color?: string) => void;
   clearCart: () => void;
+  checkoutCart: () => Promise<boolean>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -38,32 +41,101 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (item: CartItem) => {
     setCart(prev => {
-      const existingItem = prev.find(i => i.id === item.id && i.size === item.size);
+      // Check if the item with the same ID, size, AND color exists
+      const existingItem = prev.find(i => 
+        i.id === item.id && 
+        i.size === item.size && 
+        i.color === item.color
+      );
+      
       if (existingItem) {
         return prev.map(i => 
-          i.id === item.id && i.size === item.size 
+          i.id === item.id && i.size === item.size && i.color === item.color
             ? { ...i, quantity: i.quantity + item.quantity }
             : i
         );
       }
       return [...prev, item];
     });
+    
+    // Optionally check stock availability (async)
+    checkProductStock(item.id, item.size, item.color, item.quantity)
+      .then(inStock => {
+        if (!inStock) {
+          console.warn(`Product ${item.name} with size ${item.size} ${item.color ? `and color ${item.color}` : ''} might not have enough stock.`);
+        }
+      })
+      .catch(err => console.error('Error checking stock:', err));
   };
 
-  const removeFromCart = (id: string, size: string) => {
-    setCart(prev => prev.filter(item => !(item.id === id && item.size === size)));
+  const removeFromCart = (id: string, size: string, color?: string) => {
+    setCart(prev => prev.filter(item => {
+      // If color is provided, match on ID, size, AND color
+      if (color) {
+        return !(item.id === id && item.size === size && item.color === color);
+      }
+      // Otherwise, match just on ID and size
+      return !(item.id === id && item.size === size);
+    }));
   };
 
-  const updateQuantity = (id: string, size: string, quantity: number) => {
+  const updateQuantity = (id: string, size: string, quantity: number, color?: string) => {
     setCart(prev => 
-      prev.map(item => 
-        item.id === id && item.size === size ? { ...item, quantity } : item
-      )
+      prev.map(item => {
+        // If color is provided, match on ID, size, AND color
+        if (color) {
+          return (item.id === id && item.size === size && item.color === color) 
+            ? { ...item, quantity } 
+            : item;
+        }
+        // Otherwise, match just on ID and size
+        return (item.id === id && item.size === size) 
+          ? { ...item, quantity } 
+          : item;
+      })
     );
+    
+    // Optionally check if the new quantity is available in stock
+    const item = cart.find(item => 
+      item.id === id && item.size === size && (!color || item.color === color)
+    );
+    
+    if (item) {
+      checkProductStock(id, size, color, quantity)
+        .then(inStock => {
+          if (!inStock) {
+            console.warn(`Requested quantity for ${item.name} might not be available in stock.`);
+          }
+        })
+        .catch(err => console.error('Error checking stock:', err));
+    }
   };
 
   const clearCart = () => {
     setCart([]);
+  };
+
+  // Function to handle checkout process and update inventory
+  const checkoutCart = async (): Promise<boolean> => {
+    if (cart.length === 0) return false;
+    
+    // Format cart items for inventory update
+    const inventoryItems = cart.map(item => ({
+      productId: item.id,
+      size: item.size,
+      color: item.color,
+      quantity: item.quantity
+    }));
+    
+    // Update inventory
+    const success = await updateInventoryAfterPurchase(inventoryItems);
+    
+    // If successful, clear the cart
+    if (success) {
+      clearCart();
+    }
+    
+    return success;
   };
 
   return (
@@ -74,7 +146,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addToCart, 
       removeFromCart, 
       updateQuantity, 
-      clearCart 
+      clearCart,
+      checkoutCart
     }}>
       {children}
     </CartContext.Provider>

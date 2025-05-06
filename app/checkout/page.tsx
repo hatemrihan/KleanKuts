@@ -119,6 +119,7 @@ const CheckoutPage = () => {
             price: item.price,
             quantity: item.quantity,
             size: item.size,
+            color: item.color,
             image: item.image
           })),
           totalAmount: totalWithShipping,
@@ -156,6 +157,7 @@ const CheckoutPage = () => {
                 price: item.price,
                 quantity: item.quantity,
                 size: item.size,
+                color: item.color,
                 image: item.image
               })),
               total: Number(totalWithShipping.toFixed(0))

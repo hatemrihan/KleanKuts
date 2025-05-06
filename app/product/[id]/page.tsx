@@ -16,6 +16,7 @@ interface CartItem {
   price: number;
   quantity: number;
   size: string;
+  color?: string;
   image: string;
   discount?: number;
 }
@@ -24,6 +25,16 @@ interface SizeStock {
   size: string;
   stock: number;
   isPreOrder: boolean;
+}
+
+interface ColorVariant {
+  color: string;
+  stock: number;
+}
+
+interface SizeVariant {
+  size: string;
+  colorVariants: ColorVariant[];
 }
 
 interface Product {
@@ -36,6 +47,7 @@ interface Product {
   description: string;
   Material: string[];
   sizes: SizeStock[];
+  sizeVariants?: SizeVariant[];
   discount?: number;
   categories?: string[];
 }
@@ -166,6 +178,7 @@ const ProductPage = ({ params }: Props) => {
   const router = useRouter()
   const { id } = params
   const [selectedSize, setSelectedSize] = useState('')
+  const [selectedColor, setSelectedColor] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [showAddedAnimation, setShowAddedAnimation] = useState(false)
   const pathname = usePathname()
@@ -183,7 +196,8 @@ const ProductPage = ({ params }: Props) => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+  const [availableColors, setAvailableColors] = useState<ColorVariant[]>([]);
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -192,7 +206,7 @@ const ProductPage = ({ params }: Props) => {
           throw new Error('Product not found');
         }
         const data = await response.json();
-        
+
         // Transform the data to match our Product interface
         const transformedProduct: Product = {
           _id: data._id,
@@ -208,10 +222,12 @@ const ProductPage = ({ params }: Props) => {
             stock: sizeStock.stock,
             isPreOrder: sizeStock.isPreOrder
           })),
+          // Add sizeVariants if they exist in the API response
+          sizeVariants: data.sizeVariants ? data.sizeVariants : undefined,
           discount: data.discount || 0,
           categories: data.categories || []
         };
-        
+
         console.log('Transformed product:', transformedProduct); // Debug log
         setProduct(transformedProduct);
       } catch (err) {
@@ -243,12 +259,19 @@ const ProductPage = ({ params }: Props) => {
       return
     }
 
+    // If product has sizeVariants and colors are available, require color selection
+    if (product.sizeVariants && availableColors.length > 0 && !selectedColor) {
+      alert('Please select a color')
+      return
+    }
+
     const cartItem: CartItem = {
       id: product._id,
       name: product.name,
       price: product.price,
       quantity: quantity,
       size: selectedSize,
+      color: selectedColor || undefined,
       image: product.images[0],
       discount: product.discount
     };
@@ -269,6 +292,12 @@ const ProductPage = ({ params }: Props) => {
       return
     }
 
+    // If product has sizeVariants and colors are available, require color selection
+    if (product.sizeVariants && availableColors.length > 0 && !selectedColor) {
+      alert('Please select a color')
+      return
+    }
+
     // Show the order form
     setShowOrderForm(true);
   }
@@ -276,7 +305,7 @@ const ProductPage = ({ params }: Props) => {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
-    
+
     // Validate required fields
     if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.address) {
       setOrderError('Please fill in all required fields');
@@ -306,6 +335,7 @@ const ProductPage = ({ params }: Props) => {
         quantity: quantity,
         price: productPrice,
         size: selectedSize,
+        color: selectedColor || undefined,
         image: product.images[0]
       }],
       totalAmount: totalAmount,
@@ -375,6 +405,19 @@ const ProductPage = ({ params }: Props) => {
     { label: 'SAGE COLLECTION', href: '/collection' },
     { label: product.name, href: pathname }
   ]
+
+  useEffect(() => {
+    if (product.sizeVariants && selectedSize) {
+      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize);
+      if (sizeVariant) {
+        setAvailableColors(sizeVariant.colorVariants);
+      } else {
+        setAvailableColors([]);
+      }
+    } else {
+      setAvailableColors([]);
+    }
+  }, [product, selectedSize]);
 
   return (
     <>
@@ -547,36 +590,89 @@ const ProductPage = ({ params }: Props) => {
                   <p className="text-lg">CHOOSE VARIANTS</p>
                   <p className="text-sm text-gray-500">Select Size</p>
                   <div className="flex gap-4">
-                    {product.sizes.map((sizeOption) => (
-                      <button
-                        key={sizeOption.size}
-                        onClick={() => setSelectedSize(sizeOption.size)}
-                        className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
-                          selectedSize === sizeOption.size
-                            ? 'text-white'
-                            : 'text-black hover:text-white'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
-                          selectedSize === sizeOption.size
-                            ? 'bg-black border-black'
-                            : 'hover:bg-black hover:border-black'
-                        }`}>
-                          {sizeOption.size}
-                        </div>
-                        <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
-                          sizeOption.isPreOrder ? 'text-red-500' :
-                          sizeOption.stock === 0 ? 'text-red-500' :
-                          'text-green-600'
-                        }`}>
-                          {sizeOption.isPreOrder ? 'Sold out' :
-                           sizeOption.stock === 0 ? 'Out of stock' :
-                           ''}
-                        </span>
-                      </button>
-                    ))}
+                    {/* Use sizeVariants if available, otherwise fall back to sizes */}
+                    {product.sizeVariants ? (
+                      product.sizeVariants.map((sizeVariant) => (
+                        <button
+                          key={sizeVariant.size}
+                          onClick={() => setSelectedSize(sizeVariant.size)}
+                          className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
+                            selectedSize === sizeVariant.size
+                              ? 'text-white'
+                              : 'text-black hover:text-white'
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                            selectedSize === sizeVariant.size
+                              ? 'bg-black border-black'
+                              : 'hover:bg-black hover:border-black'
+                          }`}>
+                            {sizeVariant.size}
+                          </div>
+                          <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
+                            sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'text-red-500' : 'text-green-600'
+                          }`}>
+                            {sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'Out of stock' : ''}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      product.sizes.map((sizeOption) => (
+                        <button
+                          key={sizeOption.size}
+                          onClick={() => setSelectedSize(sizeOption.size)}
+                          className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
+                            selectedSize === sizeOption.size
+                              ? 'text-white'
+                              : 'text-black hover:text-white'
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
+                            selectedSize === sizeOption.size
+                              ? 'bg-black border-black'
+                              : 'hover:bg-black hover:border-black'
+                          }`}>
+                            {sizeOption.size}
+                          </div>
+                          <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
+                            sizeOption.isPreOrder ? 'text-red-500' :
+                            sizeOption.stock === 0 ? 'text-red-500' :
+                            'text-green-600'
+                          }`}>
+                            {sizeOption.isPreOrder ? 'Sold out' :
+                             sizeOption.stock === 0 ? 'Out of stock' :
+                             ''}
+                          </span>
+                        </button>
+                      ))
+                    )}
                   </div>
                 </div>
+                
+                {/* Color Selection - Only show if sizeVariants exist and a size is selected */}
+                {product.sizeVariants && selectedSize && availableColors.length > 0 && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-500">Select Color</p>
+                    <div className="flex flex-wrap gap-4">
+                      {availableColors.map((colorVariant) => (
+                        <button
+                          key={colorVariant.color}
+                          onClick={() => setSelectedColor(colorVariant.color)}
+                          disabled={colorVariant.stock === 0}
+                          className={`relative px-4 py-2 border ${colorVariant.stock === 0 ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 
+                            selectedColor === colorVariant.color ? 'border-black bg-black text-white' : 'border-gray-400 hover:border-black'}`}
+                        >
+                          {colorVariant.color}
+                          {colorVariant.stock > 0 && colorVariant.stock <= 5 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
+                              {colorVariant.stock}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Quantity & Add to Cart */}
                 <div className="space-y-4">
@@ -600,17 +696,29 @@ const ProductPage = ({ params }: Props) => {
 
                   <button 
                     onClick={handleAddToCart}
-                    disabled={!selectedSize || product.sizes.every(size => size.isPreOrder)}
+                    disabled={
+                      !selectedSize || 
+                      (product.sizeVariants 
+                        ? (availableColors.length > 0 && !selectedColor) || availableColors.every(cv => cv.stock === 0)
+                        : product.sizes.every(size => size.isPreOrder || size.stock === 0))
+                    }
                     className={`w-full py-4 relative overflow-hidden group transition-colors ${
-                      !selectedSize || product.sizes.every(size => size.isPreOrder)
+                      !selectedSize || 
+                      (product.sizeVariants 
+                        ? (availableColors.length > 0 && !selectedColor) || availableColors.every(cv => cv.stock === 0)
+                        : product.sizes.every(size => size.isPreOrder || size.stock === 0))
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-gray-900 text-white hover:bg-black'
                     }`}
                   >
                     <span className="relative z-10">
-                      {product.sizes.every(size => size.isPreOrder) ? 'SOLD OUT' : 'ADD TO CART'}
+                      {product.sizeVariants 
+                        ? (availableColors.length > 0 && availableColors.every(cv => cv.stock === 0)) ? 'SOLD OUT' : 'ADD TO CART'
+                        : product.sizes.every(size => size.isPreOrder || size.stock === 0) ? 'SOLD OUT' : 'ADD TO CART'}
                     </span>
-                    {!product.sizes.every(size => size.isPreOrder) && (
+                    {!(product.sizeVariants 
+                      ? (availableColors.length > 0 && availableColors.every(cv => cv.stock === 0))
+                      : product.sizes.every(size => size.isPreOrder || size.stock === 0)) && (
                       <div className="absolute inset-0 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
                     )}
                   </button>
