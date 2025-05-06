@@ -16,13 +16,38 @@ export default function CartPage() {
     setCheckoutInProgress(true)
     setCheckoutError('')
     try {
-      const success = await checkoutCart()
-      if (success) {
-        // Redirect to checkout page
-        window.location.href = '/checkout'
-      } else {
-        setCheckoutError('There was an issue processing your order. Please try again.')
+      // First, directly validate stock with the API
+      const items = cart.map(item => ({
+        productId: item.id,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        _stockInfo: item._stockInfo
+      }));
+      
+      console.log('Validating stock before checkout...', items);
+      
+      // Call the stock validation API directly
+      const response = await fetch('/api/stock/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items }),
+      });
+      
+      const data = await response.json();
+      console.log('Stock validation response:', data);
+      
+      if (!response.ok || !data.valid) {
+        console.error('Stock validation failed:', data.message);
+        setCheckoutError(data.message || 'Some items in your cart are no longer available in the requested quantity.')
+        setCheckoutInProgress(false)
+        return;
       }
+      
+      // If stock validation passes, proceed to checkout
+      window.location.href = '/checkout'
     } catch (error) {
       console.error('Checkout error:', error)
       setCheckoutError('An unexpected error occurred. Please try again later.')

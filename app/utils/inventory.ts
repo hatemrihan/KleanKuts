@@ -9,6 +9,11 @@ interface InventoryUpdateItem {
   size: string;
   color?: string;
   quantity: number;
+  _stockInfo?: {
+    originalStock: number;
+    size: string;
+    color: string;
+  };
 }
 
 /**
@@ -18,7 +23,8 @@ interface InventoryUpdateItem {
  */
 export const updateInventoryAfterPurchase = async (items: InventoryUpdateItem[]): Promise<boolean> => {
   try {
-    const response = await axios.post('/api/inventory/sync', { items });
+    // Use the new stock reduction API provided by the admin developer
+    const response = await axios.post('/api/stock/reduce', { items });
     return response.status === 200;
   } catch (error) {
     console.error('Error updating inventory:', error);
@@ -41,11 +47,12 @@ export const checkProductStock = async (
   quantity: number = 1
 ): Promise<boolean> => {
   try {
-    const response = await axios.get(`/api/products/inventory`, {
-      params: { productId, size, color, quantity }
+    // Use the new stock validation API provided by the admin developer
+    const response = await axios.post('/api/stock/validate', {
+      items: [{ productId, size, color, quantity }]
     });
     
-    return response.data.inStock;
+    return response.data.valid;
   } catch (error) {
     console.error('Error checking product stock:', error);
     // Default to true to prevent blocking purchases if the API fails

@@ -120,27 +120,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart([]);
   };
 
-  // Function to handle checkout process and update inventory
+  // Function to handle checkout process and validate stock
   const checkoutCart = async (): Promise<boolean> => {
     if (cart.length === 0) return false;
     
-    // Format cart items for inventory update
-    const inventoryItems = cart.map(item => ({
-      productId: item.id,
-      size: item.size,
-      color: item.color,
-      quantity: item.quantity
-    }));
-    
-    // Update inventory
-    const success = await updateInventoryAfterPurchase(inventoryItems);
-    
-    // If successful, clear the cart
-    if (success) {
-      clearCart();
+    try {
+      console.log('Validating stock before checkout...');
+      
+      // Format cart items for stock validation
+      const items = cart.map(item => ({
+        productId: item.id,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        _stockInfo: item._stockInfo
+      }));
+      
+      // Directly call the stock validation API
+      const response = await fetch('/api/stock/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items }),
+      });
+      
+      const data = await response.json();
+      console.log('Stock validation response:', data);
+      
+      if (!response.ok || !data.valid) {
+        console.error('Stock validation failed:', data.message);
+        return false;
+      }
+      
+      // If validation passes, proceed to checkout
+      return true;
+    } catch (error) {
+      console.error('Error during checkout process:', error);
+      return false;
     }
-    
-    return success;
   };
 
   return (
