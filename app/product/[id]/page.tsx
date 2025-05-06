@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import axios from 'axios'
 import Nav from '@/app/sections/nav'
+import Footer from '@/app/sections/footer'
 import { useCart } from '@/app/context/CartContext'
-import { AnimatePresence, motion } from "framer-motion";
-import { twMerge } from "tailwind-merge";
+import { AnimatePresence, motion } from "framer-motion"
+import { twMerge } from "tailwind-merge"
 import { optimizeCloudinaryUrl, processImageUrl } from '@/app/utils/imageUtils';
+import axios from 'axios'
 
+// Types
 interface CartItem {
   id: string;
   name: string;
@@ -20,6 +22,11 @@ interface CartItem {
   color?: string;
   image: string;
   discount?: number;
+  _stockInfo?: {
+    originalStock: number;
+    size: string;
+    color: string;
+  };
 }
 
 interface SizeStock {
@@ -45,129 +52,12 @@ interface Product {
   title?: string;
   price: number;
   images: string[];
-  selectedImages?: string[];
   description: string;
   Material: string[];
   sizes: SizeStock[];
   sizeVariants?: SizeVariant[];
   discount?: number;
   categories?: string[];
-}
-
-type ProductsType = {
-  [key: string]: Product;
-}
-
-// This will be replaced with API data later
-const localProducts: ProductsType = {
-  1: {
-    _id: "1",
-    name: '01 Sage set in Rich brown',
-    price: 1300,
-    images: [
-      '/images/model-image.jpg',
-      '/images/modeltwo-image.jpg',
-      '/images/modelthree-image.jpg',
-      '/images/modelfour-image.jpg'
-    ],
-    description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
-    Material: ['French linen'],
-    sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
-    ]
-  },
-  2: {
-    _id: "2",
-    name: '02 Sage set in light beige',
-    price: 1300,
-    images: [
-      '/images/malak-image.jpg',
-      '/images/malakfour-image.jpg',
-      '/images/malakthree-image.jpg',
-      '/images/malakfive-image.jpg'
-    ],
-    description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set. Naturally breathable, and effortlessly elegant, it brings warmth and refinement to any setting.',
-    Material: ['French linen'],
-    sizes: [
-      { size: 'S', stock: 7, isPreOrder: false },
-      { size: 'M', stock: 20, isPreOrder: false }
-    ]
-  },
-  3: {
-    _id: "3",
-    name: 'Sage top in Rich brown',
-    price: 700,
-    images: [
-      '/images/modeleight-image.jpg',
-      '/images/modelseven-image.jpg',
-      '/images/modelsix-image.jpg'
-    ],
-    description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
-    Material: ['French linen'],
-    sizes: [
-      { size: 'S', stock: 9, isPreOrder: false },
-      { size: 'M', stock: 13, isPreOrder: false }
-    ]
-  },
-  4: {
-    _id: "4",
-    name: 'Sage top in light beige',
-    price: 700,
-    images: [
-      '/images/malakfive-image.jpg',
-      '/images/malakfour-image.jpg',
-      '/images/malaktwo-image.jpg',
-      '/images/malakthree-image.jpg'
-    ],
-    description: 'Effortlessly chic and breathable, this Rich Brown French linen top offers a perfect balance of comfort and elegance. Its timeless design and natural texture make it a versatile wardrobe essential',
-    Material: ['French linen'],
-    sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
-    ]
-  },
-  5: {
-    _id: "5",
-    name: 'Sage pants in rich brown',
-    price: 600,
-    images: [
-      '/images/pantmodel-image.jpg',
-      '/images/pantmodeltwo-image.jpg',
-      '/images/pantmodelthree-image.jpg',
-      '/images/pantmodelfour-image.jpg',
-      '/images/pantmodelfive-image.jpg'
-    ],
-    description: "Designed for effortless style and comfort, these rich brown French linen pants offer a relaxed yet refined fit. Lightweight, breathable, and timeless, they're perfect for any occasion",
-    Material: ['French linen'],
-    sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
-    ]
-  },
-  6: {
-    _id: "6",
-    name: 'Sage pants in light beige',
-    price: 600,
-    images: [
-      '/images/malakpant-image.jpg',
-      '/images/pantmalaktwo-image.jpg',
-      '/images/pantmalakthree-image.jpg'
-    ],
-    description: "Designed for effortless style and comfort, these rich brown French linen pants offer a relaxed yet refined fit. Lightweight, breathable, and timeless, they're perfect for any occasion",
-    Material: ['French linen'],
-    sizes: [
-      { size: 'S', stock: 0, isPreOrder: true },
-      { size: 'M', stock: 0, isPreOrder: true }
-    ]
-  }
-}
-
-interface CustomerInfo {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
 }
 
 type Props = {
@@ -177,88 +67,202 @@ type Props = {
 }
 
 const ProductPage = ({ params }: Props) => {
-  const router = useRouter()
   const { id } = params
+  const router = useRouter()
+  const pathname = usePathname()
+  const { addToCart } = useCart()
+  
+  // State
+  const [product, setProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [selectedSize, setSelectedSize] = useState('')
   const [selectedColor, setSelectedColor] = useState('')
   const [quantity, setQuantity] = useState(1)
+  const [availableColors, setAvailableColors] = useState<ColorVariant[]>([])
   const [showAddedAnimation, setShowAddedAnimation] = useState(false)
-  const pathname = usePathname()
-  const { addToCart } = useCart()
-  const [showOrderForm, setShowOrderForm] = useState(false);
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: '',
-    email: '',
-    phone: '',
-    address: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderError, setOrderError] = useState('');
-  const [selectedSection, setSelectedSection] = useState<number | null>(null);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [availableColors, setAvailableColors] = useState<ColorVariant[]>([]);
+  const [selectedSection, setSelectedSection] = useState<number | null>(null)
 
+  // Effect to update available colors when size changes
+  useEffect(() => {
+    if (product && product.sizeVariants && selectedSize) {
+      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize)
+      if (sizeVariant) {
+        setAvailableColors(sizeVariant.colorVariants)
+        // Auto-select first color if available
+        if (sizeVariant.colorVariants.length > 0 && !selectedColor) {
+          setSelectedColor(sizeVariant.colorVariants[0].color)
+        }
+      } else {
+        setAvailableColors([])
+      }
+    } else {
+      setAvailableColors([])
+    }
+  }, [product, selectedSize, selectedColor])
+
+  // Fetch product data
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        console.log('Fetching product with ID:', id);
-        const response = await fetch(`/api/products/${id}`);
-        const data = await response.json();
+        setLoading(true)
+        console.log('Fetching product with ID:', id)
+        
+        // Try to fetch from our API first
+        try {
+          // Add cache busting parameter to avoid stale data
+          const response = await fetch(`/api/products/${id}?t=${Date.now()}`, {
+            cache: 'no-store'
+          })
+          
+          if (!response.ok) {
+            throw new Error(`API returned status ${response.status}`)
+          }
 
-        if (!response.ok) {
-          console.error('API Error:', data);
-          throw new Error(data.error || 'Failed to fetch product');
+          const data = await response.json()
+          console.log('Received product data:', data)
+          
+          // Process product data
+          processProductData(data)
+          console.log('Successfully processed product data')
+          return
+        } catch (apiError) {
+          console.error('Error fetching from API:', apiError)
+          // Continue to fallback
         }
 
-        console.log('Received product data:', data);
-
-        // Transform the data to match our Product interface
-        const transformedProduct: Product = {
-          _id: data._id || data.id, // Support both _id and id fields
-          name: data.title || data.name || 'Untitled Product',
-          price: data.price || 0,
-          images: data.selectedImages?.map((img: string) => processImageUrl(img)) || [],
-          description: data.description || '',
-          Material: ['French linen'], // Default material
-          sizes: data.sizes.map((sizeStock: any) => ({
-            size: sizeStock.size,
-            stock: sizeStock.stock,
-            isPreOrder: sizeStock.isPreOrder
-          })),
-          // Add sizeVariants if they exist in the API response
-          sizeVariants: data.sizeVariants ? data.sizeVariants : undefined,
-          discount: data.discount || 0,
-          categories: data.categories || []
-        };
-
-        console.log('Transformed product:', transformedProduct); // Debug log
-        setProduct(transformedProduct);
+        // If we're here, the API fetch failed, try local data
+        console.log('Falling back to local data')
+        
+        // Create a placeholder product
+        const placeholderProduct: Product = {
+          _id: id,
+          name: 'Product ' + id,
+          price: 0,
+          images: ['/images/model-image.jpg'],
+          description: 'Product description not available.',
+          Material: ['Unknown'],
+          sizes: [{ size: 'One Size', stock: 10, isPreOrder: false }]
+        }
+        
+        setProduct(placeholderProduct)
+        setSelectedSize(placeholderProduct.sizes[0].size)
+        
       } catch (err) {
-        console.error('Error fetching product:', err);
-        // Try to find the product in local products
-        const localProduct = Object.values(localProducts).find(p => p._id === id);
-        if (localProduct) {
-          setProduct(localProduct);
-        } else {
-          setError('Product not found');
-        }
+        console.error('Error fetching product:', err)
+        setError('Failed to load product')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchProduct();
-  }, [id]);
+    // Helper function to process product data
+    const processProductData = (data: any) => {
+      try {
+        console.log('Processing product data:', data);
+        
+        // Process images safely
+        const productImages = []
+        try {
+          if (Array.isArray(data.selectedImages) && data.selectedImages.length > 0) {
+            productImages.push(...data.selectedImages.map((img: string) => processImageUrl(img)))
+          } else if (Array.isArray(data.images) && data.images.length > 0) {
+            productImages.push(...data.images.map((img: string) => processImageUrl(img)))
+          } else if (typeof data.image === 'string') {
+            productImages.push(processImageUrl(data.image))
+          }
+        } catch (imgErr) {
+          console.error('Error processing images:', imgErr)
+        }
+        
+        // If no images were found, add a default image
+        if (productImages.length === 0) {
+          productImages.push('/images/model-image.jpg')
+        }
+        
+        // Process sizes and size variants
+        let productSizes = []
+        let productSizeVariants = undefined
+        
+        try {
+          // Check if we have sizeVariants in the data (admin panel format)
+          if (data.sizeVariants && Array.isArray(data.sizeVariants) && data.sizeVariants.length > 0) {
+            console.log('Found size variants in data:', data.sizeVariants);
+            productSizeVariants = data.sizeVariants;
+            
+            // Also create simple sizes array for compatibility
+            productSizes = data.sizeVariants.map((sv: any) => {
+              // Calculate total stock across all colors for this size
+              const totalStock = Array.isArray(sv.colorVariants) 
+                ? sv.colorVariants.reduce((sum: number, cv: any) => sum + (cv.stock || 0), 0)
+                : 0;
+                
+              return {
+                size: sv.size,
+                stock: totalStock,
+                isPreOrder: totalStock <= 0 // Mark as pre-order if no stock
+              };
+            });
+          }
+          // If no size variants but we have selectedSizes
+          else if (Array.isArray(data.selectedSizes) && data.selectedSizes.length > 0) {
+            productSizes = data.selectedSizes.map((size: string) => ({
+              size,
+              stock: 10, // Default stock value
+              isPreOrder: false
+            }));
+          } 
+          // If we have a sizes array
+          else if (Array.isArray(data.sizes) && data.sizes.length > 0) {
+            productSizes = data.sizes.map((sizeStock: any) => ({
+              size: sizeStock.size || 'One Size',
+              stock: typeof sizeStock.stock === 'number' ? sizeStock.stock : 10,
+              isPreOrder: Boolean(sizeStock.isPreOrder)
+            }));
+          } 
+          // Default fallback
+          else {
+            productSizes = [{ size: 'One Size', stock: 10, isPreOrder: false }];
+          }
+        } catch (sizeErr) {
+          console.error('Error processing sizes:', sizeErr);
+          productSizes = [{ size: 'One Size', stock: 10, isPreOrder: false }];
+        }
 
-  // Get 4 other products for the NEWEST section
-  const getNewestProducts = () => {
-    return Object.values(localProducts).slice(0, 4);
-  };
+        // Create the transformed product
+        const transformedProduct: Product = {
+          _id: data._id || data.id || id, // Support both _id and id fields, fallback to URL id
+          name: data.title || data.name || 'Untitled Product',
+          price: typeof data.price === 'number' ? data.price : 0,
+          images: productImages,
+          description: data.description || '',
+          Material: Array.isArray(data.material) ? data.material : ['French linen'],
+          sizes: productSizes,
+          sizeVariants: productSizeVariants,
+          discount: typeof data.discount === 'number' ? data.discount : 0,
+          categories: Array.isArray(data.categories) ? data.categories : []
+        }
 
+        console.log('Transformed product:', transformedProduct)
+        setProduct(transformedProduct)
+        
+        // If there's only one size, select it automatically
+        if (productSizes.length > 0) {
+          setSelectedSize(productSizes[0].size)
+        }
+      } catch (processError) {
+        console.error('Error processing product data:', processError)
+        throw new Error('Failed to process product data')
+      }
+    }
+
+    fetchProduct()
+  }, [id])
+
+  // Handle adding to cart
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product) return
+    
     if (!selectedSize) {
       alert('Please select a size')
       return
@@ -269,19 +273,49 @@ const ProductPage = ({ params }: Props) => {
       alert('Please select a color')
       return
     }
+    
+    // Get the selected color variant to include stock information
+    let selectedColorStock = 0
+    let selectedColorData = null
+    
+    if (product.sizeVariants && selectedSize && selectedColor) {
+      // Find the selected size variant
+      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize)
+      if (sizeVariant) {
+        // Find the selected color within this size
+        const colorVariant = sizeVariant.colorVariants.find(cv => cv.color === selectedColor)
+        if (colorVariant) {
+          selectedColorStock = colorVariant.stock
+          selectedColorData = colorVariant
+          console.log(`Adding to cart: ${selectedSize} in ${selectedColor}, stock: ${selectedColorStock}`)
+        }
+      }
+    }
+    
+    // Check if we have enough stock
+    if (selectedColorData && selectedColorStock < quantity) {
+      alert(`Sorry, we only have ${selectedColorStock} items in stock for ${selectedSize} in ${selectedColor}.`)
+      return
+    }
 
     const cartItem: CartItem = {
       id: product._id,
-      name: product.name,
+      name: product.name || product.title || '',
       price: product.price,
       quantity: quantity,
       size: selectedSize,
       color: selectedColor || undefined,
-      image: processImageUrl(product.images[0]),
-      discount: product.discount
-    };
+      image: product.images[0] || '/images/model-image.jpg',
+      discount: product.discount,
+      // Include stock information to help with inventory management
+      _stockInfo: selectedColorData ? {
+        originalStock: selectedColorStock,
+        size: selectedSize,
+        color: selectedColor
+      } : undefined
+    }
 
-    addToCart(cartItem);
+    addToCart(cartItem)
 
     // Show animation
     setShowAddedAnimation(true)
@@ -290,94 +324,7 @@ const ProductPage = ({ params }: Props) => {
     }, 2000)
   }
 
-  const handleBuyNow = async () => {
-    if (!product) return;
-    if (!selectedSize) {
-      alert('Please select a size')
-      return
-    }
-
-    // If product has sizeVariants and colors are available, require color selection
-    if (product.sizeVariants && availableColors.length > 0 && !selectedColor) {
-      alert('Please select a color')
-      return
-    }
-
-    // Show the order form
-    setShowOrderForm(true);
-  }
-
-  const handleSubmitOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!product) return;
-
-    // Validate required fields
-    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.address) {
-      setOrderError('Please fill in all required fields');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setOrderError('');
-
-    const productPrice = product.discount 
-      ? (product.price * (1 - product.discount/100))
-      : product.price;
-    
-    const totalAmount = quantity * productPrice;
-
-    // Format the order data according to the mongoose schema
-    const orderData = {
-      customer: {
-        name: customerInfo.name.trim(),
-        email: customerInfo.email.trim(),
-        phone: customerInfo.phone.trim(),
-        address: customerInfo.address.trim()
-      },
-      products: [{
-        productId: product._id,
-        name: product.name,
-        quantity: quantity,
-        price: productPrice,
-        size: selectedSize,
-        color: selectedColor || undefined,
-        image: processImageUrl(product.images[0])
-      }],
-      totalAmount: totalAmount,
-      status: 'pending',
-      notes: '',
-      orderDate: new Date().toISOString()
-    };
-
-    try {
-      const response = await axios.post('/api/orders', orderData, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        handleAddToCart();
-        setShowOrderForm(false);
-        setShowAddedAnimation(true);
-        setTimeout(() => {
-          setShowAddedAnimation(false);
-          router.push('/cart');
-        }, 2000);
-      }
-    } catch (error: any) {
-      console.error('Error submitting order:', error);
-      const errorMessage = error.response?.data?.error || 
-                         error.response?.data?.message || 
-                         'Failed to submit order. Please try again.';
-      setOrderError(Array.isArray(error.response?.data?.details) 
-        ? error.response.data.details.join(', ') 
-        : errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  // Loading state
   if (loading) {
     return (
       <>
@@ -385,134 +332,65 @@ const ProductPage = ({ params }: Props) => {
         <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
         </div>
+        <Footer />
       </>
-    );
+    )
   }
 
+  // Error state
   if (error || !product) {
     return (
       <>
         <Nav />
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+          <div className="text-center max-w-xl">
             <h1 className="text-2xl font-medium text-gray-900 mb-4">Product Not Found</h1>
+            <p className="text-gray-600 mb-4">{error}</p>
             <Link href="/collection" className="text-black underline">
               Return to Collection
             </Link>
           </div>
         </div>
+        <Footer />
       </>
-    );
+    )
   }
 
+  // Breadcrumbs
   const breadcrumbs = [
     { label: 'Home', href: '/' },
-    { label: 'SAGE COLLECTION', href: '/collection' },
+    { label: 'Collection', href: '/collection' },
     { label: product.name, href: pathname }
   ]
 
-  useEffect(() => {
-    if (product.sizeVariants && selectedSize) {
-      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize);
-      if (sizeVariant) {
-        setAvailableColors(sizeVariant.colorVariants);
-      } else {
-        setAvailableColors([]);
-      }
-    } else {
-      setAvailableColors([]);
-    }
-  }, [product, selectedSize]);
+  // Check if product is sold out
+  const isSoldOut = product.sizes.every(size => 
+    (typeof size.stock === 'number' && size.stock <= 0) || 
+    size.isPreOrder === true
+  )
+
+  // Calculate price with discount
+  const finalPrice = product.discount 
+    ? product.price - (product.price * product.discount / 100) 
+    : product.price
 
   return (
     <>
       <Nav />
+      
       {/* Added to Cart Animation */}
-      <div
-        className={`fixed top-4 right-4 bg-black text-white px-6 py-3 rounded-lg transform transition-all duration-300 z-50 ${
-          showAddedAnimation
-            ? 'translate-y-0 opacity-100'
-            : 'translate-y-[-100%] opacity-0'
-        }`}
-      >
-        Added to cart!
-      </div>
-
-      {/* Order Form Modal */}
-      {showOrderForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg max-w-md w-full">
-            <h2 className="text-2xl font-light mb-6">Complete Your Order</h2>
-            {orderError && (
-              <div className="mb-4 p-3 bg-red-50 text-red-500 rounded">
-                {orderError}
-              </div>
-            )}
-            <form onSubmit={handleSubmitOrder} className="space-y-4">
-              <div>
-                <label className="block text-sm mb-1">Name</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full border p-2 rounded"
-                  value={customerInfo.name}
-                  onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  className="w-full border p-2 rounded"
-                  value={customerInfo.email}
-                  onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Phone</label>
-                <input
-                  type="tel"
-                  required
-                  className="w-full border p-2 rounded"
-                  value={customerInfo.phone}
-                  onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Address</label>
-                <textarea
-                  required
-                  className="w-full border p-2 rounded"
-                  value={customerInfo.address}
-                  onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="flex gap-4 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowOrderForm(false)}
-                  className="flex-1 px-4 py-2 border border-black hover:bg-gray-100"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-black text-white hover:bg-gray-900 disabled:bg-gray-400"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Processing...' : 'Place Order'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showAddedAnimation && (
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-4 right-4 bg-black text-white px-6 py-3 rounded-lg z-50"
+          >
+            Added to cart!
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="min-h-screen bg-white pt-20">
         {/* Breadcrumbs */}
@@ -539,7 +417,7 @@ const ProductPage = ({ params }: Props) => {
                     {product.images.map((image, index) => (
                       <div key={index} className="flex-none w-[85vw] relative aspect-[4/5]">
                         {/* SOLD OUT Badge */}
-                        {product.sizes.every(size => size.isPreOrder) && index === 0 && (
+                        {isSoldOut && index === 0 && (
                           <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
                             SOLD OUT
                           </div>
@@ -562,7 +440,7 @@ const ProductPage = ({ params }: Props) => {
                 {product.images.map((image, index) => (
                   <div key={index} className="relative aspect-[4/5] w-full">
                     {/* SOLD OUT Badge */}
-                    {product.sizes.every(size => size.isPreOrder) && index === 0 && (
+                    {isSoldOut && index === 0 && (
                       <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
                         SOLD OUT
                       </div>
@@ -579,22 +457,28 @@ const ProductPage = ({ params }: Props) => {
               </div>
             </div>
 
-            {/* Right - Product Material */}
+            {/* Right - Product Details */}
             <div className="w-full lg:w-1/3">
               <div className="sticky top-24 space-y-8">
-               
-
                 {/* Product Title & Price */}
                 <div className="space-y-4">
                   <h1 className="text-4xl font-light">{product.name}</h1>
-                  <p className="text-2xl">L.E {product.price}</p>
+                  <div className="flex items-center gap-2">
+                    {product.discount ? (
+                      <>
+                        <p className="text-xl">L.E {finalPrice.toFixed(2)}</p>
+                        <p className="text-sm text-gray-500 line-through">L.E {product.price.toFixed(2)}</p>
+                      </>
+                    ) : (
+                      <p className="text-xl">L.E {product.price.toFixed(2)}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Size Selection */}
-                <div className="space-y-4">
-                  <p className="text-lg">CHOOSE VARIANTS</p>
-                  <p className="text-sm text-gray-500">Select Size</p>
-                  <div className="flex gap-4">
+                <div>
+                  <h2 className="text-sm font-medium mb-2">Size</h2>
+                  <div className="flex flex-wrap gap-2">
                     {/* Use sizeVariants if available, otherwise fall back to sizes */}
                     {product.sizeVariants ? (
                       product.sizeVariants.map((sizeVariant) => (
@@ -626,45 +510,36 @@ const ProductPage = ({ params }: Props) => {
                         <button
                           key={sizeOption.size}
                           onClick={() => setSelectedSize(sizeOption.size)}
-                          className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
+                          className={`px-4 py-2 border ${
                             selectedSize === sizeOption.size
-                              ? 'text-white'
-                              : 'text-black hover:text-white'
+                              ? 'border-black bg-black text-white'
+                              : 'border-gray-300 hover:border-gray-500'
+                          } ${
+                            sizeOption.stock <= 0 && !sizeOption.isPreOrder
+                              ? 'opacity-50 cursor-not-allowed'
+                              : ''
                           }`}
+                          disabled={sizeOption.stock <= 0 && !sizeOption.isPreOrder}
                         >
-                          <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
-                            selectedSize === sizeOption.size
-                              ? 'bg-black border-black'
-                              : 'hover:bg-black hover:border-black'
-                          }`}>
-                            {sizeOption.size}
-                          </div>
-                          <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
-                            sizeOption.isPreOrder ? 'text-red-500' :
-                            sizeOption.stock === 0 ? 'text-red-500' :
-                            'text-green-600'
-                          }`}>
-                            {sizeOption.isPreOrder ? 'Sold out' :
-                             sizeOption.stock === 0 ? 'Out of stock' :
-                             ''}
-                          </span>
+                          {sizeOption.size}
                         </button>
                       ))
                     )}
                   </div>
                 </div>
-                
+
                 {/* Color Selection - Only show if sizeVariants exist and a size is selected */}
                 {product.sizeVariants && selectedSize && availableColors.length > 0 && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-500">Select Color</p>
+                  <div className="mt-6">
+                    <h2 className="text-sm font-medium mb-2">Color</h2>
                     <div className="flex flex-wrap gap-4">
                       {availableColors.map((colorVariant) => (
                         <button
                           key={colorVariant.color}
                           onClick={() => setSelectedColor(colorVariant.color)}
                           disabled={colorVariant.stock === 0}
-                          className={`relative px-4 py-2 border flex items-center gap-2 ${colorVariant.stock === 0 ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 
+                          className={`relative px-4 py-2 border flex items-center gap-2 ${
+                            colorVariant.stock === 0 ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 
                             selectedColor === colorVariant.color ? 'border-black bg-black text-white' : 'border-gray-400 hover:border-black'}`}
                         >
                           {colorVariant.hexCode && (
@@ -685,55 +560,40 @@ const ProductPage = ({ params }: Props) => {
                   </div>
                 )}
 
-                {/* Quantity & Add to Cart */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border border-gray-300 p-2 w-32">
-                    <button 
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition-colors"
-                      disabled={product.sizes.every(size => size.isPreOrder)}
+                {/* Quantity */}
+                <div>
+                  <h2 className="text-sm font-medium mb-2">Quantity</h2>
+                  <div className="flex items-center border border-gray-300 w-32">
+                    <button
+                      className="px-3 py-1 border-r border-gray-300"
+                      onClick={() => quantity > 1 && setQuantity(quantity - 1)}
+                      disabled={quantity <= 1}
                     >
                       -
                     </button>
-                    <span>{quantity}</span>
-                    <button 
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 transition-colors"
-                      disabled={product.sizes.every(size => size.isPreOrder)}
+                    <span className="flex-1 text-center py-1">{quantity}</span>
+                    <button
+                      className="px-3 py-1 border-l border-gray-300"
+                      onClick={() => quantity < 10 && setQuantity(quantity + 1)}
+                      disabled={quantity >= 10}
                     >
                       +
                     </button>
                   </div>
-
-                  <button 
-                    onClick={handleAddToCart}
-                    disabled={
-                      !selectedSize || 
-                      (product.sizeVariants 
-                        ? (availableColors.length > 0 && !selectedColor) || availableColors.every(cv => cv.stock === 0)
-                        : product.sizes.every(size => size.isPreOrder || size.stock === 0))
-                    }
-                    className={`w-full py-4 relative overflow-hidden group transition-colors ${
-                      !selectedSize || 
-                      (product.sizeVariants 
-                        ? (availableColors.length > 0 && !selectedColor) || availableColors.every(cv => cv.stock === 0)
-                        : product.sizes.every(size => size.isPreOrder || size.stock === 0))
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-900 text-white hover:bg-black'
-                    }`}
-                  >
-                    <span className="relative z-10">
-                      {product.sizeVariants 
-                        ? (availableColors.length > 0 && availableColors.every(cv => cv.stock === 0)) ? 'SOLD OUT' : 'ADD TO CART'
-                        : product.sizes.every(size => size.isPreOrder || size.stock === 0) ? 'SOLD OUT' : 'ADD TO CART'}
-                    </span>
-                    {!(product.sizeVariants 
-                      ? (availableColors.length > 0 && availableColors.every(cv => cv.stock === 0))
-                      : product.sizes.every(size => size.isPreOrder || size.stock === 0)) && (
-                      <div className="absolute inset-0 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-                    )}
-                  </button>
                 </div>
+
+                {/* Add to Cart Button */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isSoldOut || !selectedSize}
+                  className={`w-full py-3 px-4 ${
+                    isSoldOut || !selectedSize
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-black text-white hover:bg-gray-800'
+                  }`}
+                >
+                  {isSoldOut ? 'Sold Out' : 'Add to Cart'}
+                </button>
 
                 {/* Product Description */}
                 <div className="space-y-4 pt-8 border-t">
@@ -756,12 +616,10 @@ const ProductPage = ({ params }: Props) => {
                         )
                       },
                       {
-                        title: "Material",
+                        title: "MATERIAL",
                         content: (
                           <ul className="list-disc pl-4 space-y-2">
-                            {product.Material.map((detail, index) => (
-                              <li key={index}>{detail}</li>
-                            ))}
+                            <li>French linen</li>
                           </ul>
                         )
                       },
@@ -769,8 +627,10 @@ const ProductPage = ({ params }: Props) => {
                         title: "SIZE GUIDE",
                         content: (
                           <div className="space-y-2">
+                            <p className="text-sm text-gray-600">XS fits from 45 to 50 kgs</p>
                             <p className="text-sm text-gray-600">Small fits from 50 to 58 kgs</p>
                             <p className="text-sm text-gray-600">Medium from 59 to 70 kgs</p>
+                            <p className="text-sm text-gray-600">Large from 71 to 80 kgs</p>
                           </div>
                         )
                       }
@@ -834,7 +694,7 @@ const ProductPage = ({ params }: Props) => {
                     ))}
                   </div>
                 </div>
-
+                
                 {/* Share */}
                 <div className="pt-8 border-t">
                   <p className="mb-4">Share</p>
@@ -854,68 +714,9 @@ const ProductPage = ({ params }: Props) => {
             </div>
           </div>
         </div>
-
-        {/* NEWEST Section */}
-        <section className="max-w-7xl mx-auto px-4 py-16 mt-16 border-t">
-          <h2 className="text-6xl md:text-7xl lg:text-8xl font-bold mb-12">NEWEST</h2>
-          
-          {/* Mobile Horizontal Scroll */}
-          <div className="block lg:hidden">
-            <div className="relative w-full overflow-x-auto hide-scrollbar">
-              <div className="flex space-x-4">
-                {getNewestProducts().map((newestProduct) => (
-                  <Link 
-                    href={`/product/${newestProduct._id}`} 
-                    key={newestProduct._id}
-                    className="flex-none w-[70vw] group"
-                  >
-                    <div className="relative aspect-[3/4] mb-4">
-                      <Image
-                        src={newestProduct.images[0]}
-                        alt={newestProduct.name}
-                        fill
-                        className="object-cover object-center"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-light group-hover:underline">{newestProduct.name}</h3>
-                      <div className="flex items-center gap-3">
-                        <p>L.E {newestProduct.price}</p>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop Grid */}
-          <div className="hidden lg:grid grid-cols-4 gap-6">
-            {getNewestProducts().map((newestProduct) => (
-              <Link 
-                href={`/product/${newestProduct._id}`} 
-                key={newestProduct._id}
-                className="group"
-              >
-                <div className="relative aspect-[3/4] mb-4">
-                  <Image
-                    src={newestProduct.images[0]}
-                    alt={newestProduct.name}
-                    fill
-                    className="object-cover object-center"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-light group-hover:underline">{newestProduct.name}</h3>
-                  <div className="flex items-center gap-3">
-                    <p>L.E {newestProduct.price}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
       </main>
+      
+      <Footer />
     </>
   )
 }

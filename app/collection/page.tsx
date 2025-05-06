@@ -314,18 +314,31 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
   const displayPrice = `${product.price} EGP`;
 
   const getStockStatus = () => {
-    const allPreOrder = product.sizes.every(size => size.isPreOrder);
-    if (allPreOrder) {
-      return { text: 'SOLD OUT', class: 'bg-black text-white' };
+    // Only show SOLD OUT if we explicitly know the product is out of stock
+    // For products from the admin panel, we'll check if stock is 0 or if it's marked as pre-order
+    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      // Check if all sizes have zero stock or are pre-order
+      const allOutOfStock = product.sizes.every(size => 
+        (typeof size.stock === 'number' && size.stock <= 0) || 
+        size.isPreOrder === true
+      );
+      
+      if (allOutOfStock) {
+        return { text: 'SOLD OUT', class: 'bg-black text-white' };
+      }
     }
     return null;
   };
 
   const stockStatus = getStockStatus();
 
+  // Ensure we have a valid ID for the product link
+  const productId = product._id || '';
+  console.log(`Product card for: ${product.name}, ID: ${productId}`);
+  
   return (
     <Link 
-      href={`/product/${product._id}`}
+      href={`/product/${productId}`}
       className="group block relative"
     >
       <div className={`aspect-[3/4] w-full overflow-hidden bg-gray-50 ${isMobile ? 'mb-1' : 'mb-2'}`}>

@@ -11,13 +11,28 @@ export async function GET(
   try {
     await dbConnect();
     console.log('Fetching product with ID:', params.id);
-
-    // Try to find by _id first
-    let product = await Product.findById(params.id).catch(() => null);
-
-    // If not found by _id, try to find by custom ID field if it exists
+    
+    // Try multiple approaches to find the product
+    let product = null;
+    
+    // 1. Try to find by MongoDB _id first (if it looks like a valid MongoDB ID)
+    if (params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      product = await Product.findById(params.id).catch(() => null);
+      console.log('MongoDB ID lookup result:', product ? 'Found' : 'Not found');
+    }
+    
+    // 2. If not found by _id, try to find by custom ID field
     if (!product) {
       product = await Product.findOne({ id: params.id }).catch(() => null);
+      console.log('Custom ID lookup result:', product ? 'Found' : 'Not found');
+    }
+    
+    // 3. Try a case-insensitive title search as a fallback
+    if (!product) {
+      product = await Product.findOne({ 
+        title: { $regex: new RegExp(params.id, 'i') } 
+      }).catch(() => null);
+      console.log('Title search result:', product ? 'Found' : 'Not found');
     }
 
     if (!product) {
