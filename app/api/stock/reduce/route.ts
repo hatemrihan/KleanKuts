@@ -509,7 +509,7 @@ export async function POST(request: Request) {
                     },
                     body: JSON.stringify({ 
                       productId,
-                      timestamp: Date.now() + 1000, // Ensure it's newer than the previous timestamp
+                      timestamp: Date.now() + 5000, // Use a much larger timestamp to ensure it overrides any cached data
                       forceUpdate: true,
                       afterOrder: true, // Flag to indicate this is after an order
                       orderId: orderId || 'unknown'
@@ -519,7 +519,7 @@ export async function POST(request: Request) {
                 } catch (error) {
                   console.error(`Error sending follow-up sync notification for product ${productId}:`, error);
                 }
-              }, 1000); // Send a second notification after 1 second
+              }, 3000); // Send a second notification after 3 seconds to ensure all clients get updated
             } else {
               throw new Error(`Sync endpoint returned status ${syncResponse.status}`);
             }

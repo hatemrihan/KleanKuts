@@ -11,6 +11,12 @@ let stockCache: Record<string, any> = {};
 // Store last update timestamps
 let lastUpdateTimestamps: Record<string, number> = {};
 
+// Track products that were recently ordered
+let recentlyOrderedProducts: Record<string, number> = {};
+
+// How long to consider a product as "recently ordered" (in milliseconds)
+const RECENT_ORDER_DURATION = 10000; // 10 seconds
+
 // Interval for regular polling (fallback)
 const POLL_INTERVAL = 3000; // 3 seconds - faster polling for better responsiveness
 
@@ -28,16 +34,24 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
   let isActive = true;
   
   // Initial fetch
-  fetchLatestStock(productId).then(onStockChange);
+  fetchLatestStock(productId, false).then(onStockChange);
   
   // Set up frequent polling for active products
   const activePollInterval = setInterval(() => {
     if (isActive) {
-      fetchLatestStock(productId).then(stockData => {
+      // Check if this product was recently updated after an order
+      const wasRecentlyOrdered = productWasRecentlyOrdered(productId);
+      
+      fetchLatestStock(productId, wasRecentlyOrdered).then(stockData => {
         // Only trigger callback if stock has changed
-        if (hasStockChanged(productId, stockData)) {
-          console.log(`Stock changed for product ${productId}, updating UI`);
+        if (hasStockChanged(productId, stockData, wasRecentlyOrdered)) {
+          console.log(`Stock changed for product ${productId}${wasRecentlyOrdered ? ' after order' : ''}, updating UI`);
           onStockChange(stockData);
+          
+          // If this was after an order, clear the flag after successful update
+          if (wasRecentlyOrdered) {
+            clearRecentOrderFlag(productId);
+          }
         }
       });
     }
@@ -85,9 +99,10 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
 /**
  * Fetch the latest stock data from the API
  * @param productId - The ID of the product
- * @returns Promise with stock data
+ * @param afterOrder - Flag indicating if this fetch is after an order
+ * @returns Promise with the latest stock data
  */
-export async function fetchLatestStock(productId: string): Promise<any> {
+export async function fetchLatestStock(productId: string, afterOrder: boolean = false): Promise<any> {
   try {
     // Get the last update timestamp for this product
     const lastUpdate = lastUpdateTimestamps[productId] || 0;
@@ -97,8 +112,11 @@ export async function fetchLatestStock(productId: string): Promise<any> {
     const random = Math.random().toString(36).substring(2, 10);
     
     // Use the sync endpoint for real-time updates with enhanced cache busting
+    // Include afterOrder flag in the request if applicable
+    const afterOrderParam = afterOrder ? `&afterOrder=true` : '';
+    
     const response = await fetch(
-      `/api/stock/sync?productId=${productId}&lastUpdate=${lastUpdate}&t=${timestamp}&r=${random}`, 
+      `/api/stock/sync?productId=${productId}&lastUpdate=${lastUpdate}&t=${timestamp}&r=${random}${afterOrderParam}`, 
       {
         cache: 'no-store',
         headers: {
@@ -190,14 +208,25 @@ export async function fetchLatestStock(productId: string): Promise<any> {
 /**
  * Check if stock has changed compared to cached data
  * @param productId - The ID of the product
- * @param newData - New stock data
- * @returns Boolean indicating if stock has changed
+ * @param newData - The new stock data
+ * @param afterOrder - Flag indicating if this check is after an order
+ * @returns boolean indicating if stock has changed
  */
-function hasStockChanged(productId: string, newData: any): boolean {
-  const oldData = stockCache[productId];
-  if (!oldData) return true;
+export function hasStockChanged(productId: string, newData: any, afterOrder: boolean = false): boolean {
+  // Always consider stock changed after an order to force refresh
+  if (afterOrder) {
+    console.log(`Forcing stock change detection after order for ${productId}`);
+    return true;
+  }
   
-  // Check if the timestamp is newer - this is critical for real-time updates
+  // If we don't have cached data, consider it changed
+  if (!stockCache[productId]) {
+    return true;
+  }
+  
+  const oldData = stockCache[productId];
+  
+  // Check timestamps first
   if (newData.timestamp && oldData.timestamp && newData.timestamp > oldData.timestamp) {
     console.log(`Newer timestamp detected for ${productId}: ${oldData.timestamp} -> ${newData.timestamp}`);
     return true;
@@ -271,6 +300,44 @@ function hasStockChanged(productId: string, newData: any): boolean {
 }
 
 /**
+ * Mark a product as recently ordered
+ * @param productId - The ID of the product
+ */
+export function markProductAsRecentlyOrdered(productId: string): void {
+  recentlyOrderedProducts[productId] = Date.now();
+  console.log(`Marked product ${productId} as recently ordered`);
+}
+
+/**
+ * Check if a product was recently ordered
+ * @param productId - The ID of the product
+ * @returns boolean indicating if the product was recently ordered
+ */
+export function productWasRecentlyOrdered(productId: string): boolean {
+  const orderTime = recentlyOrderedProducts[productId];
+  if (!orderTime) return false;
+  
+  const now = Date.now();
+  const isRecent = (now - orderTime) < RECENT_ORDER_DURATION;
+  
+  if (!isRecent) {
+    // Auto-cleanup if it's no longer recent
+    delete recentlyOrderedProducts[productId];
+  }
+  
+  return isRecent;
+}
+
+/**
+ * Clear the recently ordered flag for a product
+ * @param productId - The ID of the product
+ */
+export function clearRecentOrderFlag(productId: string): void {
+  delete recentlyOrderedProducts[productId];
+  console.log(`Cleared recently ordered flag for product ${productId}`);
+}
+
+/**
  * Force refresh stock for a product
  * @param productId - The ID of the product
  * @param afterOrder - Flag indicating if this refresh is triggered after an order
@@ -278,6 +345,11 @@ function hasStockChanged(productId: string, newData: any): boolean {
  */
 export async function forceRefreshStock(productId: string, afterOrder: boolean = false): Promise<any> {
   console.log(`Force refreshing stock for product ${productId}${afterOrder ? ' after order' : ''}`);
+  
+  // If this refresh is after an order, mark the product as recently ordered
+  if (afterOrder) {
+    markProductAsRecentlyOrdered(productId);
+  }
   
   // Always clear cache for force refreshes
   delete stockCache[productId];
@@ -316,13 +388,17 @@ export async function forceRefreshStock(productId: string, afterOrder: boolean =
   // Now fetch with aggressive cache-busting
   try {
     // Add multiple cache-busting techniques
-    const timestamp = Date.now();
+    // For after-order requests, add an extra time buffer to ensure we get fresh data
+    const timestamp = afterOrder ? Date.now() + 10000 : Date.now();
     const randomParam = Math.random().toString(36).substring(2, 10);
     
     // Include afterOrder flag in the URL if applicable
     const afterOrderParam = afterOrder ? '&afterOrder=true' : '';
     
-    const response = await fetch(`/api/stock/sync?productId=${productId}&t=${timestamp}&r=${randomParam}${afterOrderParam}`, {
+    // For after-order requests, add a special parameter to bypass any caching
+    const bypassCacheParam = afterOrder ? '&bypassCache=true' : '';
+    
+    const response = await fetch(`/api/stock/sync?productId=${productId}&t=${timestamp}&r=${randomParam}${afterOrderParam}${bypassCacheParam}`, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',

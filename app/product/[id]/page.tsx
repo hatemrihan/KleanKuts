@@ -10,7 +10,7 @@ import { useCart } from '@/app/context/CartContext'
 import { AnimatePresence, motion } from "framer-motion"
 import { twMerge } from "tailwind-merge"
 import { optimizeCloudinaryUrl, processImageUrl } from '@/app/utils/imageUtils';
-import { initStockSync, forceRefreshStock } from '@/app/utils/stockSync';
+import { initStockSync, forceRefreshStock, markProductAsRecentlyOrdered } from '@/app/utils/stockSync';
 import axios from 'axios'
 
 // Types
@@ -175,8 +175,34 @@ const ProductPage = ({ params }: Props) => {
     }
   }, [selectedSize, selectedColor, product]);
 
+  // Helper function for aggressive stock refreshing after an order with multiple attempts
+  const aggressiveStockRefresh = async (productId: string) => {
+    console.log(`🔄 Starting aggressive stock refresh sequence for product ${productId}`);
+    
+    // Mark this product as recently ordered
+    markProductAsRecentlyOrdered(productId);
+    
+    // Immediate refresh
+    await refreshStockData(false, true);
+    
+    // Schedule additional refreshes with increasing delays
+    setTimeout(async () => {
+      console.log(`🔄 Second stock refresh attempt for product ${productId}`);
+      await refreshStockData(false, true);
+    }, 2000);
+    
+    setTimeout(async () => {
+      console.log(`🔄 Third stock refresh attempt for product ${productId}`);
+      await refreshStockData(false, true);
+    }, 5000);
+  };
+  
   // Function to refresh stock data using the stockSync utility with retry logic and admin panel integration
   const refreshStockData = async (showMessage = false, afterOrder = false) => {
+    // If this is an after-order refresh, log it for debugging
+    if (afterOrder) {
+      console.log(`🔥 Performing aggressive stock refresh after order for product ${product?._id}`);
+    }
     if (product && product._id) {
       try {
         // Set refreshing state
@@ -654,6 +680,9 @@ const ProductPage = ({ params }: Props) => {
       setShowAddedAnimation(true);
       setTimeout(() => setShowAddedAnimation(false), 2000);
       
+      // Mark this product as recently ordered for better real-time updates
+      markProductAsRecentlyOrdered(product._id);
+      
       // Refresh stock data in the background with afterOrder flag for real-time updates
       refreshStockData(false, true);
     } catch (error) {
@@ -662,6 +691,11 @@ const ProductPage = ({ params }: Props) => {
       addToCart(cartItem);
       setShowAddedAnimation(true);
       setTimeout(() => setShowAddedAnimation(false), 2000);
+      
+      // Mark this product as recently ordered for better real-time updates
+      markProductAsRecentlyOrdered(product._id);
+      
+      // Refresh stock data in the background with afterOrder flag for real-time updates
       refreshStockData(false, true);
     }
   }
