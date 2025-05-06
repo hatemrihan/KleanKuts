@@ -66,7 +66,7 @@ type City = keyof typeof shippingCosts;
 
 const CheckoutPage = () => {
   const router = useRouter()
-  const { cart, clearCart, cartTotal } = useCart()
+  const { cart, clearCart, cartTotal, setCart } = useCart()
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -85,10 +85,20 @@ const CheckoutPage = () => {
   const totalWithShipping = cartTotal + shippingCost
 
   useEffect(() => {
+    // Filter out the problematic product ID if it exists in the cart
+    const problematicId = '6819b110064b2eeffa2c1941';
+    const hasProblematicItem = cart.some(item => item.id === problematicId);
+    
+    if (hasProblematicItem) {
+      console.log(`Removing problematic product ID: ${problematicId} from checkout`);
+      const filteredCart = cart.filter(item => item.id !== problematicId);
+      setCart(filteredCart);
+    }
+    
     if (cart.length === 0) {
       router.push('/cart')
     }
-  }, [cart, router])
+  }, [cart, router, setCart])
 
   if (typeof window === 'undefined' || cart.length === 0) {
     return null

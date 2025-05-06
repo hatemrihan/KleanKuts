@@ -19,6 +19,30 @@ export default function CartPage() {
     const cleanCartItems = async () => {
       try {
         setIsCleaningCart(true);
+        
+        // IMMEDIATE FIX: Remove the specific problematic product ID
+        const problematicId = '6819b110064b2eeffa2c1941';
+        let cartNeedsUpdate = false;
+        
+        // First check for the specific problematic product ID
+        const filteredCart = cart.filter(item => {
+          if (item.id === problematicId) {
+            console.log(`Removing problematic product ID: ${problematicId}`);
+            cartNeedsUpdate = true;
+            return false;
+          }
+          return true;
+        });
+        
+        // If we removed the problematic product, update the cart immediately
+        if (cartNeedsUpdate) {
+          setCart(filteredCart);
+          setCheckoutError('');
+          setIsCleaningCart(false);
+          return;
+        }
+        
+        // Otherwise proceed with normal cart cleaning
         const cleanedCart = await cleanCart(cart);
         
         // If some items were removed, update the cart
@@ -38,7 +62,7 @@ export default function CartPage() {
     } else {
       setIsCleaningCart(false);
     }
-  }, [cart.length, setCart]);
+  }, [cart.length, setCart, setCheckoutError]);
   
   // Validate that all products in cart exist
   const validateCartProducts = async () => {
