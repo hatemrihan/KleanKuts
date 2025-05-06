@@ -108,22 +108,22 @@ const CheckoutPage = () => {
     loadBlacklist();
   }, []);
   
-  // Filter out blacklisted products when the blacklist is loaded or cart changes
+  // We're no longer filtering out products from the cart
+  // This allows all products to proceed to checkout, even if they can't be found in the database
   useEffect(() => {
     if (!blacklistLoaded) return;
     
-    // Filter out blacklisted product IDs if they exist in the cart
-    const blacklistedItems = cart.filter(item => BLACKLISTED_PRODUCT_IDS.includes(item.id));
+    console.log('Checkout page - allowing all products to proceed');
+    console.log('Current cart items:', cart.map(item => item.id));
     
-    if (blacklistedItems.length > 0) {
-      console.log(`Removing ${blacklistedItems.length} blacklisted products from checkout:`);
-      blacklistedItems.forEach(item => {
-        console.log(`- Removed product ID: ${item.id}`);
+    // Log any products that might cause issues but don't remove them
+    const potentialIssueItems = cart.filter(item => BLACKLISTED_PRODUCT_IDS.includes(item.id));
+    
+    if (potentialIssueItems.length > 0) {
+      console.log(`Found ${potentialIssueItems.length} products that might cause issues:`);
+      potentialIssueItems.forEach(item => {
+        console.log(`- Product ID: ${item.id} (will still be allowed to proceed)`);
       });
-      
-      // Use the utility function to filter out blacklisted products
-      const filteredCart = removeBlacklistedProducts(cart);
-      setCart(filteredCart);
     }
   }, [cart, setCart, blacklistLoaded]);
   
