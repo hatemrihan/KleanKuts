@@ -1,6 +1,8 @@
 import React from 'react'
 import { useCart } from '../context/CartContext'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { optimizeCloudinaryUrl } from '../utils/imageUtils'
 
 export default function Cart() {
   const { cart, removeFromCart, updateQuantity } = useCart()
@@ -20,6 +22,16 @@ export default function Cart() {
           <div className="flex-1 overflow-auto">
             {cart.map((item) => (
               <div key={`${item.id}-${item.size}`} className="flex gap-4 mb-4 p-4 border-b">
+                {item.image && (
+                  <div className="w-16 h-16 relative flex-shrink-0">
+                    <Image
+                      src={optimizeCloudinaryUrl(item.image, { width: 100 })}
+                      alt={item.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
                 <div className="flex-1">
                   <p className="font-light">{item.name}</p>
                   <p className="text-sm text-gray-500">Size: {item.size} × {item.quantity}</p>

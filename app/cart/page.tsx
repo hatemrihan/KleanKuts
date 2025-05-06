@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import Link from 'next/link'
 import Image from 'next/image'
+import { optimizeCloudinaryUrl } from '../utils/imageUtils'
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart } = useCart()
@@ -50,7 +51,12 @@ export default function CartPage() {
                 {cart.map((item) => (
                   <div key={`${item.id}-${item.size}-${item.color || 'default'}`} className="flex gap-6 pb-6 border-b">
                     <div className="relative w-24 h-24">
-                      <Image src={item.image} alt={item.name} fill className="object-cover" />
+                      <Image 
+                        src={optimizeCloudinaryUrl(item.image, { width: 200 })} 
+                        alt={item.name} 
+                        fill 
+                        className="object-cover" 
+                      />
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between">

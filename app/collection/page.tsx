@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Nav from '../sections/nav';
 import Footer from '../sections/footer';
+import { optimizeCloudinaryUrl, processImageUrl } from '../utils/imageUtils';
 
 interface SizeStock {
   size: string;
@@ -185,20 +186,7 @@ export default function Collection() {
           const processedProduct: Product = {
             _id: product._id || product.id || productId, // Support both _id and id fields
             name: (product.title || 'Untitled Product').replace(/\s*\b[0-9a-fA-F]{24}\b\s*/g, '').trim(),
-            images: product.selectedImages?.map(img => {
-              // If it's already a full URL (http or https), use it as is
-              if (img.startsWith('http://') || img.startsWith('https://')) {
-                return img;
-              }
-              
-              // If it's a local path starting with /images or /uploads, use it as is
-              if (img.startsWith('/images/') || img.startsWith('/uploads/')) {
-                return img;
-              }
-              
-              // Use the new CDN URL from the admin panel
-              return `https://kleankutsadmin.netlify.app/upload/${img.replace(/^\/+/, '')}`;
-            }) || [],
+            images: product.selectedImages?.map(img => processImageUrl(img)) || [],
             category: (product.categories?.[0] || 'other').toLowerCase(),
             price: product.price || 0,
             discount: product.discount || 0,
@@ -344,13 +332,13 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
         {product.images && product.images[0] ? (
           <>
             <Image
-              src={product.images[0]}
+              src={optimizeCloudinaryUrl(product.images[0], { width: 500 })}
               alt={product.name}
               width={500}
               height={625}
               className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
               priority={true}
-              unoptimized={true}
+              unoptimized={false}
             />
             {stockStatus && (
               <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">

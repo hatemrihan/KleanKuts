@@ -9,6 +9,7 @@ import Nav from '@/app/sections/nav'
 import { useCart } from '@/app/context/CartContext'
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
+import { optimizeCloudinaryUrl, processImageUrl } from '@/app/utils/imageUtils';
 
 interface CartItem {
   id: string;
@@ -218,20 +219,7 @@ const ProductPage = ({ params }: Props) => {
           _id: data._id || data.id, // Support both _id and id fields
           name: data.title || data.name || 'Untitled Product',
           price: data.price || 0,
-          images: data.selectedImages?.map((img: string) => {
-            // If it's already a full URL (http or https), use it as is
-            if (img.startsWith('http') || img.startsWith('https')) {
-              return img;
-            }
-            
-            // If it's a local path starting with /images or /uploads, use it as is
-            if (img.startsWith('/images/') || img.startsWith('/uploads/')) {
-              return img;
-            }
-            
-            // Use the new CDN URL from the admin panel
-            return `https://kleankutsadmin.netlify.app/upload/${img.replace(/^\/*/, '')}`;
-          }) || [],
+          images: data.selectedImages?.map((img: string) => processImageUrl(img)) || [],
           description: data.description || '',
           Material: ['French linen'], // Default material
           sizes: data.sizes.map((sizeStock: any) => ({
@@ -289,7 +277,7 @@ const ProductPage = ({ params }: Props) => {
       quantity: quantity,
       size: selectedSize,
       color: selectedColor || undefined,
-      image: product.images[0],
+      image: processImageUrl(product.images[0]),
       discount: product.discount
     };
 
@@ -353,7 +341,7 @@ const ProductPage = ({ params }: Props) => {
         price: productPrice,
         size: selectedSize,
         color: selectedColor || undefined,
-        image: product.images[0]
+        image: processImageUrl(product.images[0])
       }],
       totalAmount: totalAmount,
       status: 'pending',
@@ -557,7 +545,7 @@ const ProductPage = ({ params }: Props) => {
                           </div>
                         )}
                         <Image
-                          src={image}
+                          src={optimizeCloudinaryUrl(image, { width: 600 })}
                           alt={`${product.name} - View ${index + 1}`}
                           fill
                           className="object-cover"
@@ -580,7 +568,7 @@ const ProductPage = ({ params }: Props) => {
                       </div>
                     )}
                     <Image
-                      src={image}
+                      src={optimizeCloudinaryUrl(image, { width: 1200 })}
                       alt={`${product.name} - View ${index + 1}`}
                       fill
                       className="object-cover"
