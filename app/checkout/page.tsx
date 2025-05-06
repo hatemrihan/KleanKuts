@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import { validateStock, reduceStock } from '../utils/stockUtils'
-import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS, loadBlacklistFromDatabase } from '../utils/productBlacklist'
+import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
 
 interface FormData {
   firstName: string;
@@ -85,28 +85,9 @@ const CheckoutPage = () => {
   const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0
   const totalWithShipping = cartTotal + shippingCost
 
-  // Load the blacklist from the database when the page loads
-  const [blacklistLoaded, setBlacklistLoaded] = useState(false);
-  
-  useEffect(() => {
-    const loadBlacklist = async () => {
-      try {
-        console.log('Loading product blacklist from database in checkout...');
-        const success = await loadBlacklistFromDatabase();
-        if (success) {
-          console.log('Blacklist loaded successfully with', BLACKLISTED_PRODUCT_IDS.length, 'items');
-        } else {
-          console.error('Failed to load blacklist from database');
-        }
-        setBlacklistLoaded(true);
-      } catch (error) {
-        console.error('Error loading blacklist:', error);
-        setBlacklistLoaded(true); // Continue anyway with the in-memory blacklist
-      }
-    };
-    
-    loadBlacklist();
-  }, []);
+  // We're using the static blacklist instead of loading from database
+  // This ensures compatibility with Netlify deployment
+  const [blacklistLoaded, setBlacklistLoaded] = useState(true);
   
   // We're no longer filtering out products from the cart
   // This allows all products to proceed to checkout, even if they can't be found in the database

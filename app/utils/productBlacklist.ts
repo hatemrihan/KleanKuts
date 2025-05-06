@@ -5,10 +5,12 @@
  * that should be automatically removed from carts. This is useful for
  * handling products that have been deleted from the database but might
  * still exist in user carts.
+ * 
+ * NOTE: This version is client-compatible and doesn't import MongoDB directly.
+ * Server-side operations are handled through API endpoints.
  */
 
-import { connectToDatabase } from './mongodb';
-import { ObjectId } from 'mongodb';
+'use client';
 
 // In-memory blacklist (initial values)
 export const BLACKLISTED_PRODUCT_IDS = [
@@ -18,8 +20,14 @@ export const BLACKLISTED_PRODUCT_IDS = [
   // Add any other problematic IDs here
 ];
 
-// Database collection name for persistent storage
-const BLACKLIST_COLLECTION = 'product_blacklist';
+// API endpoints for blacklist operations
+const BLACKLIST_API = {
+  ADD: '/api/products/blacklist/add',
+  REMOVE: '/api/products/blacklist/remove',
+  LOAD: '/api/products/blacklist/load',
+  DETAILS: '/api/products/blacklist/details',
+  VALIDATE: '/api/products/blacklist/validate'
+};
 
 /**
  * Checks if a product ID is blacklisted
@@ -51,20 +59,23 @@ export async function addToBlacklist(productId: string, reason: string = 'Produc
       return true; // Already blacklisted
     }
     
-    // Update in-memory blacklist
+    // Update in-memory blacklist immediately
     BLACKLISTED_PRODUCT_IDS.push(productId);
     
-    // Update database blacklist
-    const { db } = await connectToDatabase();
-    const blacklistCollection = db.collection(BLACKLIST_COLLECTION);
-    
-    await blacklistCollection.insertOne({
-      productId,
-      reason,
-      blacklistedAt: new Date()
+    // Call the API to update the database blacklist
+    const response = await fetch(BLACKLIST_API.ADD, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        productId,
+        reason
+      })
     });
     
-    return true;
+    const data = await response.json();
+    return data.success;
   } catch (error) {
     console.error('Error adding product to blacklist:', error);
     return false;
@@ -72,30 +83,46 @@ export async function addToBlacklist(productId: string, reason: string = 'Produc
 }
 
 /**
- * Loads the blacklist from the database
+ * Loads the blacklist from the database via API
  * @returns Promise resolving to boolean indicating success
  */
 export async function loadBlacklistFromDatabase(): Promise<boolean> {
   try {
-    const { db } = await connectToDatabase();
-    const blacklistCollection = db.collection(BLACKLIST_COLLECTION);
+    // Call the API to load the blacklist
+    const response = await fetch(BLACKLIST_API.LOAD);
+    const data = await response.json();
     
-    const blacklistItems = await blacklistCollection.find({}).toArray();
-    
-    // Reset the in-memory blacklist with the initial values
-    BLACKLISTED_PRODUCT_IDS.length = 0;
-    BLACKLISTED_PRODUCT_IDS.push('6819b110064b2eeffa2c1941', '6819a258828e01d7e7d17e95');
-    
-    // Add all blacklisted product IDs from the database
-    blacklistItems.forEach(item => {
-      if (!BLACKLISTED_PRODUCT_IDS.includes(item.productId)) {
-        BLACKLISTED_PRODUCT_IDS.push(item.productId);
-      }
-    });
-    
-    return true;
+    if (data.success && Array.isArray(data.blacklist)) {
+      // Reset the in-memory blacklist
+      BLACKLISTED_PRODUCT_IDS.length = 0;
+      
+      // Add all blacklisted product IDs from the API
+      data.blacklist.forEach((productId: string) => {
+        BLACKLISTED_PRODUCT_IDS.push(productId);
+      });
+      
+      return true;
+    } else {
+      // If API fails, use the default problematic IDs
+      BLACKLISTED_PRODUCT_IDS.length = 0;
+      BLACKLISTED_PRODUCT_IDS.push(
+        '6819b110064b2eeffa2c1941',
+        '6819a258828e01d7e7d17e95',
+        '681a4def311e3be5855f56aa',
+        '681a5092498f3fc2f026f310'
+      );
+      return false;
+    }
   } catch (error) {
     console.error('Error loading blacklist from database:', error);
+    // If API call fails, use the default problematic IDs
+    BLACKLISTED_PRODUCT_IDS.length = 0;
+    BLACKLISTED_PRODUCT_IDS.push(
+      '6819b110064b2eeffa2c1941',
+      '6819a258828e01d7e7d17e95',
+      '681a4def311e3be5855f56aa',
+      '681a5092498f3fc2f026f310'
+    );
     return false;
   }
 }
@@ -107,19 +134,23 @@ export async function loadBlacklistFromDatabase(): Promise<boolean> {
  */
 export async function removeFromBlacklist(productId: string): Promise<boolean> {
   try {
-    // Update in-memory blacklist
+    // Update in-memory blacklist immediately
     const index = BLACKLISTED_PRODUCT_IDS.indexOf(productId);
     if (index !== -1) {
       BLACKLISTED_PRODUCT_IDS.splice(index, 1);
     }
     
-    // Update database blacklist
-    const { db } = await connectToDatabase();
-    const blacklistCollection = db.collection(BLACKLIST_COLLECTION);
+    // Call the API to update the database blacklist
+    const response = await fetch(BLACKLIST_API.REMOVE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ productId })
+    });
     
-    await blacklistCollection.deleteOne({ productId });
-    
-    return true;
+    const data = await response.json();
+    return data.success;
   } catch (error) {
     console.error('Error removing product from blacklist:', error);
     return false;
@@ -132,44 +163,16 @@ export async function removeFromBlacklist(productId: string): Promise<boolean> {
  */
 export async function getBlacklistWithDetails(): Promise<any[]> {
   try {
-    const { db } = await connectToDatabase();
-    const blacklistCollection = db.collection(BLACKLIST_COLLECTION);
-    const productsCollection = db.collection('products');
+    // Call the API to get detailed blacklist information
+    const response = await fetch(BLACKLIST_API.DETAILS);
+    const data = await response.json();
     
-    // Get all blacklisted products
-    const blacklistedProducts = await blacklistCollection.find({}).toArray();
-    
-    // Enhance with product details where available
-    const enhancedBlacklist = await Promise.all(
-      blacklistedProducts.map(async (item) => {
-        let productDetails = null;
-        
-        // Try to find product details (might be in recycle bin)
-        try {
-          // First try by MongoDB ID if it looks like a valid ObjectId
-          if (item.productId.match(/^[0-9a-fA-F]{24}$/)) {
-            productDetails = await productsCollection.findOne({
-              $or: [
-                { _id: new ObjectId(item.productId) },
-                { id: item.productId }
-              ]
-            });
-          } else {
-            // Try by custom ID field
-            productDetails = await productsCollection.findOne({ id: item.productId });
-          }
-        } catch (err) {
-          console.error(`Error fetching details for product ${item.productId}:`, err);
-        }
-        
-        return {
-          ...item,
-          productDetails: productDetails || { note: 'Product not found in database' }
-        };
-      })
-    );
-    
-    return enhancedBlacklist;
+    if (data.success && Array.isArray(data.blacklist)) {
+      return data.blacklist;
+    } else {
+      console.error('Failed to get blacklist details from API');
+      return [];
+    }
   } catch (error) {
     console.error('Error getting blacklist with details:', error);
     return [];
