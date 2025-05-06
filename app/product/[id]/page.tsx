@@ -12,8 +12,8 @@ import { twMerge } from "tailwind-merge"
 import { optimizeCloudinaryUrl, processImageUrl } from '@/app/utils/imageUtils';
 import { initStockSync, forceRefreshStock, markProductAsRecentlyOrdered } from '@/app/utils/stockSync';
 import axios from 'axios'
-// For WebSocket connection - to be installed
-// import { io } from 'socket.io-client';
+// For WebSocket connection
+import { io } from 'socket.io-client';
 
 // Types
 interface CartItem {
@@ -348,26 +348,140 @@ const ProductPage = ({ params }: Props) => {
     if (product && product._id) {
       console.log('Setting up WebSocket connection for product:', product._id);
       
-      // This is commented out until socket.io-client is installed
-      // const socket = io();
+      // Connect to the WebSocket server
+      const socket = io('https://kleankutsadmin.netlify.app', {
+        path: '/api/socket',
+        transports: ['websocket', 'polling']
+      });
       
       // Listen for stock updates
-      // socket.on('stock:reduced', (data) => {
-      //   // Check if this update is for the current product
-      //   if (data.productId === product._id) {
-      //     console.log('Received real-time stock update via WebSocket:', data);
-      //     // Force refresh stock data when we receive a WebSocket notification
-      //     refreshStockData(false, true);
-      //   }
-      // });
+      socket.on('stock:reduced', (data) => {
+        console.log('Stock update received:', data);
+        
+        // If this update is for the current product
+        if (data.productId === product._id) {
+          console.log('Received real-time stock update via WebSocket:', data);
+          // Force refresh stock data when we receive a WebSocket notification
+          refreshStockData(false, true);
+          
+          // Update the UI with new stock information if needed
+          if (data.size && data.color && typeof data.stock !== 'undefined') {
+            // This function would need to be implemented to update specific size/color stock
+            updateStockDisplay(data.size, data.color, data.stock);
+          }
+        }
+      });
       
-      // return () => {
-      //   // Clean up socket connection
-      //   socket.off('stock:reduced');
-      //   socket.disconnect();
-      // };
+      return () => {
+        // Clean up socket connection
+        socket.off('stock:reduced');
+        socket.disconnect();
+      };
     }
   }, [product?._id]);
+  
+  // Manual refresh function for stock as recommended by the admin developer
+  const manualRefreshStock = async (productId: string) => {
+    try {
+      console.log(`🔄 Manual refresh for product ${productId}`);
+      setRefreshing(true);
+      setRefreshMessage('Refreshing stock data...');
+      
+      const timestamp = Date.now();
+      const response = await fetch(`https://kleankutsadmin.netlify.app/api/products/${productId}/stock?timestamp=${timestamp}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fresh stock data received:', data);
+        
+        // Update the product with the fresh stock data
+        if (product && data) {
+          const updatedProduct = { ...product };
+          
+          // Update the stock information in the product
+          if (data.sizes) {
+            updatedProduct.sizes = data.sizes;
+          }
+          
+          if (data.sizeVariants) {
+            updatedProduct.sizeVariants = data.sizeVariants;
+          }
+          
+          // Update the product state
+          setProduct(updatedProduct);
+          setRefreshMessage('Stock data updated successfully!');
+          setTimeout(() => setRefreshMessage(''), 3000);
+        }
+      } else {
+        console.error('Error refreshing stock:', await response.text());
+        setRefreshMessage('Error updating stock. Please try again.');
+        setTimeout(() => setRefreshMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error in manual refresh:', error);
+      setRefreshMessage('Error updating stock. Please try again.');
+      setTimeout(() => setRefreshMessage(''), 3000);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  
+  // Function to call the admin panel's stock reduction API as specified by the admin developer
+  const callAdminStockReductionApi = async (orderId: string, items: any[]) => {
+    try {
+      console.log(`Calling admin stock reduction API for order ${orderId}`);
+      const response = await fetch(`https://kleankutsadmin.netlify.app/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Admin stock reduction result:', result);
+        return result;
+      } else {
+        console.error('Admin stock reduction API returned error:', await response.text());
+        return null;
+      }
+    } catch (error) {
+      console.error('Error calling admin stock reduction API:', error);
+      return null;
+    }
+  };
+  
+  // Helper function to update stock display for specific size/color
+  const updateStockDisplay = (size: string, color: string, stock: number) => {
+    console.log(`Updating display for size: ${size}, color: ${color}, stock: ${stock}`);
+    // Implementation would depend on how stock is stored in state
+    if (product && product.sizeVariants) {
+      // Create a deep copy of the current product
+      const updatedProduct = JSON.parse(JSON.stringify(product));
+      
+      // Find and update the specific size/color combination
+      for (const sizeVariant of updatedProduct.sizeVariants) {
+        if (sizeVariant.size === size && sizeVariant.colorVariants) {
+          for (const colorVariant of sizeVariant.colorVariants) {
+            if (colorVariant.color === color) {
+              colorVariant.stock = stock;
+              console.log(`Updated stock for ${size}/${color} to ${stock}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Update the product state with the new stock information
+      setProduct(updatedProduct);
+      
+      // If this is the currently selected size/color, update the UI immediately
+      if (selectedSize === size && selectedColor === color) {
+        // Force a re-render of the stock display
+        setSelectedSize(size);
+        setSelectedColor(color);
+      }
+    }
+  };
   
   // Initialize real-time stock synchronization
   useEffect(() => {
@@ -723,7 +837,9 @@ const ProductPage = ({ params }: Props) => {
       // Call the stock reduction API to properly update stock levels
       const orderId = `order_${Date.now()}`; // Generate a temporary order ID
       try {
-        const stockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+        // Call both our local API and the admin panel's API for redundancy
+        // First call our local API
+        const localStockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -736,8 +852,18 @@ const ProductPage = ({ params }: Props) => {
           })
         });
         
-        const stockReduceResult = await stockReduceResponse.json();
-        console.log('Stock reduction result:', stockReduceResult);
+        const localStockReduceResult = await localStockReduceResponse.json();
+        console.log('Local stock reduction result:', localStockReduceResult);
+        
+        // Then call the admin panel's API as required by the admin developer
+        const adminStockReduceResult = await callAdminStockReductionApi(orderId, [{
+          productId: product._id,
+          size: selectedSize,
+          color: selectedColor || undefined,
+          quantity: Math.min(quantity, availableStock)
+        }]);
+        
+        console.log('Admin stock reduction result:', adminStockReduceResult);
       } catch (reduceError) {
         console.error('Error reducing stock:', reduceError);
       }
@@ -757,7 +883,9 @@ const ProductPage = ({ params }: Props) => {
       // Call the stock reduction API to properly update stock levels
       const orderId = `order_${Date.now()}`; // Generate a temporary order ID
       try {
-        const stockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+        // Call both our local API and the admin panel's API for redundancy
+        // First call our local API
+        const localStockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -770,8 +898,16 @@ const ProductPage = ({ params }: Props) => {
           })
         });
         
-        const stockReduceResult = await stockReduceResponse.json();
-        console.log('Stock reduction result (error recovery):', stockReduceResult);
+        // Then call the admin panel's API as required by the admin developer
+        await callAdminStockReductionApi(orderId, [{
+          productId: product._id,
+          size: selectedSize,
+          color: selectedColor || undefined,
+          quantity: Math.min(quantity, availableStock)
+        }]);
+        
+        const localStockReduceResult = await localStockReduceResponse.json();
+        console.log('Stock reduction result (error recovery):', localStockReduceResult);
       } catch (reduceError) {
         console.error('Error reducing stock (error recovery):', reduceError);
       }
@@ -935,7 +1071,7 @@ const ProductPage = ({ params }: Props) => {
                     </div>
                     
                     <button 
-                      onClick={() => refreshStockData(true)} 
+                      onClick={() => product && manualRefreshStock(product._id)} 
                       disabled={refreshing}
                       className="text-sm text-gray-600 flex items-center hover:text-black transition-colors"
                     >
