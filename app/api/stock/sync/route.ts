@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const productId = url.searchParams.get('productId');
     const lastUpdate = url.searchParams.get('lastUpdate');
+    const afterOrder = url.searchParams.get('afterOrder') === 'true';
     
     if (!productId) {
       return NextResponse.json(
@@ -29,9 +30,15 @@ export async function GET(request: Request) {
     // Check if there's a newer update available
     const lastKnownUpdate = productUpdateTimestamps[productId] || 0;
     
-    // If client has the latest data already, return a 304 Not Modified
-    if (lastUpdateTime >= lastKnownUpdate && lastUpdateTime > 0) {
+    // For after-order requests, always send fresh data to ensure real-time updates
+    // Otherwise, if client has the latest data already, return a 304 Not Modified
+    if (!afterOrder && lastUpdateTime >= lastKnownUpdate && lastUpdateTime > 0) {
       return new Response(null, { status: 304 });
+    }
+    
+    // If this is an after-order request, log it for debugging
+    if (afterOrder) {
+      console.log(`🔥 Processing after-order stock request for product ${productId}`);
     }
     
     // Connect to the database
@@ -115,13 +122,19 @@ export async function GET(request: Request) {
     productUpdateTimestamps[productId] = stockInfo.timestamp;
     
     // Set cache control headers to prevent caching
-    return new Response(JSON.stringify(stockInfo), {
+    const currentTimestamp = Date.now();
+    return new Response(JSON.stringify({
+      ...stockInfo,
+      afterOrder: afterOrder || false,
+      forceRefresh: afterOrder || false
+    }), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
-        'Surrogate-Control': 'no-store'
+        'Surrogate-Control': 'no-store',
+        'X-Stock-Timestamp': currentTimestamp.toString()
       }
     });
     

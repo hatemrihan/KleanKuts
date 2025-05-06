@@ -14,11 +14,22 @@ const RETRY_DELAY = 500;
  */
 export async function POST(request: Request) {
   try {
-    const { items, orderId, sessionId } = await request.json();
+    // Extract afterOrder and orderId from query parameters
+    const url = new URL(request.url);
+    const afterOrder = url.searchParams.get('afterOrder') === 'true';
+    const queryOrderId = url.searchParams.get('orderId') || 'unknown';
+    
+    if (afterOrder) {
+      console.log(`🔥 Processing stock reduction after order: ${queryOrderId}`);
+    }
+    const { items, orderId: bodyOrderId, sessionId } = await request.json();
+    
+    // Use orderId from the query parameters if available, otherwise use from the body
+    const finalOrderId = queryOrderId !== 'unknown' ? queryOrderId : bodyOrderId;
     
     // Generate a unique reduction session ID if not provided
     const reductionSessionId = sessionId || `red_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    console.log(`🔄 Processing stock reduction for order ${orderId || 'unknown'}, session ${reductionSessionId}`);
+    console.log(`🔄 Processing stock reduction for order ${finalOrderId || 'unknown'}, session ${reductionSessionId}`);
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -32,14 +43,14 @@ export async function POST(request: Request) {
     const stockReductionsCollection = db.collection('stockReductions');
     
     // Check if this reduction has already been processed (idempotency)
-    if (orderId) {
-      const existingReduction = await stockReductionsCollection.findOne({ orderId });
+    if (finalOrderId) {
+      const existingReduction = await stockReductionsCollection.findOne({ orderId: finalOrderId });
       if (existingReduction) {
-        console.log(`⚠️ Stock reduction for order ${orderId} has already been processed. Preventing duplicate reduction.`);
+        console.log(`⚠️ Stock reduction for order ${finalOrderId} has already been processed. Preventing duplicate reduction.`);
         return NextResponse.json({
           success: true,
           message: 'Stock reduction already processed for this order',
-          orderId,
+          orderId: finalOrderId,
           results: existingReduction.results
         });
       }
@@ -48,7 +59,7 @@ export async function POST(request: Request) {
     // Create a record of this reduction attempt
     await stockReductionsCollection.insertOne({
       sessionId: reductionSessionId,
-      orderId,
+      orderId: finalOrderId,
       items,
       startedAt: new Date(),
       status: 'processing'
@@ -489,7 +500,7 @@ export async function POST(request: Request) {
                 timestamp: Date.now(),
                 forceUpdate: true, // Force immediate update
                 afterOrder: true, // Flag to indicate this is after an order for better real-time updates
-                orderId: orderId || 'unknown' // Include order ID for tracking
+                orderId: finalOrderId || 'unknown' // Include order ID for tracking
               })
             });
             
@@ -512,7 +523,7 @@ export async function POST(request: Request) {
                       timestamp: Date.now() + 5000, // Use a much larger timestamp to ensure it overrides any cached data
                       forceUpdate: true,
                       afterOrder: true, // Flag to indicate this is after an order
-                      orderId: orderId || 'unknown'
+                      orderId: finalOrderId || 'unknown'
                     })
                   });
                   console.log(`✅ Sent follow-up sync notification for product ${productId}`);

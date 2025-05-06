@@ -12,6 +12,8 @@ import { twMerge } from "tailwind-merge"
 import { optimizeCloudinaryUrl, processImageUrl } from '@/app/utils/imageUtils';
 import { initStockSync, forceRefreshStock, markProductAsRecentlyOrdered } from '@/app/utils/stockSync';
 import axios from 'axios'
+// For WebSocket connection - to be installed
+// import { io } from 'socket.io-client';
 
 // Types
 interface CartItem {
@@ -246,12 +248,21 @@ const ProductPage = ({ params }: Props) => {
         // This provides a fallback mechanism if the stock refresh fails
         try {
           // Add cache busting parameter and no-cache headers
-          const response = await fetch(`/api/products/${product._id}?_t=${Date.now()}`, {
+          const timestamp = Date.now();
+          const afterOrderParam = afterOrder ? '&afterOrder=true' : '';
+          const response = await fetch(`/api/products/${product._id}?_t=${timestamp}${afterOrderParam}`, {
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
+              'Pragma': 'no-cache',
+              'X-Request-After-Order': afterOrder ? 'true' : 'false'
             }
           });
+          
+          // Check response headers to verify stock freshness
+          const stockTimestamp = response.headers.get('X-Stock-Timestamp');
+          if (stockTimestamp) {
+            console.log('Stock last updated:', new Date(parseInt(stockTimestamp)));
+          }
           
           if (response.ok) {
             const data = await response.json();
@@ -331,6 +342,32 @@ const ProductPage = ({ params }: Props) => {
       }
     }
   };
+  
+  // Setup WebSocket connection for real-time stock updates
+  useEffect(() => {
+    if (product && product._id) {
+      console.log('Setting up WebSocket connection for product:', product._id);
+      
+      // This is commented out until socket.io-client is installed
+      // const socket = io();
+      
+      // Listen for stock updates
+      // socket.on('stock:reduced', (data) => {
+      //   // Check if this update is for the current product
+      //   if (data.productId === product._id) {
+      //     console.log('Received real-time stock update via WebSocket:', data);
+      //     // Force refresh stock data when we receive a WebSocket notification
+      //     refreshStockData(false, true);
+      //   }
+      // });
+      
+      // return () => {
+      //   // Clean up socket connection
+      //   socket.off('stock:reduced');
+      //   socket.disconnect();
+      // };
+    }
+  }, [product?._id]);
   
   // Initialize real-time stock synchronization
   useEffect(() => {
@@ -683,6 +720,28 @@ const ProductPage = ({ params }: Props) => {
       // Mark this product as recently ordered for better real-time updates
       markProductAsRecentlyOrdered(product._id);
       
+      // Call the stock reduction API to properly update stock levels
+      const orderId = `order_${Date.now()}`; // Generate a temporary order ID
+      try {
+        const stockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [{
+              productId: product._id,
+              size: selectedSize,
+              color: selectedColor || undefined,
+              quantity: Math.min(quantity, availableStock)
+            }]
+          })
+        });
+        
+        const stockReduceResult = await stockReduceResponse.json();
+        console.log('Stock reduction result:', stockReduceResult);
+      } catch (reduceError) {
+        console.error('Error reducing stock:', reduceError);
+      }
+      
       // Refresh stock data in the background with afterOrder flag for real-time updates
       refreshStockData(false, true);
     } catch (error) {
@@ -694,6 +753,28 @@ const ProductPage = ({ params }: Props) => {
       
       // Mark this product as recently ordered for better real-time updates
       markProductAsRecentlyOrdered(product._id);
+      
+      // Call the stock reduction API to properly update stock levels
+      const orderId = `order_${Date.now()}`; // Generate a temporary order ID
+      try {
+        const stockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [{
+              productId: product._id,
+              size: selectedSize,
+              color: selectedColor || undefined,
+              quantity: Math.min(quantity, availableStock)
+            }]
+          })
+        });
+        
+        const stockReduceResult = await stockReduceResponse.json();
+        console.log('Stock reduction result (error recovery):', stockReduceResult);
+      } catch (reduceError) {
+        console.error('Error reducing stock (error recovery):', reduceError);
+      }
       
       // Refresh stock data in the background with afterOrder flag for real-time updates
       refreshStockData(false, true);
