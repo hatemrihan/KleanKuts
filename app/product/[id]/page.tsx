@@ -82,6 +82,8 @@ const ProductPage = ({ params }: Props) => {
   const [availableColors, setAvailableColors] = useState<ColorVariant[]>([])
   const [showAddedAnimation, setShowAddedAnimation] = useState(false)
   const [selectedSection, setSelectedSection] = useState<number | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState('')
 
   // Effect to update available colors when size changes
   useEffect(() => {
@@ -100,6 +102,83 @@ const ProductPage = ({ params }: Props) => {
       setAvailableColors([])
     }
   }, [product, selectedSize, selectedColor])
+
+  // Function to refresh stock data
+  const refreshStockData = async (showMessage = false) => {
+    if (product && product._id) {
+      try {
+        // Set refreshing state
+        setRefreshing(true);
+        
+        console.log('Refreshing stock data for product:', product._id);
+        const response = await fetch(`/api/products/${product._id}/stock?t=${Date.now()}`, {
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const stockData = await response.json();
+          console.log('Received updated stock data:', stockData);
+          
+          // Update the product with new stock information
+          setProduct(prevProduct => {
+            if (!prevProduct) return prevProduct;
+            
+            // Create a deep copy of the product
+            const updatedProduct = {...prevProduct};
+            
+            // Update size variants with new stock data
+            if (stockData.sizeVariants && updatedProduct.sizeVariants) {
+              updatedProduct.sizeVariants = stockData.sizeVariants;
+            }
+            
+            return updatedProduct;
+          });
+          
+          // Show success message if requested
+          if (showMessage) {
+            setRefreshMessage('Stock information updated!');
+            // Clear message after 3 seconds
+            setTimeout(() => {
+              setRefreshMessage('');
+            }, 3000);
+          }
+        }
+      } catch (error) {
+        console.error('Error refreshing stock data:', error);
+        if (showMessage) {
+          setRefreshMessage('Failed to update stock information');
+          // Clear message after 3 seconds
+          setTimeout(() => {
+            setRefreshMessage('');
+          }, 3000);
+        }
+      } finally {
+        setRefreshing(false);
+      }
+    }
+  };
+  
+  // Refresh stock data when the component becomes visible
+  useEffect(() => {
+    // Create a visibility change listener to refresh data when tab becomes active
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshStockData();
+      }
+    };
+    
+    // Add event listener for page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also refresh when the component mounts
+    if (typeof window !== 'undefined' && document.visibilityState === 'visible') {
+      refreshStockData();
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [product]);
 
   // Fetch product data
   useEffect(() => {
@@ -462,17 +541,39 @@ const ProductPage = ({ params }: Props) => {
               <div className="sticky top-24 space-y-8">
                 {/* Product Title & Price */}
                 <div className="space-y-4">
-                  <h1 className="text-4xl font-light">{product.name}</h1>
-                  <div className="flex items-center gap-2">
-                    {product.discount ? (
-                      <>
-                        <p className="text-xl">L.E {finalPrice.toFixed(2)}</p>
-                        <p className="text-sm text-gray-500 line-through">L.E {product.price.toFixed(2)}</p>
-                      </>
-                    ) : (
-                      <p className="text-xl">L.E {product.price.toFixed(2)}</p>
-                    )}
+                  <h1 className="text-4xl font-light mb-2">{product.name}</h1>
+                  
+                  {/* Price and refresh button */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {product.discount ? (
+                        <>
+                          <p className="text-xl">L.E {finalPrice.toFixed(2)}</p>
+                          <p className="text-sm text-gray-500 line-through">L.E {product.price.toFixed(2)}</p>
+                        </>
+                      ) : (
+                        <p className="text-xl">L.E {product.price.toFixed(2)}</p>
+                      )}
+                    </div>
+                    
+                    <button 
+                      onClick={() => refreshStockData(true)} 
+                      disabled={refreshing}
+                      className="text-sm text-gray-600 flex items-center hover:text-black transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      {refreshing ? 'Updating...' : 'Refresh stock'}
+                    </button>
                   </div>
+                  
+                  {/* Stock refresh message */}
+                  {refreshMessage && (
+                    <div className="bg-green-50 text-green-700 p-2 mb-4 text-sm rounded">
+                      {refreshMessage}
+                    </div>
+                  )}
                 </div>
 
                 {/* Size Selection */}
@@ -550,7 +651,7 @@ const ProductPage = ({ params }: Props) => {
                           )}
                           {colorVariant.color}
                           {/* Always show stock count */}
-                          <span className={`ml-1 text-xs ${selectedColor === colorVariant.color ? 'text-white' : 'text-gray-500'}`}>
+                          <span className={`ml-1 text-xs font-medium ${selectedColor === colorVariant.color ? 'text-white' : colorVariant.stock <= 5 ? 'text-red-500' : 'text-green-600'}`}>
                             ({colorVariant.stock} left)
                           </span>
                           {/* Low stock warning badge */}
@@ -692,6 +793,7 @@ const ProductPage = ({ params }: Props) => {
                               <div className="pb-4 text-sm text-gray-600">
                                 {section.content}
                               </div>
+
                             </motion.div>
                           )}
                         </AnimatePresence>
