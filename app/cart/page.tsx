@@ -7,16 +7,41 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { optimizeCloudinaryUrl } from '../utils/imageUtils'
 import { cleanCart } from '../utils/cartUtils'
-import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
+import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS, loadBlacklistFromDatabase } from '../utils/productBlacklist'
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart, setCart } = useCart()
   const [checkoutInProgress, setCheckoutInProgress] = React.useState(false)
   const [checkoutError, setCheckoutError] = React.useState('')
   const [isCleaningCart, setIsCleaningCart] = React.useState(true)
+  const [blacklistLoaded, setBlacklistLoaded] = React.useState(false)
+  
+  // Load the blacklist from the database when the page loads
+  useEffect(() => {
+    const loadBlacklist = async () => {
+      try {
+        console.log('Loading product blacklist from database...');
+        const success = await loadBlacklistFromDatabase();
+        if (success) {
+          console.log('Blacklist loaded successfully with', BLACKLISTED_PRODUCT_IDS.length, 'items');
+        } else {
+          console.error('Failed to load blacklist from database');
+        }
+        setBlacklistLoaded(true);
+      } catch (error) {
+        console.error('Error loading blacklist:', error);
+        setBlacklistLoaded(true); // Continue anyway with the in-memory blacklist
+      }
+    };
+    
+    loadBlacklist();
+  }, []);
   
   // Clean the cart on page load to remove any invalid products
   useEffect(() => {
+    // Don't clean the cart until the blacklist is loaded
+    if (!blacklistLoaded) return;
+    
     const cleanCartItems = async () => {
       try {
         setIsCleaningCart(true);
@@ -65,7 +90,7 @@ export default function CartPage() {
     } else {
       setIsCleaningCart(false);
     }
-  }, [cart.length, setCart, setCheckoutError]);
+  }, [cart.length, setCart, setCheckoutError, blacklistLoaded]);
   
   // Validate that all products in cart exist
   const validateCartProducts = async () => {

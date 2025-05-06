@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import { validateStock, reduceStock } from '../utils/stockUtils'
-import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
+import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS, loadBlacklistFromDatabase } from '../utils/productBlacklist'
 
 interface FormData {
   firstName: string;
@@ -85,7 +85,33 @@ const CheckoutPage = () => {
   const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0
   const totalWithShipping = cartTotal + shippingCost
 
+  // Load the blacklist from the database when the page loads
+  const [blacklistLoaded, setBlacklistLoaded] = useState(false);
+  
   useEffect(() => {
+    const loadBlacklist = async () => {
+      try {
+        console.log('Loading product blacklist from database in checkout...');
+        const success = await loadBlacklistFromDatabase();
+        if (success) {
+          console.log('Blacklist loaded successfully with', BLACKLISTED_PRODUCT_IDS.length, 'items');
+        } else {
+          console.error('Failed to load blacklist from database');
+        }
+        setBlacklistLoaded(true);
+      } catch (error) {
+        console.error('Error loading blacklist:', error);
+        setBlacklistLoaded(true); // Continue anyway with the in-memory blacklist
+      }
+    };
+    
+    loadBlacklist();
+  }, []);
+  
+  // Filter out blacklisted products when the blacklist is loaded or cart changes
+  useEffect(() => {
+    if (!blacklistLoaded) return;
+    
     // Filter out blacklisted product IDs if they exist in the cart
     const blacklistedItems = cart.filter(item => BLACKLISTED_PRODUCT_IDS.includes(item.id));
     
@@ -99,11 +125,14 @@ const CheckoutPage = () => {
       const filteredCart = removeBlacklistedProducts(cart);
       setCart(filteredCart);
     }
-    
+  }, [cart, setCart, blacklistLoaded]);
+  
+  // Redirect to cart if empty
+  useEffect(() => {  
     if (cart.length === 0) {
       router.push('/cart')
     }
-  }, [cart, router, setCart])
+  }, [cart, router])
 
   if (typeof window === 'undefined' || cart.length === 0) {
     return null
