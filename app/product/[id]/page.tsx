@@ -549,6 +549,11 @@ const ProductPage = ({ params }: Props) => {
                             />
                           )}
                           {colorVariant.color}
+                          {/* Always show stock count */}
+                          <span className={`ml-1 text-xs ${selectedColor === colorVariant.color ? 'text-white' : 'text-gray-500'}`}>
+                            ({colorVariant.stock} left)
+                          </span>
+                          {/* Low stock warning badge */}
                           {colorVariant.stock > 0 && colorVariant.stock <= 5 && (
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
                               {colorVariant.stock}
