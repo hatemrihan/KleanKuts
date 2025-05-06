@@ -10,15 +10,25 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    const product = await Product.findById(params.id);
+    console.log('Fetching product with ID:', params.id);
+
+    // Try to find by _id first
+    let product = await Product.findById(params.id).catch(() => null);
+
+    // If not found by _id, try to find by custom ID field if it exists
+    if (!product) {
+      product = await Product.findOne({ id: params.id }).catch(() => null);
+    }
 
     if (!product) {
+      console.log('Product not found with ID:', params.id);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
 
+    console.log('Found product:', product.title || product.name);
     return NextResponse.json(product);
   } catch (error: any) {
     console.error('Error fetching product:', error);

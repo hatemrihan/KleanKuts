@@ -29,6 +29,7 @@ interface SizeStock {
 
 interface ColorVariant {
   color: string;
+  hexCode?: string;
   stock: number;
 }
 
@@ -201,20 +202,36 @@ const ProductPage = ({ params }: Props) => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
+        console.log('Fetching product with ID:', id);
         const response = await fetch(`/api/products/${id}`);
-        if (!response.ok) {
-          throw new Error('Product not found');
-        }
         const data = await response.json();
+
+        if (!response.ok) {
+          console.error('API Error:', data);
+          throw new Error(data.error || 'Failed to fetch product');
+        }
+
+        console.log('Received product data:', data);
 
         // Transform the data to match our Product interface
         const transformedProduct: Product = {
-          _id: data._id,
-          name: data.title || 'Untitled Product',
+          _id: data._id || data.id, // Support both _id and id fields
+          name: data.title || data.name || 'Untitled Product',
           price: data.price || 0,
-          images: data.selectedImages?.map((img: string) => 
-            img.startsWith('http') || img.startsWith('/') ? img : `/uploads/${img}`
-          ) || [],
+          images: data.selectedImages?.map((img: string) => {
+            // If it's already a full URL (http or https), use it as is
+            if (img.startsWith('http') || img.startsWith('https')) {
+              return img;
+            }
+            
+            // If it's a local path starting with /images or /uploads, use it as is
+            if (img.startsWith('/images/') || img.startsWith('/uploads/')) {
+              return img;
+            }
+            
+            // Use the new CDN URL from the admin panel
+            return `https://kleankutsadmin.netlify.app/upload/${img.replace(/^\/*/, '')}`;
+          }) || [],
           description: data.description || '',
           Material: ['French linen'], // Default material
           sizes: data.sizes.map((sizeStock: any) => ({
@@ -659,9 +676,15 @@ const ProductPage = ({ params }: Props) => {
                           key={colorVariant.color}
                           onClick={() => setSelectedColor(colorVariant.color)}
                           disabled={colorVariant.stock === 0}
-                          className={`relative px-4 py-2 border ${colorVariant.stock === 0 ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 
+                          className={`relative px-4 py-2 border flex items-center gap-2 ${colorVariant.stock === 0 ? 'border-gray-300 text-gray-300 cursor-not-allowed' : 
                             selectedColor === colorVariant.color ? 'border-black bg-black text-white' : 'border-gray-400 hover:border-black'}`}
                         >
+                          {colorVariant.hexCode && (
+                            <div 
+                              className="w-4 h-4 rounded-full border border-gray-300" 
+                              style={{ backgroundColor: colorVariant.hexCode }}
+                            />
+                          )}
                           {colorVariant.color}
                           {colorVariant.stock > 0 && colorVariant.stock <= 5 && (
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">

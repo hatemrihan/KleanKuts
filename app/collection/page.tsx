@@ -179,8 +179,11 @@ export default function Collection() {
             return null;
           }
 
+          // Log the product data for debugging
+          console.log('Processing product:', product);
+
           const processedProduct: Product = {
-            _id: productId,
+            _id: product._id || product.id || productId, // Support both _id and id fields
             name: (product.title || 'Untitled Product').replace(/\s*\b[0-9a-fA-F]{24}\b\s*/g, '').trim(),
             images: product.selectedImages?.map(img => {
               // If it's already a full URL (http or https), use it as is
@@ -188,13 +191,13 @@ export default function Collection() {
                 return img;
               }
               
-              // If it's a local path starting with /images, use it as is
-              if (img.startsWith('/images/')) {
+              // If it's a local path starting with /images or /uploads, use it as is
+              if (img.startsWith('/images/') || img.startsWith('/uploads/')) {
                 return img;
               }
               
-              // For all other cases, assume it's a relative path and construct the full URL
-              return `https://kleankuts.shop/uploads/${img.replace(/^\/+/, '')}`;
+              // Use the new CDN URL from the admin panel
+              return `https://kleankutsadmin.netlify.app/upload/${img.replace(/^\/+/, '')}`;
             }) || [],
             category: (product.categories?.[0] || 'other').toLowerCase(),
             price: product.price || 0,
