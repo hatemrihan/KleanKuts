@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
+import { validateStock, reduceStock } from '../utils/stockUtils'
 
 interface FormData {
   firstName: string;
@@ -16,6 +17,22 @@ interface FormData {
   apartment: string;
   city: string;
   notes: string;
+}
+
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color?: string;
+  image: string;
+  discount?: number;
+  _stockInfo?: {
+    originalStock: number;
+    size: string;
+    color: string;
+  };
 }
 
 const shippingCosts = {
@@ -49,7 +66,7 @@ type City = keyof typeof shippingCosts;
 
 const CheckoutPage = () => {
   const router = useRouter()
-  const { cart, cartTotal, clearCart } = useCart()
+  const { cart, clearCart, cartTotal } = useCart()
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -100,6 +117,30 @@ const CheckoutPage = () => {
     setIsSubmitting(true)
 
     try {
+      // First, validate that all items are in stock
+      try {
+        console.log('Validating stock levels...');
+        const stockValidation = await validateStock(cart.map(item => ({
+          productId: item.id,
+          size: item.size,
+          color: item.color,
+          quantity: item.quantity,
+          _stockInfo: item._stockInfo
+        })));
+        
+        console.log('Stock validation result:', stockValidation);
+        
+        if (!stockValidation.valid) {
+          setOrderError(stockValidation.message || 'Some items in your cart are no longer available in the requested quantity.');
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (stockError: any) {
+        console.error('Stock validation error:', stockError);
+        setOrderError('Unable to verify stock availability. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
       // First, send to our main API
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -173,6 +214,22 @@ const CheckoutPage = () => {
             // Main order was successful, so we still proceed
           }
 
+          // Reduce stock levels after successful order
+          try {
+            console.log('Reducing stock levels...');
+            const stockReduction = await reduceStock(cart.map(item => ({
+              productId: item.id,
+              size: item.size,
+              color: item.color,
+              quantity: item.quantity,
+              _stockInfo: item._stockInfo
+            })));
+            console.log('Stock reduction result:', stockReduction);
+          } catch (stockError) {
+            // Log the error but continue with order completion
+            console.error('Error reducing stock:', stockError);
+          }
+          
           // First clear cart and redirect to thank you page
           clearCart();
           // Set flag that order was completed successfully
@@ -183,6 +240,23 @@ const CheckoutPage = () => {
           }, 100);
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
+          
+          // Reduce stock levels after successful order (even if admin panel fails)
+          try {
+            console.log('Reducing stock levels (fallback)...');
+            const stockReduction = await reduceStock(cart.map(item => ({
+              productId: item.id,
+              size: item.size,
+              color: item.color,
+              quantity: item.quantity,
+              _stockInfo: item._stockInfo
+            })));
+            console.log('Stock reduction result:', stockReduction);
+          } catch (stockError) {
+            // Log the error but continue with order completion
+            console.error('Error reducing stock:', stockError);
+          }
+          
           // Even if admin panel fails, we still want to proceed since the main order was successful
           clearCart();
           // Set flag that order was completed successfully

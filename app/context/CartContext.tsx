@@ -12,6 +12,11 @@ interface CartItem {
   color?: string;
   image: string;
   discount?: number;
+  _stockInfo?: {
+    originalStock: number;
+    size: string;
+    color: string;
+  };
 }
 
 interface CartContextType {
