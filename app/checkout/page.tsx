@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import { validateStock, reduceStock } from '../utils/stockUtils'
+import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
 
 interface FormData {
   firstName: string;
@@ -85,13 +86,17 @@ const CheckoutPage = () => {
   const totalWithShipping = cartTotal + shippingCost
 
   useEffect(() => {
-    // Filter out the problematic product ID if it exists in the cart
-    const problematicId = '6819b110064b2eeffa2c1941';
-    const hasProblematicItem = cart.some(item => item.id === problematicId);
+    // Filter out blacklisted product IDs if they exist in the cart
+    const blacklistedItems = cart.filter(item => BLACKLISTED_PRODUCT_IDS.includes(item.id));
     
-    if (hasProblematicItem) {
-      console.log(`Removing problematic product ID: ${problematicId} from checkout`);
-      const filteredCart = cart.filter(item => item.id !== problematicId);
+    if (blacklistedItems.length > 0) {
+      console.log(`Removing ${blacklistedItems.length} blacklisted products from checkout:`);
+      blacklistedItems.forEach(item => {
+        console.log(`- Removed product ID: ${item.id}`);
+      });
+      
+      // Use the utility function to filter out blacklisted products
+      const filteredCart = removeBlacklistedProducts(cart);
       setCart(filteredCart);
     }
     

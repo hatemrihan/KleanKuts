@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { optimizeCloudinaryUrl } from '../utils/imageUtils'
 import { cleanCart } from '../utils/cartUtils'
+import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart, setCart } = useCart()
@@ -20,19 +21,21 @@ export default function CartPage() {
       try {
         setIsCleaningCart(true);
         
-        // IMMEDIATE FIX: Remove the specific problematic product ID
-        const problematicId = '6819b110064b2eeffa2c1941';
+        // IMMEDIATE FIX: Remove blacklisted product IDs
         let cartNeedsUpdate = false;
         
-        // First check for the specific problematic product ID
-        const filteredCart = cart.filter(item => {
-          if (item.id === problematicId) {
-            console.log(`Removing problematic product ID: ${problematicId}`);
-            cartNeedsUpdate = true;
-            return false;
-          }
-          return true;
-        });
+        // First check for any blacklisted product IDs
+        const blacklistedItems = cart.filter(item => BLACKLISTED_PRODUCT_IDS.includes(item.id));
+        if (blacklistedItems.length > 0) {
+          console.log(`Found ${blacklistedItems.length} blacklisted products in cart:`);
+          blacklistedItems.forEach(item => {
+            console.log(`- Removing product ID: ${item.id}`);
+          });
+          cartNeedsUpdate = true;
+        }
+        
+        // Filter out blacklisted products
+        const filteredCart = removeBlacklistedProducts(cart);
         
         // If we removed the problematic product, update the cart immediately
         if (cartNeedsUpdate) {
