@@ -219,10 +219,19 @@ export default function Collection() {
 
         console.log('Final products:', uniqueProducts);
         setProducts(uniqueProducts);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching products:', err);
         setProducts(Object.values(localProducts));
-        setError('Some products might not be available at the moment. Please try refreshing the page.');
+        
+        // Provide more specific error messages based on the error type
+        if (err.message?.includes('fetch') || err.message?.includes('network')) {
+          setError('Network error: Unable to connect to the server. Please check your internet connection and try again.');
+        } else if (err.message?.includes('database') || err.message?.includes('MongoDB') || 
+                  (typeof err.message === 'string' && err.message.toLowerCase().includes('mongo'))) {
+          setError('Database connection error: The product database is currently unavailable. We\'re showing locally stored products instead.');
+        } else {
+          setError('Some products might not be available at the moment. Please try refreshing the page.');
+        }
       } finally {
         setLoading(false);
       }

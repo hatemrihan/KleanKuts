@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '../../../lib/mongodb';
-import { Product } from '../../../models/product';
+import dbConnect from '../../../../lib/mongodb';
+import Product from '../../../../models/Product';
+import { handleDatabaseError, handleApiError } from '../../../utils/errorHandling';
 
 // Get a single product
 export async function GET(
@@ -19,12 +20,16 @@ export async function GET(
     }
 
     return NextResponse.json(product);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching product:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch product' },
-      { status: 500 }
-    );
+    
+    // Check if it's a database connection error
+    if (error.name?.includes('Mongo') || error.message?.includes('connect')) {
+      return handleDatabaseError(error);
+    }
+    
+    // Other API errors
+    return handleApiError(error);
   }
 }
 
