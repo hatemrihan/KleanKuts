@@ -149,37 +149,20 @@ const ProductPage = ({ params }: Props) => {
     }
   }, [product, selectedSize, selectedColor])
   
-  // Effect to preserve selected size when product updates
+  // Effect to preserve selected size when product updates - ONLY runs on initial product load
   useEffect(() => {
-    if (product) {
-      console.log('Product updated:', product._id);
-      console.log('Size variants available:', product.sizeVariants ? product.sizeVariants.length : 0);
+    if (product && !selectedSize) { // Only run if no size is selected yet
+      console.log('Initial product load, selecting first size');
       
       if (product.sizeVariants && Array.isArray(product.sizeVariants) && product.sizeVariants.length > 0) {
-        // Log all available sizes for debugging
-        console.log('Available sizes:', product.sizeVariants.map(sv => sv.size).join(', '));
-        
-        // If we already have a selected size, check if it still exists in the updated product
-        if (selectedSize) {
-          console.log('Current selected size:', selectedSize);
-          const sizeStillExists = product.sizeVariants.some(sv => sv.size === selectedSize);
-          console.log('Size still exists:', sizeStillExists);
-          
-          if (!sizeStillExists) {
-            // If the previously selected size no longer exists, select the first available size
-            console.log('Selecting first available size:', product.sizeVariants[0].size);
-            setSelectedSize(product.sizeVariants[0].size);
-          }
-        } else {
-          // If no size is selected yet, select the first available size
-          console.log('No size selected, selecting first available:', product.sizeVariants[0].size);
-          setSelectedSize(product.sizeVariants[0].size);
-        }
-      } else {
-        console.warn('No size variants available for product:', product._id);
+        console.log('Selecting first available size variant:', product.sizeVariants[0].size);
+        setSelectedSize(product.sizeVariants[0].size);
+      } else if (product.sizes && product.sizes.length > 0) {
+        console.log('Selecting first available size from sizes array:', product.sizes[0].size);
+        setSelectedSize(product.sizes[0].size);
       }
     }
-  }, [product])
+  }, [product, selectedSize]) // Only run on initial load or if selectedSize is cleared
   
   // Effect to adjust quantity if it exceeds available stock
   useEffect(() => {
@@ -366,32 +349,18 @@ const ProductPage = ({ params }: Props) => {
           return updatedProduct;
         });
         
-        // After product update, restore selections if they still exist
-        setTimeout(() => {
-          // Check if the current size still exists in the updated product
-          if (currentSize && product?.sizeVariants) {
-            const sizeStillExists = product.sizeVariants.some(sv => sv.size === currentSize);
-            
-            if (sizeStillExists) {
-              // If we need to re-select the same size to trigger UI updates
-              setSelectedSize(currentSize);
-              
-              // Check if the current color still exists for this size
-              if (currentColor) {
-                const sizeVariant = product.sizeVariants.find(sv => sv.size === currentSize);
-                if (sizeVariant && sizeVariant.colorVariants) {
-                  const colorStillExists = sizeVariant.colorVariants.some(cv => cv.color === currentColor);
-                  if (colorStillExists) {
-                    setSelectedColor(currentColor);
-                  }
-                }
-              }
-            } else if (product.sizeVariants.length > 0) {
-              // If current size no longer exists, select the first available size
-              setSelectedSize(product.sizeVariants[0].size);
+        // IMPORTANT: Do NOT reset the user's size selection during stock updates
+        // We'll only update the color selection if needed, but keep the user's size choice
+        if (currentSize && currentColor && product?.sizeVariants) {
+          const sizeVariant = product.sizeVariants.find(sv => sv.size === currentSize);
+          if (sizeVariant && sizeVariant.colorVariants) {
+            const colorStillExists = sizeVariant.colorVariants.some(cv => cv.color === currentColor);
+            if (!colorStillExists && sizeVariant.colorVariants.length > 0) {
+              // Only update color if the current one no longer exists
+              setSelectedColor(sizeVariant.colorVariants[0].color);
             }
           }
-        }, 0); // Use setTimeout with 0 delay to ensure this runs after state updates
+        }
       });
       
       // Also handle page visibility changes
@@ -871,69 +840,70 @@ const ProductPage = ({ params }: Props) => {
                 </div>
 
                 {/* Size Selection */}
-                <div>
-                  <h2 className="text-sm font-medium mb-2">Size</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {/* Always display size variants, with a fallback if they're not available */}
-                    {(product.sizeVariants && Array.isArray(product.sizeVariants) && product.sizeVariants.length > 0) ? (
-                      product.sizeVariants.map((sizeVariant) => (
-                        <button
-                          key={sizeVariant.size}
-                          onClick={() => setSelectedSize(sizeVariant.size)}
-                          className={`flex-1 flex items-center justify-center h-12 relative transition-all ${
-                            selectedSize === sizeVariant.size
-                              ? 'text-white'
-                              : 'text-black hover:text-white'
-                          }`}
-                        >
-                          <div className="relative">
-                            <div className={`w-10 h-10 rounded-full border border-current flex items-center justify-center transition-colors ${
-                              selectedSize === sizeVariant.size
-                                ? 'bg-black border-black'
-                                : 'hover:bg-black hover:border-black'
-                            }`}>
-                              {sizeVariant.size}
-                            </div>
+                <div className="mb-6 border-t border-b border-gray-200 py-4 my-4">
+                  <h2 className="text-sm font-medium mb-3">Size</h2>
+                  <div className="flex flex-wrap gap-3">
+                    {/* Display only real sizes from admin panel */}
+                    <div className="grid grid-cols-4 gap-2 w-full">
+                      {(product.sizeVariants && Array.isArray(product.sizeVariants) && product.sizeVariants.length > 0) ? (
+                        product.sizeVariants.map((sizeVariant) => {
+                          // Calculate total stock for this size
+                          const totalStock = Array.isArray(sizeVariant.colorVariants) 
+                            ? sizeVariant.colorVariants.reduce((sum, cv) => sum + (cv.stock || 0), 0)
+                            : 0;
                             
-                            {/* Show total stock for this size */}
-                            {sizeVariant.colorVariants && (
-                              <div className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs px-1 rounded-full">
-                                {sizeVariant.colorVariants.reduce((total, cv) => total + cv.stock, 0)}
-                              </div>
+                          return (
+                            <button
+                              key={sizeVariant.size}
+                              type="button"
+                              onClick={() => setSelectedSize(sizeVariant.size)}
+                              className={`px-4 py-2 border text-center relative ${selectedSize === sizeVariant.size ? 'border-black bg-black text-white' : 'border-gray-300 hover:border-gray-500'}`}
+                            >
+                              {sizeVariant.size}
+                              {totalStock > 0 && totalStock <= 5 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
+                                  {totalStock}
+                                </span>
+                              )}
+                              {totalStock > 5 && (
+                                <span className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs px-1 rounded-full">
+                                  {totalStock}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        // Fallback to sizes array if no size variants
+                        (product?.sizes && product.sizes.length > 0 ? product.sizes : [{ size: 'One Size', stock: 10, isPreOrder: false }]).map((sizeOption) => (
+                          <button
+                            key={sizeOption.size}
+                            type="button"
+                            onClick={() => setSelectedSize(sizeOption.size)}
+                            className={`px-4 py-2 border text-center relative ${selectedSize === sizeOption.size ? 'border-black bg-black text-white' : 'border-gray-300 hover:border-gray-500'} ${sizeOption.stock <= 0 && !sizeOption.isPreOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={sizeOption.stock <= 0 && !sizeOption.isPreOrder}
+                          >
+                            {sizeOption.size}
+                            {sizeOption.stock > 0 && sizeOption.stock <= 5 && (
+                              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
+                                {sizeOption.stock}
+                              </span>
                             )}
-                          </div>
-                          <span className={`absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs ${
-                            sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'text-red-500' : 'text-green-600'
-                          }`}>
-                            {sizeVariant.colorVariants.every(cv => cv.stock === 0) ? 'Out of stock' : ''}
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      product.sizes.map((sizeOption) => (
-                        <button
-                          key={sizeOption.size}
-                          onClick={() => setSelectedSize(sizeOption.size)}
-                          className={`px-4 py-2 border ${
-                            selectedSize === sizeOption.size
-                              ? 'border-black bg-black text-white'
-                              : 'border-gray-300 hover:border-gray-500'
-                          } ${
-                            sizeOption.stock <= 0 && !sizeOption.isPreOrder
-                              ? 'opacity-50 cursor-not-allowed'
-                              : ''
-                          }`}
-                          disabled={sizeOption.stock <= 0 && !sizeOption.isPreOrder}
-                        >
-                          {sizeOption.size}
-                        </button>
-                      ))
-                    )}
+                            {sizeOption.stock > 5 && (
+                              <span className="absolute -top-2 -right-2 bg-gray-800 text-white text-xs px-1 rounded-full">
+                                {sizeOption.stock}
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Color Selection - Only show if sizeVariants exist and a size is selected */}
                 {product.sizeVariants && selectedSize && availableColors.length > 0 && (
+// ...
                   <div className="mt-6">
                     <h2 className="text-sm font-medium mb-2">Color</h2>
                     <div className="flex flex-wrap gap-4">
