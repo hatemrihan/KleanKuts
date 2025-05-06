@@ -234,9 +234,12 @@ const CheckoutPage = () => {
           const adminData = await adminResponse.json();
           console.log('Admin panel response:', adminData);
 
-          if (!adminResponse.ok) {
-            console.error('Admin panel error:', adminData.error || 'Failed to sync with admin panel');
-            // Main order was successful, so we still proceed
+          if (adminResponse.ok) {
+            console.log('✅ Order successfully sent to admin panel');
+          } else {
+            console.error('⚠️ Admin panel error:', adminData.error || 'Failed to sync with admin panel');
+            // Main order was successful, so we still proceed, but log the issue
+            console.warn('Continuing with checkout despite admin panel sync issue - order was saved in main database');
           }
 
           // Reduce stock levels after successful order
@@ -250,6 +253,13 @@ const CheckoutPage = () => {
               _stockInfo: item._stockInfo
             })));
             console.log('Stock reduction result:', stockReduction);
+            
+            // Log success message for stock reduction
+            if (stockReduction.success) {
+              console.log('✅ Stock levels successfully reduced for all products');
+            } else {
+              console.warn('⚠️ Some products may not have had their stock reduced properly');
+            }
           } catch (stockError) {
             // Log the error but continue with order completion
             console.error('Error reducing stock:', stockError);
@@ -259,6 +269,7 @@ const CheckoutPage = () => {
           clearCart();
           // Set flag that order was completed successfully
           sessionStorage.setItem('orderCompleted', 'true');
+          console.log('Order completed successfully, redirecting to thank-you page');
           // Use a tiny delay to ensure the flag is saved before navigation
           setTimeout(() => {
             router.push('/thank-you');
@@ -295,11 +306,35 @@ const CheckoutPage = () => {
         // Main API order failed
         const errorMessage = data.error || data.details?.join(', ') || 'Something went wrong with your order'
         setOrderError(errorMessage)
+        
+        // Store error in session storage and redirect to error page
+        sessionStorage.setItem('orderError', JSON.stringify({
+          message: errorMessage,
+          timestamp: new Date().toISOString()
+        }));
+        
+        console.log('Order failed, redirecting to error page');
+        setTimeout(() => {
+          router.push('/order-error');
+        }, 100);
+        
         throw new Error(errorMessage)
       }
     } catch (error: any) {
       console.error('Order submission error:', error)
-      setOrderError(error.message || 'Failed to place order. Please try again.')
+      const errorMessage = error.message || 'An unexpected error occurred'
+      setOrderError(errorMessage)
+      
+      // Store error in session storage and redirect to error page
+      sessionStorage.setItem('orderError', JSON.stringify({
+        message: errorMessage,
+        timestamp: new Date().toISOString()
+      }));
+      
+      console.log('Order failed with exception, redirecting to error page');
+      setTimeout(() => {
+        router.push('/order-error');
+      }, 100);
     } finally {
       setIsSubmitting(false)
     }

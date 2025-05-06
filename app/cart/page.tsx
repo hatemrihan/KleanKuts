@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import Link from 'next/link'
@@ -10,6 +11,7 @@ import { cleanCart } from '../utils/cartUtils'
 import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
 
 export default function CartPage() {
+  const router = useRouter()
   const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart, setCart } = useCart()
   const [checkoutInProgress, setCheckoutInProgress] = React.useState(false)
   const [checkoutError, setCheckoutError] = React.useState('')
@@ -136,13 +138,18 @@ export default function CartPage() {
       
       if (!response.ok || !data.valid) {
         console.error('Stock validation failed:', data.message);
-        setCheckoutError(data.message || 'Some items in your cart are no longer available in the requested quantity.')
+        const errorMessage = data.message || 'Some items in your cart are no longer available in the requested quantity.'
+        setCheckoutError(errorMessage)
         setCheckoutInProgress(false)
+        
+        // Show the error message to the user
+        alert(`Error: ${errorMessage}\n\nPlease adjust your cart and try again.`)
         return;
       }
       
-      // If stock validation passes, proceed to checkout
-      window.location.href = '/checkout'
+      // If stock validation passes, proceed to checkout using Next.js Router
+      console.log('Stock validation successful, redirecting to checkout');
+      router.push('/checkout')
     } catch (error) {
       console.error('Checkout error:', error)
       setCheckoutError('An unexpected error occurred. Please try again later.')
