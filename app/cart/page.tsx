@@ -1,16 +1,44 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import Link from 'next/link'
 import Image from 'next/image'
 import { optimizeCloudinaryUrl } from '../utils/imageUtils'
+import { cleanCart } from '../utils/cartUtils'
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart } = useCart()
+  const { cart, removeFromCart, updateQuantity, cartTotal, checkoutCart, setCart } = useCart()
   const [checkoutInProgress, setCheckoutInProgress] = React.useState(false)
   const [checkoutError, setCheckoutError] = React.useState('')
+  const [isCleaningCart, setIsCleaningCart] = React.useState(true)
+  
+  // Clean the cart on page load to remove any invalid products
+  useEffect(() => {
+    const cleanCartItems = async () => {
+      try {
+        setIsCleaningCart(true);
+        const cleanedCart = await cleanCart(cart);
+        
+        // If some items were removed, update the cart
+        if (cleanedCart.length !== cart.length) {
+          console.log('Cleaned cart, removed invalid products');
+          setCart(cleanedCart);
+        }
+      } catch (error) {
+        console.error('Error cleaning cart:', error);
+      } finally {
+        setIsCleaningCart(false);
+      }
+    };
+    
+    if (cart.length > 0) {
+      cleanCartItems();
+    } else {
+      setIsCleaningCart(false);
+    }
+  }, [cart.length, setCart]);
   
   // Validate that all products in cart exist
   const validateCartProducts = async () => {
@@ -99,7 +127,9 @@ export default function CartPage() {
 
           <h1 className="text-4xl md:text-5xl font-light mb-12">CART</h1>
 
-          {cart.length === 0 ? (
+          {isCleaningCart ? (
+            <p className="text-center py-8">Validating cart items...</p>
+          ) : cart.length === 0 ? (
             <p className="text-center py-8">Your cart is empty</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">

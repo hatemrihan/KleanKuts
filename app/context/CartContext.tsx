@@ -28,6 +28,7 @@ interface CartContextType {
   updateQuantity: (id: string, size: string, quantity: number, color?: string) => void;
   clearCart: () => void;
   checkoutCart: () => Promise<boolean>;
+  setCart: (items: CartItem[]) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -170,7 +171,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart, 
       updateQuantity, 
       clearCart,
-      checkoutCart
+      checkoutCart,
+      setCart
     }}>
       {children}
     </CartContext.Provider>
