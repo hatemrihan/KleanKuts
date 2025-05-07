@@ -47,20 +47,70 @@ export async function POST(request: Request) {
       console.log(`Proxying stock reduction request to admin panel for order ${finalOrderId}`);
       
       // Make the request to the admin panel
-      const adminResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'Origin': 'https://kleankuts.shop'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      // Ensure we're sending the correct format to the admin panel
+      const adminRequestBody = {
+        items: items.map(item => ({
+          productId: item.productId,
+          size: item.size,
+          color: item.color || 'Default',
+          quantity: item.quantity || 1
+        })),
+        orderId: finalOrderId,
+        sessionId: reductionSessionId,
+        afterOrder: afterOrder
+      };
+      
+      console.log('Sending to admin panel:', JSON.stringify(adminRequestBody));
+      
+      // Implement retry logic for the admin panel request
+      let adminResponse = null;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          adminResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+              'Origin': 'https://kleankuts.shop'
+            },
+            body: JSON.stringify(adminRequestBody)
+          });
+          
+          // If successful, break out of the retry loop
+          if (adminResponse.ok) {
+            console.log(`Admin panel request succeeded on attempt ${retryCount + 1}`);
+            break;
+          } else {
+            console.log(`Admin panel request failed on attempt ${retryCount + 1} with status ${adminResponse.status}`);
+            retryCount++;
+            
+            if (retryCount < maxRetries) {
+              // Wait before retrying (exponential backoff)
+              const waitTime = RETRY_DELAY * Math.pow(2, retryCount);
+              console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+          }
+        } catch (fetchError) {
+          console.error(`Fetch error on attempt ${retryCount + 1}:`, fetchError);
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            // Wait before retrying (exponential backoff)
+            const waitTime = RETRY_DELAY * Math.pow(2, retryCount);
+            console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+      }
       
       // If the admin panel request was successful, return the response directly
-      if (adminResponse.ok) {
+      if (adminResponse && adminResponse.ok) {
         const adminData = await adminResponse.json();
         console.log(`Successfully reduced stock via admin panel for order ${finalOrderId}`);
         
@@ -72,7 +122,7 @@ export async function POST(request: Request) {
           }
         });
       } else {
-        console.error(`Admin panel returned error ${adminResponse.status} for order ${finalOrderId}`);
+        console.error(`Admin panel returned error ${adminResponse ? adminResponse.status : 'unknown'} for order ${finalOrderId}`);
         // Continue to fallback approach below
       }
     } catch (adminError) {

@@ -433,19 +433,51 @@ const ProductPage = ({ params }: Props) => {
         
         // Use our own backend as a proxy to avoid CORS issues
         const orderId = `order_${Date.now()}`;
-        const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          body: JSON.stringify({ items: allItems })
-        });
         
-        console.log('Order placement stock reduction response status:', response.status);
-        const result = await response.json();
-        console.log('Order placement stock reduction result:', result);
+        // Make multiple attempts to ensure stock reduction succeeds
+        let attempts = 0;
+        const maxAttempts = 3;
+        let success = false;
+        
+        while (attempts < maxAttempts && !success) {
+          attempts++;
+          console.log(`Stock reduction attempt ${attempts} of ${maxAttempts}`);
+          
+          try {
+            const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              },
+              body: JSON.stringify({ 
+                items: allItems.map(item => ({
+                  productId: item.productId,
+                  size: item.size,
+                  color: item.color || 'Default',
+                  quantity: item.quantity || 1
+                }))
+              })
+            });
+            
+            console.log('Order placement stock reduction response status:', response.status);
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log('Order placement stock reduction result:', result);
+              success = true;
+            } else {
+              console.error(`Stock reduction attempt ${attempts} failed with status ${response.status}`);
+              // Wait a bit before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          } catch (attemptError) {
+            console.error(`Error in stock reduction attempt ${attempts}:`, attemptError);
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
         
         // Clear pending stock reductions
         localStorage.removeItem('pendingStockReduction');

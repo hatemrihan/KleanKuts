@@ -20,6 +20,7 @@ const ThankYouPage = () => {
       
       if (completionFlag === 'true') {
         // Order was completed successfully
+        console.log('Order completion detected on thank-you page')
         setOrderCompleted(true)
         setIsLoading(false)
         
@@ -31,24 +32,76 @@ const ThankYouPage = () => {
           if (pendingItems.length > 0) {
             console.log('Processing pending stock reductions on thank-you page:', pendingItems);
             
-            // Use our own backend as a proxy to avoid CORS issues
+            // Make multiple attempts to ensure stock reduction succeeds
+            let attempts = 0;
+            const maxAttempts = 3;
+            let success = false;
             const orderId = `order_${Date.now()}`;
-            const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
-              },
-              body: JSON.stringify({ items: pendingItems })
-            });
             
-            console.log('Stock reduction response status:', response.status);
-            const result = await response.json();
-            console.log('Stock reduction result:', result);
+            // Show a loading state or message while processing stock reduction
+            const processingElement = document.getElementById('processing-message');
+            if (processingElement) {
+              processingElement.style.display = 'block';
+            }
+            
+            while (attempts < maxAttempts && !success) {
+              attempts++;
+              console.log(`Stock reduction attempt ${attempts} of ${maxAttempts}`);
+              
+              try {
+                // Use our own backend as a proxy to avoid CORS issues
+                const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                  },
+                  body: JSON.stringify({ 
+                    items: pendingItems
+                  })
+                });
+                
+                console.log('Stock reduction response status:', response.status);
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('Stock reduction result:', result);
+                  success = true;
+                  
+                  // Update UI to show success
+                  const successElement = document.getElementById('success-message');
+                  if (successElement) {
+                    successElement.style.display = 'block';
+                  }
+                } else {
+                  console.error(`Stock reduction attempt ${attempts} failed with status ${response.status}`);
+                  // Wait a bit before retrying
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+              } catch (attemptError) {
+                console.error(`Error in stock reduction attempt ${attempts}:`, attemptError);
+                // Wait a bit before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
+            
+            // Hide processing message
+            if (processingElement) {
+              processingElement.style.display = 'none';
+            }
             
             // Clear pending stock reductions
             localStorage.removeItem('pendingStockReduction');
+            
+            // If all attempts failed, show an error message but don't block the user
+            if (!success) {
+              console.error('All stock reduction attempts failed');
+              const errorElement = document.getElementById('error-message');
+              if (errorElement) {
+                errorElement.style.display = 'block';
+              }
+            }
           }
         } catch (error) {
           console.error('Error processing stock reduction on thank-you page:', error);
@@ -96,6 +149,37 @@ const ThankYouPage = () => {
             <p>
               Your order has been successfully placed. We will contact you shortly to confirm your order and delivery details.
             </p>
+            
+            {/* Stock reduction processing message - hidden by default */}
+            <div id="processing-message" className="bg-blue-50 p-4 rounded-md text-blue-700 hidden">
+              <p className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing inventory update...
+              </p>
+            </div>
+            
+            {/* Stock reduction success message - hidden by default */}
+            <div id="success-message" className="bg-green-50 p-4 rounded-md text-green-700 hidden">
+              <p className="flex items-center justify-center">
+                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Inventory has been updated successfully!
+              </p>
+            </div>
+            
+            {/* Stock reduction error message - hidden by default */}
+            <div id="error-message" className="bg-red-50 p-4 rounded-md text-red-700 hidden">
+              <p className="flex items-center justify-center">
+                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                There was an issue updating inventory. Don't worry, your order is still confirmed.
+              </p>
+            </div>
             <p>
               You will pay on delivery. Please have the exact amount ready.
             </p>

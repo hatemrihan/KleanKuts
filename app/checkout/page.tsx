@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext'
 import Nav from '../sections/nav'
 import { validateStock, reduceStock } from '../utils/stockUtils'
 import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
+import { redirectToThankYou, prepareOrderItemsForStockReduction, completeOrderAndRedirect } from '../utils/orderRedirect'
 
 interface FormData {
   firstName: string;
@@ -265,37 +266,11 @@ const CheckoutPage = () => {
             console.error('Error reducing stock:', stockError);
           }
           
-          // Store ordered items in localStorage for stock reduction
-          const orderItems = cart.map(item => ({
-            productId: item.id,
-            size: item.size,
-            color: item.color,
-            quantity: item.quantity
-          }));
-          
-          // Save to localStorage for later stock reduction
-          localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
-          
-          // Clear cart and set order completion flag
+          // Clear cart first
           clearCart();
-          sessionStorage.setItem('orderCompleted', 'true');
-          console.log('Order completed successfully');
           
-          // First redirect to the product page of the first item with orderComplete=true parameter
-          // This will trigger our handleOrderPlacement function to refresh stock
-          if (cart.length > 0) {
-            const firstProductId = cart[0].id;
-            console.log('Redirecting to product page with orderComplete=true parameter');
-            setTimeout(() => {
-              router.push(`/product/${firstProductId}?orderComplete=true`);
-            }, 100);
-          } else {
-            // Fallback if cart is somehow empty
-            console.log('Redirecting to thank-you page');
-            setTimeout(() => {
-              router.push('/thank-you');
-            }, 100);
-          }
+          // Use our combined utility function to handle stock reduction and redirection
+          completeOrderAndRedirect(cart);
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           
@@ -309,42 +284,15 @@ const CheckoutPage = () => {
               quantity: item.quantity,
               _stockInfo: item._stockInfo
             })));
-            console.log('Stock reduction result:', stockReduction);
+            
+            // Clear cart first
+            clearCart();
+            
+            // Use our combined utility function to handle stock reduction and redirection
+            completeOrderAndRedirect(cart);
           } catch (stockError) {
             // Log the error but continue with order completion
             console.error('Error reducing stock:', stockError);
-          }
-          
-          // Store ordered items in localStorage for stock reduction
-          const orderItems = cart.map(item => ({
-            productId: item.id,
-            size: item.size,
-            color: item.color,
-            quantity: item.quantity
-          }));
-          
-          // Save to localStorage for later stock reduction
-          localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
-          
-          // Clear cart and set order completion flag
-          clearCart();
-          sessionStorage.setItem('orderCompleted', 'true');
-          console.log('Order completed successfully (admin panel failed but main order succeeded)');
-          
-          // First redirect to the product page of the first item with orderComplete=true parameter
-          // This will trigger our handleOrderPlacement function to refresh stock
-          if (cart.length > 0) {
-            const firstProductId = cart[0].id;
-            console.log('Redirecting to product page with orderComplete=true parameter');
-            setTimeout(() => {
-              router.push(`/product/${firstProductId}?orderComplete=true`);
-            }, 100);
-          } else {
-            // Fallback if cart is somehow empty
-            console.log('Redirecting to thank-you page');
-            setTimeout(() => {
-              router.push('/thank-you');
-            }, 100);
           }
         }
       } else {
