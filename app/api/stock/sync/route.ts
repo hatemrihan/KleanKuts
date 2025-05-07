@@ -16,6 +16,8 @@ export async function GET(request: Request) {
     const productId = url.searchParams.get('productId');
     const lastUpdate = url.searchParams.get('lastUpdate');
     const afterOrder = url.searchParams.get('afterOrder') === 'true';
+    const timestamp = url.searchParams.get('timestamp');
+    const randomValue = url.searchParams.get('r');
     
     if (!productId) {
       return NextResponse.json(
@@ -40,6 +42,62 @@ export async function GET(request: Request) {
     if (afterOrder) {
       console.log(`🔥 Processing after-order stock request for product ${productId}`);
     }
+    
+    // PROXY REQUEST TO ADMIN PANEL
+    // This solves the CORS issues by making the request server-side
+    try {
+      console.log(`Proxying stock request to admin panel for product ${productId}`);
+      
+      // Construct the admin panel URL with the same parameters
+      let adminUrl = `https://kleankutsadmin.netlify.app/api/products/${productId}/stock`;
+      
+      // Add query parameters if they exist
+      const queryParams = [];
+      if (timestamp) queryParams.push(`timestamp=${timestamp}`);
+      if (randomValue) queryParams.push(`r=${randomValue}`);
+      if (afterOrder) queryParams.push('afterOrder=true');
+      
+      if (queryParams.length > 0) {
+        adminUrl += `?${queryParams.join('&')}`;
+      }
+      
+      // Make the request to the admin panel
+      const adminResponse = await fetch(adminUrl, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Origin': 'https://kleankuts.shop'
+        }
+      });
+      
+      // If the admin panel request was successful, return the response directly
+      if (adminResponse.ok) {
+        const adminData = await adminResponse.json();
+        console.log(`Successfully fetched stock data from admin panel for product ${productId}`);
+        
+        // Update the last known update timestamp
+        productUpdateTimestamps[productId] = Date.now();
+        
+        // Return the admin panel response
+        return NextResponse.json(adminData, {
+          headers: {
+            'X-Stock-Timestamp': Date.now().toString(),
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+      } else {
+        console.error(`Admin panel returned error ${adminResponse.status} for product ${productId}`);
+      }
+    } catch (adminError) {
+      console.error(`Error proxying request to admin panel: ${adminError}`);
+      // Continue to fallback approach below
+    }
+    
+    // FALLBACK: If admin panel request failed, use our local database
+    console.log(`Using fallback approach for product ${productId}`);
     
     // Connect to the database
     const { db } = await connectToDatabase();

@@ -431,15 +431,14 @@ const ProductPage = ({ params }: Props) => {
       if (allItems.length > 0) {
         console.log('Processing stock reduction for order placement:', allItems);
         
-        // Call the admin panel's stock reduction API
+        // Use our own backend as a proxy to avoid CORS issues
         const orderId = `order_${Date.now()}`;
-        const response = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+        const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Origin': 'https://kleankuts.shop'
+            'Pragma': 'no-cache'
           },
           body: JSON.stringify({ items: allItems })
         });
@@ -982,12 +981,10 @@ const ProductPage = ({ params }: Props) => {
       // Mark this product as recently ordered for better real-time updates
       markProductAsRecentlyOrdered(product._id);
       
-      console.log('Before stock reduction API call to admin panel');
+      console.log('Calling stock reduction API through proxy');
       
-      // CRITICAL FIX: Call the admin panel's stock reduction API directly as recommended with enhanced debugging
+      // Use our backend as a proxy to avoid CORS issues
       try {
-        console.log('Before stock reduction API call to admin panel');
-        
         // Prepare the request payload for logging
         const requestPayload = {
           items: [{
@@ -1000,37 +997,24 @@ const ProductPage = ({ params }: Props) => {
         
         console.log('Stock reduction request payload:', JSON.stringify(requestPayload));
         
-        const adminStockReduceResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+        // Generate a unique order ID
+        const orderId = `order_${Date.now()}`;
+        
+        // Call our API which will proxy the request to the admin panel
+        const stockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Origin': 'https://kleankuts.shop' // Add Origin header for CORS
+            'Pragma': 'no-cache'
           },
           body: JSON.stringify(requestPayload)
         });
         
-        console.log('Response status:', adminStockReduceResponse.status);
-        console.log('Response headers:', Array.from(adminStockReduceResponse.headers.entries()));
+        console.log('Response status:', stockReduceResponse.status);
         
-        const adminResult = await adminStockReduceResponse.json();
-        console.log('Stock reduction response data:', adminResult);
-        
-        // Also call our local API for redundancy
-        const orderId = `order_${Date.now()}`;
-        const localStockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: [{
-              productId: product._id,
-              size: selectedSize,
-              color: selectedColor || undefined,
-              quantity: Math.min(quantity, availableStock)
-            }]
-          })
-        });
+        const result = await stockReduceResponse.json();
+        console.log('Stock reduction response data:', result);
         
         // Don't force page refresh after adding to cart
         // Only refresh after actual order placement

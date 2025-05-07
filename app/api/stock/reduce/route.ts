@@ -22,7 +22,10 @@ export async function POST(request: Request) {
     if (afterOrder) {
       console.log(`🔥 Processing stock reduction after order: ${queryOrderId}`);
     }
-    const { items, orderId: bodyOrderId, sessionId } = await request.json();
+    
+    // Parse the request body
+    const requestBody = await request.json();
+    const { items, orderId: bodyOrderId, sessionId } = requestBody;
     
     // Use orderId from the query parameters if available, otherwise use from the body
     const finalOrderId = queryOrderId !== 'unknown' ? queryOrderId : bodyOrderId;
@@ -37,6 +40,49 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    
+    // PROXY REQUEST TO ADMIN PANEL
+    // This solves the CORS issues by making the request server-side
+    try {
+      console.log(`Proxying stock reduction request to admin panel for order ${finalOrderId}`);
+      
+      // Make the request to the admin panel
+      const adminResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Origin': 'https://kleankuts.shop'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      // If the admin panel request was successful, return the response directly
+      if (adminResponse.ok) {
+        const adminData = await adminResponse.json();
+        console.log(`Successfully reduced stock via admin panel for order ${finalOrderId}`);
+        
+        // Return the admin panel response
+        return NextResponse.json(adminData, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+      } else {
+        console.error(`Admin panel returned error ${adminResponse.status} for order ${finalOrderId}`);
+        // Continue to fallback approach below
+      }
+    } catch (adminError) {
+      console.error(`Error proxying stock reduction to admin panel: ${adminError}`);
+      // Continue to fallback approach below
+    }
+    
+    // FALLBACK: If admin panel request failed, use our local database
+    console.log(`Using fallback approach for stock reduction for order ${finalOrderId}`);
+    
 
     const { db } = await connectToDatabase();
     const productsCollection = db.collection('products');

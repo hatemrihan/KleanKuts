@@ -31,15 +31,14 @@ const ThankYouPage = () => {
           if (pendingItems.length > 0) {
             console.log('Processing pending stock reductions on thank-you page:', pendingItems);
             
-            // Call the admin panel's stock reduction API
+            // Use our own backend as a proxy to avoid CORS issues
             const orderId = `order_${Date.now()}`;
-            const response = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+            const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Origin': 'https://kleankuts.shop'
+                'Pragma': 'no-cache'
               },
               body: JSON.stringify({ items: pendingItems })
             });

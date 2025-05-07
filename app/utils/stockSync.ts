@@ -117,22 +117,21 @@ export const fetchLatestStock = async (productId: string, lastUpdate = 0, afterO
     const timestamp = Date.now();
     const randomValue = Math.random().toString(36).substring(2, 10);
     
-    // CRITICAL FIX: Call the admin panel's API directly instead of the local API
-    // Construct the URL with cache-busting parameters
-    const url = `https://kleankutsadmin.netlify.app/api/products/${productId}/stock?timestamp=${timestamp}&r=${randomValue}`;
+    // Use our own backend as a proxy to avoid CORS issues
+    // This will call the admin panel's API server-side
+    const url = `/api/stock/sync?productId=${productId}&timestamp=${timestamp}&r=${randomValue}`;
     
     // Add afterOrder parameter if this is after an order
     const finalUrl = afterOrder ? `${url}&afterOrder=true` : url;
     
-    console.log(`Fetching latest stock directly from admin panel: ${finalUrl}`);
+    console.log(`Fetching latest stock through proxy: ${finalUrl}`);
     
     const response = await fetch(finalUrl, {
       method: 'GET',
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0',
-        'Origin': 'https://kleankuts.shop'
+        'Expires': '0'
       }
     });
     
