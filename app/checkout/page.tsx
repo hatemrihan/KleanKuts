@@ -243,57 +243,27 @@ const CheckoutPage = () => {
             console.warn('Continuing with checkout despite admin panel sync issue - order was saved in main database');
           }
 
-          // Reduce stock levels after successful order
-          try {
-            console.log('Reducing stock levels...');
-            const stockReduction = await reduceStock(cart.map(item => ({
-              productId: item.id,
-              size: item.size,
-              color: item.color,
-              quantity: item.quantity,
-              _stockInfo: item._stockInfo
-            })));
-            console.log('Stock reduction result:', stockReduction);
-            
-            // Log success message for stock reduction
-            if (stockReduction.success) {
-              console.log('✅ Stock levels successfully reduced for all products');
-            } else {
-              console.warn('⚠️ Some products may not have had their stock reduced properly');
-            }
-          } catch (stockError) {
-            // Log the error but continue with order completion
-            console.error('Error reducing stock:', stockError);
-          }
-          
-          // Clear cart first
-          clearCart();
-          
-          // Use our combined utility function to handle stock reduction and redirection
+          // Let the thank-you page handle stock reduction exclusively
+          // IMPORTANT: We need to prepare the stock reduction data BEFORE clearing the cart
+          console.log('Preparing cart items for stock reduction before clearing cart');
           completeOrderAndRedirect(cart);
+          
+          // Clear cart AFTER preparing the stock reduction data
+          // This ensures the stock data is properly saved before clearing
+          console.log('Now clearing cart after stock data is prepared');
+          clearCart();
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           
-          // Reduce stock levels after successful order (even if admin panel fails)
-          try {
-            console.log('Reducing stock levels (fallback)...');
-            const stockReduction = await reduceStock(cart.map(item => ({
-              productId: item.id,
-              size: item.size,
-              color: item.color,
-              quantity: item.quantity,
-              _stockInfo: item._stockInfo
-            })));
-            
-            // Clear cart first
-            clearCart();
-            
-            // Use our combined utility function to handle stock reduction and redirection
-            completeOrderAndRedirect(cart);
-          } catch (stockError) {
-            // Log the error but continue with order completion
-            console.error('Error reducing stock:', stockError);
-          }
+          // Let the thank-you page handle stock reduction exclusively
+          // IMPORTANT: We need to prepare the stock reduction data BEFORE clearing the cart
+          console.log('Preparing cart items for stock reduction before clearing cart (fallback path)');
+          completeOrderAndRedirect(cart);
+          
+          // Clear cart AFTER preparing the stock reduction data
+          // This ensures the stock data is properly saved before clearing
+          console.log('Now clearing cart after stock data is prepared (fallback path)');
+          clearCart();
         }
       } else {
         // Main API order failed

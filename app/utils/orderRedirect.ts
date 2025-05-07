@@ -6,7 +6,18 @@
 
 // Function to redirect to thank-you page after order completion
 export const redirectToThankYou = () => {
-  console.log('Redirecting to thank-you page after successful order');
+  console.log('🚀 Redirecting to thank-you page after successful order');
+  
+  // Mark the order as completed before redirecting
+  // This flag is used by the thank-you page to determine if it should process the order
+  sessionStorage.setItem('orderCompleted', 'true');
+  
+  // Debug - Check if pendingStockReduction exists before redirecting
+  const pendingReduction = localStorage.getItem('pendingStockReduction');
+  console.log('Before redirect - pendingStockReduction exists:', !!pendingReduction);
+  if (pendingReduction) {
+    console.log('pendingStockReduction content:', pendingReduction);
+  }
   
   // Use window.location.href for a full page navigation
   // This is more reliable than router.push in some cases
@@ -15,6 +26,15 @@ export const redirectToThankYou = () => {
 
 // Function to prepare order items for stock reduction
 export const prepareOrderItemsForStockReduction = (cart: any[]) => {
+  if (!cart || !Array.isArray(cart) || cart.length === 0) {
+    console.error('❌ Invalid cart data provided to prepareOrderItemsForStockReduction:', cart);
+    return [];
+  }
+  
+  // Debug the incoming cart data
+  console.log('🛒 Raw cart data for stock reduction:', JSON.stringify(cart));
+  
+  // Create properly formatted stock reduction items
   const orderItems = cart.map(item => ({
     productId: item.id,
     size: item.size,
@@ -22,9 +42,24 @@ export const prepareOrderItemsForStockReduction = (cart: any[]) => {
     quantity: item.quantity || 1
   }));
   
+  // Log the processed items
+  console.log('📦 Processed order items for stock reduction:', JSON.stringify(orderItems));
+  
+  // Clear any existing pending reductions first
+  localStorage.removeItem('pendingStockReduction');
+  
   // Save to localStorage for later stock reduction on thank-you page
   localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
-  console.log('Order items prepared for stock reduction:', orderItems);
+  
+  // Verify the data was saved correctly
+  const savedData = localStorage.getItem('pendingStockReduction');
+  console.log('✅ Verified pendingStockReduction saved:', !!savedData);
+  if (savedData !== JSON.stringify(orderItems)) {
+    console.error('❌ Data verification failed - saved data does not match expected data!');
+  }
+  
+  return orderItems; // Return the prepared items for additional use if needed
+  console.log('Order items saved to localStorage for stock reduction');
   
   return orderItems;
 };

@@ -852,6 +852,35 @@ const ProductPage = ({ params }: Props) => {
       try {
         setLoading(true)
         setError('')
+        
+        // Reset selected size and color when product changes
+        setSelectedSize('')
+        setSelectedColor('')
+        
+        // Check if this product needs to be forcefully refreshed after an order
+        if (typeof window !== 'undefined') {
+          const productsToUpdateJson = sessionStorage.getItem('productsToUpdate');
+          if (productsToUpdateJson) {
+            try {
+              const productsToUpdate = JSON.parse(productsToUpdateJson);
+              // Check if the current product is in the list of products to update
+              if (productsToUpdate?.ids?.includes(id)) {
+                console.log(`Product ${id} needs a refresh after recent order`);
+                setRefreshMessage('Updating product information...');
+                // Force a refresh of stock data right now
+                setTimeout(() => {
+                  console.log('Forcing stock refresh after order completion');
+                  refreshStockData(true, true); // Force refresh with visual feedback
+                }, 500);
+                // Clear the update flag
+                sessionStorage.removeItem('productsToUpdate');
+              }
+            } catch (parseError) {
+              console.error('Error parsing products to update:', parseError);
+            }
+          }
+        }
+        
         console.log('Fetching product with ID:', id)
         
         // Implement retry logic for product fetching
@@ -936,7 +965,7 @@ const ProductPage = ({ params }: Props) => {
     fetchProduct()
   }, [id])
 
-  // Add to cart function with stock validation
+  // Add to cart function with stock validation - NEVER reduces stock (only done after checkout)
   const handleAddToCart = async () => {
     if (!product) return;
     
@@ -1020,139 +1049,27 @@ const ProductPage = ({ params }: Props) => {
       // Mark this product as recently ordered for better real-time updates
       markProductAsRecentlyOrdered(product._id);
       
-      console.log('Calling stock reduction API through proxy');
+      // Log successful cart addition
+      console.log('Item added to cart successfully - NO STOCK REDUCTION until checkout');
       
-      // Use our backend as a proxy to avoid CORS issues
-      try {
-        // Prepare the request payload for logging
-        const requestPayload = {
-          items: [{
-            productId: product._id,
-            size: selectedSize,
-            color: selectedColor || undefined,
-            quantity: Math.min(quantity, availableStock)
-          }]
-        };
-        
-        console.log('Stock reduction request payload:', JSON.stringify(requestPayload));
-        
-        // Generate a unique order ID
-        const orderId = `order_${Date.now()}`;
-        
-        // Call our API which will proxy the request to the admin panel
-        const stockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          body: JSON.stringify(requestPayload)
-        });
-        
-        console.log('Response status:', stockReduceResponse.status);
-        
-        const result = await stockReduceResponse.json();
-        console.log('Stock reduction response data:', result);
-        
-        // Don't force page refresh after adding to cart
-        // Only refresh after actual order placement
-        console.log('Item added to cart successfully, stock reduction API called');
-        // The page will only refresh after the actual order is placed, not just when adding to cart
-      } catch (reduceError) {
-        console.error('CRITICAL ERROR in stock reduction:', reduceError);
-        // Log the exact request that failed
-        console.error('Failed request body:', JSON.stringify({
-          items: [{
-            productId: product._id,
-            size: selectedSize,
-            color: selectedColor || undefined,
-            quantity: Math.min(quantity, availableStock)
-          }]
-        }));
-        
-        // Implement fallback approach as recommended by admin developer
-        try {
-          console.log('Implementing fallback approach for stock reduction');
-          
-          // Store the order in local storage
-          const orderItems = [{
-            productId: product._id,
-            size: selectedSize,
-            color: selectedColor || undefined,
-            quantity: Math.min(quantity, availableStock)
-          }];
-          
-          localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
-          
-          // Store the pending reduction but don't redirect immediately
-          console.log('Stored pending stock reduction in localStorage');
-          // The actual reduction will happen after order placement, not just when adding to cart
-        } catch (fallbackError) {
-          console.error('Error implementing fallback approach:', fallbackError);
-        }
-      }
+      // Refresh stock data in background without showing message to user
+      refreshStockData(false, false);
       
-      // Refresh stock data in the background with afterOrder flag for real-time updates
-      refreshStockData(false, true);
     } catch (error) {
       console.error('Error validating stock:', error);
-      // If server validation fails, still add to cart but refresh stock
+      
+      // If server validation fails, still add to cart
       addToCart(cartItem);
       setShowAddedAnimation(true);
       setTimeout(() => setShowAddedAnimation(false), 2000);
       
-      // Mark this product as recently ordered for better real-time updates
-      markProductAsRecentlyOrdered(product._id);
-      
-      // CRITICAL FIX: Call the admin panel's stock reduction API directly as recommended
-      console.log('Before stock reduction API call to admin panel (error recovery path)');
-      try {
-        // Call the admin panel's stock reduction API directly
-        const adminStockReduceResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          body: JSON.stringify({
-            items: [{
-              productId: product._id,
-              size: selectedSize,
-              color: selectedColor || undefined,
-              quantity: Math.min(quantity, availableStock)
-            }]
-          })
-        });
-        
-        const adminResult = await adminStockReduceResponse.json();
-        console.log('After stock reduction API call (error recovery):', adminResult);
-        
-        // Also call our local API for redundancy
-        const orderId = `order_${Date.now()}`;
-        const localStockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: [{
-              productId: product._id,
-              size: selectedSize,
-              color: selectedColor || undefined,
-              quantity: Math.min(quantity, availableStock)
-            }]
-          })
-        });
-        
-        // Don't force page refresh after adding to cart in error recovery path
-        console.log('Item added to cart successfully in error recovery path, stock reduction API called');
-        // The page will only refresh after the actual order is placed, not just when adding to cart
-      } catch (reduceError) {
-        console.error('Error reducing stock (error recovery):', reduceError);
+      // Mark this product as recently ordered
+      if (product) {
+        markProductAsRecentlyOrdered(product._id);
       }
       
-      // Refresh stock data in the background with afterOrder flag for real-time updates
-      refreshStockData(false, true);
+      // Refresh stock data in background
+      refreshStockData(false, false);
     }
   }
 
@@ -1204,7 +1121,7 @@ const ProductPage = ({ params }: Props) => {
   // Calculate price with discount
   const finalPrice = product.discount 
     ? product.price - (product.price * product.discount / 100) 
-    : product.price
+    : product.price;
 
   return (
     <>
@@ -1308,17 +1225,6 @@ const ProductPage = ({ params }: Props) => {
                         <p className="text-xl">L.E {product.price.toFixed(2)}</p>
                       )}
                     </div>
-                    
-                    <button 
-                      onClick={() => product && manualRefreshStock(product._id)} 
-                      disabled={refreshing}
-                      className="text-sm text-gray-600 flex items-center hover:text-black transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      {refreshing ? 'Updating...' : 'Refresh stock'}
-                    </button>
                   </div>
                   
                   {/* Stock refresh message */}
