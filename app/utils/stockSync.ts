@@ -170,16 +170,9 @@ export const fetchLatestStock = async (productId: string, lastUpdate = 0, afterO
         console.log(`Using cached size variants for product ${productId}`);
         stockData.sizeVariants = stockCache[productId].sizeVariants;
       } else {
-        // Create a default size variant if we don't have any
-        console.log(`Creating default size variant for product ${productId}`);
-        stockData.sizeVariants = [{
-          size: 'One Size',
-          stock: 10,
-          colorVariants: [{
-            color: 'Default',
-            stock: 10
-          }]
-        }];
+        // Don't create a default size variant - return empty array
+        console.log(`No size variants available for product ${productId}`);
+        stockData.sizeVariants = [];
       }
     }
     

@@ -1325,8 +1325,8 @@ const ProductPage = ({ params }: Props) => {
                           );
                         })
                       ) : (
-                        // Fallback to sizes array if no size variants
-                        (product?.sizes && product.sizes.length > 0 ? product.sizes : [{ size: 'One Size', stock: 10, isPreOrder: false }]).map((sizeOption) => (
+                        // Only use sizes from the API, no fallback
+                        (product?.sizes && product.sizes.length > 0 ? product.sizes : []).map((sizeOption) => (
                           <button
                             key={sizeOption.size}
                             type="button"

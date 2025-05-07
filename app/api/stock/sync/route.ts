@@ -80,6 +80,12 @@ export async function GET(request: Request) {
         // Update the last known update timestamp
         productUpdateTimestamps[productId] = Date.now();
         
+        // Don't add any default sizes - only return what the admin panel provides
+        // This ensures we don't show "One Size" when there are no sizes available
+        
+        // Add timestamp to the response
+        adminData.timestamp = Date.now();
+        
         // Return the admin panel response
         return NextResponse.json(adminData, {
           headers: {
