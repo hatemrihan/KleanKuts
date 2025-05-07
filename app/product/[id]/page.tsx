@@ -480,8 +480,10 @@ const ProductPage = ({ params }: Props) => {
       setRefreshing(true);
       setRefreshMessage('Refreshing stock data...');
       
+      // Use our own backend as a proxy to avoid CORS issues
       const timestamp = Date.now();
-      const response = await fetch(`https://kleankutsadmin.netlify.app/api/products/${productId}/stock?timestamp=${timestamp}`);
+      const randomValue = Math.random().toString(36).substring(2, 10);
+      const response = await fetch(`/api/stock/sync?productId=${productId}&timestamp=${timestamp}&r=${randomValue}&forceRefresh=true`);
       
       if (response.ok) {
         const data = await response.json();
@@ -523,9 +525,15 @@ const ProductPage = ({ params }: Props) => {
   const callAdminStockReductionApi = async (orderId: string, items: any[]) => {
     try {
       console.log(`Calling admin stock reduction API for order ${orderId}`);
-      const response = await fetch(`https://kleankutsadmin.netlify.app/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
+      
+      // Use our own backend as a proxy to avoid CORS issues
+      const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
         body: JSON.stringify({ items })
       });
       
@@ -595,14 +603,13 @@ const ProductPage = ({ params }: Props) => {
           if (pendingItems.length > 0) {
             console.log('Processing pending stock reduction for items:', pendingItems);
             
-            // Call the admin panel's stock reduction API directly
-            fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+            // Use our own backend as a proxy to avoid CORS issues
+            fetch('/api/stock/reduce?afterOrder=true', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Origin': 'https://kleankuts.shop'
+                'Pragma': 'no-cache'
               },
               body: JSON.stringify({ items: pendingItems })
             })
