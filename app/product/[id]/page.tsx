@@ -834,11 +834,32 @@ const ProductPage = ({ params }: Props) => {
       // Mark this product as recently ordered for better real-time updates
       markProductAsRecentlyOrdered(product._id);
       
-      // Call the stock reduction API to properly update stock levels
-      const orderId = `order_${Date.now()}`; // Generate a temporary order ID
+      console.log('Before stock reduction API call to admin panel');
+      
+      // CRITICAL FIX: Call the admin panel's stock reduction API directly as recommended
       try {
-        // Call both our local API and the admin panel's API for redundancy
-        // First call our local API
+        const adminStockReduceResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          body: JSON.stringify({
+            items: [{
+              productId: product._id,
+              size: selectedSize,
+              color: selectedColor || undefined,
+              quantity: Math.min(quantity, availableStock)
+            }]
+          })
+        });
+        
+        const adminResult = await adminStockReduceResponse.json();
+        console.log('After stock reduction API call', adminResult);
+        
+        // Also call our local API for redundancy
+        const orderId = `order_${Date.now()}`;
         const localStockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -852,18 +873,12 @@ const ProductPage = ({ params }: Props) => {
           })
         });
         
-        const localStockReduceResult = await localStockReduceResponse.json();
-        console.log('Local stock reduction result:', localStockReduceResult);
-        
-        // Then call the admin panel's API as required by the admin developer
-        const adminStockReduceResult = await callAdminStockReductionApi(orderId, [{
-          productId: product._id,
-          size: selectedSize,
-          color: selectedColor || undefined,
-          quantity: Math.min(quantity, availableStock)
-        }]);
-        
-        console.log('Admin stock reduction result:', adminStockReduceResult);
+        // CRITICAL FIX: Force a complete page refresh to get fresh data
+        // This is the key part recommended by the admin developer
+        setTimeout(() => {
+          console.log('Forcing complete page refresh to get fresh stock data');
+          window.location.reload();
+        }, 1000); // Short delay to ensure the user sees the "added to cart" animation
       } catch (reduceError) {
         console.error('Error reducing stock:', reduceError);
       }
@@ -880,11 +895,32 @@ const ProductPage = ({ params }: Props) => {
       // Mark this product as recently ordered for better real-time updates
       markProductAsRecentlyOrdered(product._id);
       
-      // Call the stock reduction API to properly update stock levels
-      const orderId = `order_${Date.now()}`; // Generate a temporary order ID
+      // CRITICAL FIX: Call the admin panel's stock reduction API directly as recommended
+      console.log('Before stock reduction API call to admin panel (error recovery path)');
       try {
-        // Call both our local API and the admin panel's API for redundancy
-        // First call our local API
+        // Call the admin panel's stock reduction API directly
+        const adminStockReduceResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          body: JSON.stringify({
+            items: [{
+              productId: product._id,
+              size: selectedSize,
+              color: selectedColor || undefined,
+              quantity: Math.min(quantity, availableStock)
+            }]
+          })
+        });
+        
+        const adminResult = await adminStockReduceResponse.json();
+        console.log('After stock reduction API call (error recovery):', adminResult);
+        
+        // Also call our local API for redundancy
+        const orderId = `order_${Date.now()}`;
         const localStockReduceResponse = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -898,16 +934,11 @@ const ProductPage = ({ params }: Props) => {
           })
         });
         
-        // Then call the admin panel's API as required by the admin developer
-        await callAdminStockReductionApi(orderId, [{
-          productId: product._id,
-          size: selectedSize,
-          color: selectedColor || undefined,
-          quantity: Math.min(quantity, availableStock)
-        }]);
-        
-        const localStockReduceResult = await localStockReduceResponse.json();
-        console.log('Stock reduction result (error recovery):', localStockReduceResult);
+        // CRITICAL FIX: Force a complete page refresh to get fresh data
+        setTimeout(() => {
+          console.log('Forcing complete page refresh to get fresh stock data (error recovery)');
+          window.location.reload();
+        }, 1000); // Short delay to ensure the user sees the "added to cart" animation
       } catch (reduceError) {
         console.error('Error reducing stock (error recovery):', reduceError);
       }
