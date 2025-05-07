@@ -348,35 +348,68 @@ const ProductPage = ({ params }: Props) => {
     if (product && product._id) {
       console.log('Setting up WebSocket connection for product:', product._id);
       
-      // Connect to the WebSocket server
-      const socket = io('https://kleankutsadmin.netlify.app', {
-        path: '/api/socket',
-        transports: ['websocket', 'polling']
-      });
-      
-      // Listen for stock updates
-      socket.on('stock:reduced', (data) => {
-        console.log('Stock update received:', data);
-        
-        // If this update is for the current product
-        if (data.productId === product._id) {
-          console.log('Received real-time stock update via WebSocket:', data);
-          // Force refresh stock data when we receive a WebSocket notification
-          refreshStockData(false, true);
-          
-          // Update the UI with new stock information if needed
-          if (data.size && data.color && typeof data.stock !== 'undefined') {
-            // This function would need to be implemented to update specific size/color stock
-            updateStockDisplay(data.size, data.color, data.stock);
+      try {
+        // Connect to the WebSocket server with enhanced error handling
+        const socket = io('https://kleankutsadmin.netlify.app', {
+          path: '/api/socket',
+          transports: ['websocket', 'polling'],
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 20000,
+          extraHeaders: {
+            'Origin': 'https://kleankuts.shop'
           }
-        }
-      });
-      
-      return () => {
-        // Clean up socket connection
-        socket.off('stock:reduced');
-        socket.disconnect();
-      };
+        });
+        
+        // Log connection events
+        socket.on('connect', () => {
+          console.log('WebSocket connected successfully with ID:', socket.id);
+        });
+        
+        socket.on('connect_error', (error) => {
+          console.error('WebSocket connection error:', error);
+          // Fall back to polling for stock updates
+          console.log('Falling back to manual polling for stock updates');
+        });
+        
+        // Listen for stock updates
+        socket.on('stock:reduced', (data) => {
+          console.log('Stock update received via WebSocket:', data);
+          
+          // If this update is for the current product
+          if (data.productId === product._id) {
+            console.log('Received real-time stock update via WebSocket for current product:', data);
+            // Force refresh stock data when we receive a WebSocket notification
+            refreshStockData(false, true);
+            
+            // Update the UI with new stock information if needed
+            if (data.size && data.color && typeof data.stock !== 'undefined') {
+              // Update specific size/color stock
+              updateStockDisplay(data.size, data.color, data.stock);
+            }
+          }
+        });
+        
+        // Test the connection by sending a ping
+        setTimeout(() => {
+          if (socket.connected) {
+            console.log('WebSocket still connected after timeout');
+          } else {
+            console.log('WebSocket not connected after timeout, falling back to polling');
+          }
+        }, 5000);
+        
+        return () => {
+          // Clean up socket connection
+          console.log('Cleaning up WebSocket connection');
+          socket.off('stock:reduced');
+          socket.off('connect_error');
+          socket.off('connect');
+          socket.disconnect();
+        };
+      } catch (socketError) {
+        console.error('Error setting up WebSocket:', socketError);
+      }
     }
   }, [product?._id]);
   
@@ -482,6 +515,60 @@ const ProductPage = ({ params }: Props) => {
       }
     }
   };
+  
+  // Check for pending stock reductions on page load
+  useEffect(() => {
+    // Check if we're coming back from a pending reduction redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasPendingReduction = urlParams.get('pendingReduction') === 'true';
+    
+    if (hasPendingReduction && product) {
+      console.log('Found pending stock reduction, processing now...');
+      
+      try {
+        // Get the pending items from local storage
+        const pendingItemsJson = localStorage.getItem('pendingStockReduction');
+        
+        if (pendingItemsJson) {
+          const pendingItems = JSON.parse(pendingItemsJson);
+          
+          if (pendingItems.length > 0) {
+            console.log('Processing pending stock reduction for items:', pendingItems);
+            
+            // Call the admin panel's stock reduction API directly
+            fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Origin': 'https://kleankuts.shop'
+              },
+              body: JSON.stringify({ items: pendingItems })
+            })
+            .then(response => {
+              console.log('Pending reduction response status:', response.status);
+              return response.json();
+            })
+            .then(data => {
+              console.log('Pending stock reduction processed successfully:', data);
+              // Clear the pending items from local storage
+              localStorage.removeItem('pendingStockReduction');
+              // Refresh the page without the query parameter
+              window.history.replaceState({}, document.title, `/product/${product._id}`);
+              // Force refresh stock data
+              refreshStockData(true, true);
+            })
+            .catch(error => {
+              console.error('Error processing pending stock reduction:', error);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error handling pending stock reduction:', error);
+      }
+    }
+  }, [product]);
   
   // Initialize real-time stock synchronization
   useEffect(() => {
@@ -836,27 +923,38 @@ const ProductPage = ({ params }: Props) => {
       
       console.log('Before stock reduction API call to admin panel');
       
-      // CRITICAL FIX: Call the admin panel's stock reduction API directly as recommended
+      // CRITICAL FIX: Call the admin panel's stock reduction API directly as recommended with enhanced debugging
       try {
+        console.log('Before stock reduction API call to admin panel');
+        
+        // Prepare the request payload for logging
+        const requestPayload = {
+          items: [{
+            productId: product._id,
+            size: selectedSize,
+            color: selectedColor || undefined,
+            quantity: Math.min(quantity, availableStock)
+          }]
+        };
+        
+        console.log('Stock reduction request payload:', JSON.stringify(requestPayload));
+        
         const adminStockReduceResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Pragma': 'no-cache',
+            'Origin': 'https://kleankuts.shop' // Add Origin header for CORS
           },
-          body: JSON.stringify({
-            items: [{
-              productId: product._id,
-              size: selectedSize,
-              color: selectedColor || undefined,
-              quantity: Math.min(quantity, availableStock)
-            }]
-          })
+          body: JSON.stringify(requestPayload)
         });
         
+        console.log('Response status:', adminStockReduceResponse.status);
+        console.log('Response headers:', Array.from(adminStockReduceResponse.headers.entries()));
+        
         const adminResult = await adminStockReduceResponse.json();
-        console.log('After stock reduction API call', adminResult);
+        console.log('Stock reduction response data:', adminResult);
         
         // Also call our local API for redundancy
         const orderId = `order_${Date.now()}`;
@@ -880,7 +978,39 @@ const ProductPage = ({ params }: Props) => {
           window.location.reload();
         }, 1000); // Short delay to ensure the user sees the "added to cart" animation
       } catch (reduceError) {
-        console.error('Error reducing stock:', reduceError);
+        console.error('CRITICAL ERROR in stock reduction:', reduceError);
+        // Log the exact request that failed
+        console.error('Failed request body:', JSON.stringify({
+          items: [{
+            productId: product._id,
+            size: selectedSize,
+            color: selectedColor || undefined,
+            quantity: Math.min(quantity, availableStock)
+          }]
+        }));
+        
+        // Implement fallback approach as recommended by admin developer
+        try {
+          console.log('Implementing fallback approach for stock reduction');
+          
+          // Store the order in local storage
+          const orderItems = [{
+            productId: product._id,
+            size: selectedSize,
+            color: selectedColor || undefined,
+            quantity: Math.min(quantity, availableStock)
+          }];
+          
+          localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
+          
+          // We'll still force a page reload, but with a special query parameter
+          setTimeout(() => {
+            console.log('Redirecting to product page with pendingReduction parameter');
+            window.location.href = `/product/${product._id}?pendingReduction=true`;
+          }, 1000);
+        } catch (fallbackError) {
+          console.error('Error implementing fallback approach:', fallbackError);
+        }
       }
       
       // Refresh stock data in the background with afterOrder flag for real-time updates

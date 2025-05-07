@@ -34,7 +34,7 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
   let isActive = true;
   
   // Initial fetch
-  fetchLatestStock(productId, false).then(onStockChange);
+  fetchLatestStock(productId, 0, false).then(onStockChange);
   
   // Set up frequent polling for active products
   const activePollInterval = setInterval(() => {
@@ -42,7 +42,10 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
       // Check if this product was recently updated after an order
       const wasRecentlyOrdered = productWasRecentlyOrdered(productId);
       
-      fetchLatestStock(productId, wasRecentlyOrdered).then(stockData => {
+      // Get the last update timestamp for this product
+      const lastUpdate = lastUpdateTimestamps[productId] || 0;
+      
+      fetchLatestStock(productId, lastUpdate, wasRecentlyOrdered).then(stockData => {
         // Only trigger callback if stock has changed
         if (hasStockChanged(productId, stockData, wasRecentlyOrdered)) {
           console.log(`Stock changed for product ${productId}${wasRecentlyOrdered ? ' after order' : ''}, updating UI`);
@@ -99,33 +102,39 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
 /**
  * Fetch the latest stock data from the API
  * @param productId - The ID of the product
+ * @param lastUpdate - The last update timestamp for this product
  * @param afterOrder - Flag indicating if this fetch is after an order
  * @returns Promise with the latest stock data
  */
-export async function fetchLatestStock(productId: string, afterOrder: boolean = false): Promise<any> {
+export const fetchLatestStock = async (productId: string, lastUpdate = 0, afterOrder = false): Promise<any> => {
+  if (!productId) {
+    console.error('fetchLatestStock called without productId');
+    return null;
+  }
+  
   try {
-    // Get the last update timestamp for this product
-    const lastUpdate = lastUpdateTimestamps[productId] || 0;
-    
-    // Add cache-busting parameters to ensure we get fresh data
+    // Add a unique timestamp and random value to prevent caching
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 10);
+    const randomValue = Math.random().toString(36).substring(2, 10);
     
-    // Use the sync endpoint for real-time updates with enhanced cache busting
-    // Include afterOrder flag in the request if applicable
-    const afterOrderParam = afterOrder ? `&afterOrder=true` : '';
+    // CRITICAL FIX: Call the admin panel's API directly instead of the local API
+    // Construct the URL with cache-busting parameters
+    const url = `https://kleankutsadmin.netlify.app/api/products/${productId}/stock?timestamp=${timestamp}&r=${randomValue}`;
     
-    const response = await fetch(
-      `/api/stock/sync?productId=${productId}&lastUpdate=${lastUpdate}&t=${timestamp}&r=${random}${afterOrderParam}`, 
-      {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+    // Add afterOrder parameter if this is after an order
+    const finalUrl = afterOrder ? `${url}&afterOrder=true` : url;
+    
+    console.log(`Fetching latest stock directly from admin panel: ${finalUrl}`);
+    
+    const response = await fetch(finalUrl, {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Origin': 'https://kleankuts.shop'
       }
-    );
+    });
     
     // If status is 304 Not Modified, use cached data but check if it's too old
     if (response.status === 304) {
