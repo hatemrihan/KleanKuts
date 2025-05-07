@@ -14,7 +14,7 @@ const ThankYouPage = () => {
   
   useEffect(() => {
     // Check if order was just completed
-    const checkOrderCompleted = () => {
+    const checkOrderCompleted = async () => {
       // Get the completion flag from sessionStorage
       const completionFlag = sessionStorage.getItem('orderCompleted')
       
@@ -22,6 +22,38 @@ const ThankYouPage = () => {
         // Order was completed successfully
         setOrderCompleted(true)
         setIsLoading(false)
+        
+        // Check for any pending stock reductions in localStorage
+        try {
+          const pendingItemsJson = localStorage.getItem('pendingStockReduction');
+          const pendingItems = pendingItemsJson ? JSON.parse(pendingItemsJson) : [];
+          
+          if (pendingItems.length > 0) {
+            console.log('Processing pending stock reductions on thank-you page:', pendingItems);
+            
+            // Call the admin panel's stock reduction API
+            const orderId = `order_${Date.now()}`;
+            const response = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Origin': 'https://kleankuts.shop'
+              },
+              body: JSON.stringify({ items: pendingItems })
+            });
+            
+            console.log('Stock reduction response status:', response.status);
+            const result = await response.json();
+            console.log('Stock reduction result:', result);
+            
+            // Clear pending stock reductions
+            localStorage.removeItem('pendingStockReduction');
+          }
+        } catch (error) {
+          console.error('Error processing stock reduction on thank-you page:', error);
+        }
       } else {
         // No valid completion flag found - redirect after a short delay
         // This prevents flashing content before redirect

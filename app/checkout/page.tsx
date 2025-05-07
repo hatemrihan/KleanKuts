@@ -265,15 +265,37 @@ const CheckoutPage = () => {
             console.error('Error reducing stock:', stockError);
           }
           
-          // First clear cart and redirect to thank you page
+          // Store ordered items in localStorage for stock reduction
+          const orderItems = cart.map(item => ({
+            productId: item.id,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity
+          }));
+          
+          // Save to localStorage for later stock reduction
+          localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
+          
+          // Clear cart and set order completion flag
           clearCart();
-          // Set flag that order was completed successfully
           sessionStorage.setItem('orderCompleted', 'true');
-          console.log('Order completed successfully, redirecting to thank-you page');
-          // Use a tiny delay to ensure the flag is saved before navigation
-          setTimeout(() => {
-            router.push('/thank-you');
-          }, 100);
+          console.log('Order completed successfully');
+          
+          // First redirect to the product page of the first item with orderComplete=true parameter
+          // This will trigger our handleOrderPlacement function to refresh stock
+          if (cart.length > 0) {
+            const firstProductId = cart[0].id;
+            console.log('Redirecting to product page with orderComplete=true parameter');
+            setTimeout(() => {
+              router.push(`/product/${firstProductId}?orderComplete=true`);
+            }, 100);
+          } else {
+            // Fallback if cart is somehow empty
+            console.log('Redirecting to thank-you page');
+            setTimeout(() => {
+              router.push('/thank-you');
+            }, 100);
+          }
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           
@@ -293,14 +315,37 @@ const CheckoutPage = () => {
             console.error('Error reducing stock:', stockError);
           }
           
-          // Even if admin panel fails, we still want to proceed since the main order was successful
+          // Store ordered items in localStorage for stock reduction
+          const orderItems = cart.map(item => ({
+            productId: item.id,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity
+          }));
+          
+          // Save to localStorage for later stock reduction
+          localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
+          
+          // Clear cart and set order completion flag
           clearCart();
-          // Set flag that order was completed successfully
           sessionStorage.setItem('orderCompleted', 'true');
-          // Use a tiny delay to ensure the flag is saved before navigation
-          setTimeout(() => {
-            router.push('/thank-you');
-          }, 100);
+          console.log('Order completed successfully (admin panel failed but main order succeeded)');
+          
+          // First redirect to the product page of the first item with orderComplete=true parameter
+          // This will trigger our handleOrderPlacement function to refresh stock
+          if (cart.length > 0) {
+            const firstProductId = cart[0].id;
+            console.log('Redirecting to product page with orderComplete=true parameter');
+            setTimeout(() => {
+              router.push(`/product/${firstProductId}?orderComplete=true`);
+            }, 100);
+          } else {
+            // Fallback if cart is somehow empty
+            console.log('Redirecting to thank-you page');
+            setTimeout(() => {
+              router.push('/thank-you');
+            }, 100);
+          }
         }
       } else {
         // Main API order failed

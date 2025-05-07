@@ -413,6 +413,67 @@ const ProductPage = ({ params }: Props) => {
     }
   }, [product?._id]);
   
+  // Function to handle actual order placement and refresh the page
+  const handleOrderPlacement = async () => {
+    if (!product) return;
+    
+    console.log('Order placement detected, processing stock reduction');
+    
+    try {
+      // Get any pending stock reductions from localStorage
+      const pendingItemsJson = localStorage.getItem('pendingStockReduction');
+      const pendingItems = pendingItemsJson ? JSON.parse(pendingItemsJson) : [];
+      
+      // Use only the pending items from localStorage
+      // This is more reliable than trying to access current component state
+      const allItems = [...pendingItems];
+      
+      if (allItems.length > 0) {
+        console.log('Processing stock reduction for order placement:', allItems);
+        
+        // Call the admin panel's stock reduction API
+        const orderId = `order_${Date.now()}`;
+        const response = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Origin': 'https://kleankuts.shop'
+          },
+          body: JSON.stringify({ items: allItems })
+        });
+        
+        console.log('Order placement stock reduction response status:', response.status);
+        const result = await response.json();
+        console.log('Order placement stock reduction result:', result);
+        
+        // Clear pending stock reductions
+        localStorage.removeItem('pendingStockReduction');
+        
+        // NOW is the appropriate time to force a page refresh
+        console.log('Order placed successfully, forcing page refresh to get fresh stock data');
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error processing order placement:', error);
+    }
+  };
+  
+  // Detect order placement from URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderComplete = urlParams.get('orderComplete') === 'true';
+    
+    if (orderComplete && product) {
+      console.log('Order completion detected from URL parameters');
+      handleOrderPlacement();
+      
+      // Remove the query parameter
+      window.history.replaceState({}, document.title, `/product/${product._id}`);
+    }
+  }, [product]);
+  
   // Manual refresh function for stock as recommended by the admin developer
   const manualRefreshStock = async (productId: string) => {
     try {
@@ -971,12 +1032,10 @@ const ProductPage = ({ params }: Props) => {
           })
         });
         
-        // CRITICAL FIX: Force a complete page refresh to get fresh data
-        // This is the key part recommended by the admin developer
-        setTimeout(() => {
-          console.log('Forcing complete page refresh to get fresh stock data');
-          window.location.reload();
-        }, 1000); // Short delay to ensure the user sees the "added to cart" animation
+        // Don't force page refresh after adding to cart
+        // Only refresh after actual order placement
+        console.log('Item added to cart successfully, stock reduction API called');
+        // The page will only refresh after the actual order is placed, not just when adding to cart
       } catch (reduceError) {
         console.error('CRITICAL ERROR in stock reduction:', reduceError);
         // Log the exact request that failed
@@ -1003,11 +1062,9 @@ const ProductPage = ({ params }: Props) => {
           
           localStorage.setItem('pendingStockReduction', JSON.stringify(orderItems));
           
-          // We'll still force a page reload, but with a special query parameter
-          setTimeout(() => {
-            console.log('Redirecting to product page with pendingReduction parameter');
-            window.location.href = `/product/${product._id}?pendingReduction=true`;
-          }, 1000);
+          // Store the pending reduction but don't redirect immediately
+          console.log('Stored pending stock reduction in localStorage');
+          // The actual reduction will happen after order placement, not just when adding to cart
         } catch (fallbackError) {
           console.error('Error implementing fallback approach:', fallbackError);
         }
@@ -1064,11 +1121,9 @@ const ProductPage = ({ params }: Props) => {
           })
         });
         
-        // CRITICAL FIX: Force a complete page refresh to get fresh data
-        setTimeout(() => {
-          console.log('Forcing complete page refresh to get fresh stock data (error recovery)');
-          window.location.reload();
-        }, 1000); // Short delay to ensure the user sees the "added to cart" animation
+        // Don't force page refresh after adding to cart in error recovery path
+        console.log('Item added to cart successfully in error recovery path, stock reduction API called');
+        // The page will only refresh after the actual order is placed, not just when adding to cart
       } catch (reduceError) {
         console.error('Error reducing stock (error recovery):', reduceError);
       }
