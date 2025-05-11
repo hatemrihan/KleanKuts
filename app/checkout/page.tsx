@@ -202,12 +202,12 @@ const CheckoutPage = () => {
         try {
           // Then, send to admin panel API
           console.log('Sending order to admin panel...');
-          const adminResponse = await fetch('https://kleankutsadmin.netlify.app/api/orders', {
+          const adminResponse = await fetch('https://eleveadmin.netlify.app/api/orders', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
-              'Origin': 'https://kleankuts.shop'
+              'Origin': 'https://elevee.netlify.app'
             },
             body: JSON.stringify({
               firstName: formData.firstName.trim(),
@@ -303,13 +303,20 @@ const CheckoutPage = () => {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Clear error for this field if there is any
     if (errors[name as keyof FormData]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name as keyof FormData]
+        return newErrors
+      })
     }
-    // Clear order error when user changes any form field
+    
+    // Clear order error when user updates form
     if (orderError) {
       setOrderError(null)
     }
@@ -318,8 +325,8 @@ const CheckoutPage = () => {
   return (
     <>
       <Nav />
-      <main className="min-h-screen bg-white pt-20">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-black pt-20 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-black dark:text-white transition-colors duration-300">
           <Link href="/cart" className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-8">
             <span>←</span>
             <span>Back to cart</span>
@@ -329,7 +336,7 @@ const CheckoutPage = () => {
 
           {orderError && (
             <div className="mb-8 p-4 bg-red-50 border border-red-300 text-red-700 rounded">
-              <h3 className="font-medium mb-2">Order Submission Failed</h3>
+              <h3 className="font-medium mb-2 dark:text-white transition-colors duration-300">Order Submission Failed</h3>
               <p>{orderError}</p>
               <p className="mt-2 text-sm">Please check your information and try again, or contact support if the problem persists.</p>
             </div>
@@ -339,7 +346,7 @@ const CheckoutPage = () => {
             {/* Checkout Form */}
             <div className="flex-1">
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-black dark:text-white">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       First Name *
@@ -349,9 +356,7 @@ const CheckoutPage = () => {
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border ${
-                        errors.firstName ? 'border-red-500' : 'border-gray-300'
-                      } focus:outline-none focus:border-black`}
+                      className={`w-full p-3 border ${errors.firstName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                     />
                     {errors.firstName && (
                       <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
@@ -367,9 +372,7 @@ const CheckoutPage = () => {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
-                      className={`w-full p-3 border ${
-                        errors.lastName ? 'border-red-500' : 'border-gray-300'
-                      } focus:outline-none focus:border-black`}
+                      className={`w-full p-3 border ${errors.lastName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                     />
                     {errors.lastName && (
                       <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
@@ -386,9 +389,7 @@ const CheckoutPage = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className={`w-full p-3 border ${
-                      errors.phone ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black`}
+                    className={`w-full p-3 border ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   />
                   {errors.phone && (
                     <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
@@ -404,9 +405,7 @@ const CheckoutPage = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full p-3 border ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black`}
+                    className={`w-full p-3 border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   />
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -422,9 +421,7 @@ const CheckoutPage = () => {
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    className={`w-full p-3 border ${
-                      errors.address ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black`}
+                    className={`w-full p-3 border ${errors.address ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   />
                   {errors.address && (
                     <p className="text-red-500 text-sm mt-1">{errors.address}</p>
@@ -440,9 +437,7 @@ const CheckoutPage = () => {
                     name="apartment"
                     value={formData.apartment}
                     onChange={handleInputChange}
-                    className={`w-full p-3 border ${
-                      errors.apartment ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black`}
+                    className={`w-full p-3 border ${errors.apartment ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   />
                   {errors.apartment && (
                     <p className="text-red-500 text-sm mt-1">{errors.apartment}</p>
@@ -457,9 +452,7 @@ const CheckoutPage = () => {
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className={`w-full p-3 border ${
-                      errors.city ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black bg-white`}
+                    className={`w-full p-3 border ${errors.city ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   >
                     <option value="">Select a city</option>
                     {Object.entries(shippingCosts).map(([city, cost]) => (
@@ -481,9 +474,7 @@ const CheckoutPage = () => {
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className={`w-full p-3 border ${
-                      errors.notes ? 'border-red-500' : 'border-gray-300'
-                    } focus:outline-none focus:border-black`}
+                    className={`w-full p-3 border ${errors.notes ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   />
                   {errors.notes && (
                     <p className="text-red-500 text-sm mt-1">{errors.notes}</p>
@@ -493,15 +484,62 @@ const CheckoutPage = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full p-3 bg-black text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full p-3 bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 focus:outline-none transition-colors duration-300"
                 >
                   {isSubmitting ? 'Processing...' : 'Place Order'}
                 </button>
               </form>
             </div>
+
+            {/* Order Summary */}
+            <div className="w-full lg:w-1/3 bg-gray-100 dark:bg-gray-900 p-6 rounded-lg h-fit transition-colors duration-300">
+              <h2 className="text-xl font-medium mb-4">Order Summary</h2>
+              
+              <div className="space-y-4 mb-6">
+                {cart.map((item) => (
+                  <div key={`${item.id}-${item.size}-${item.color}`} className="flex items-center gap-4">
+                    <div className="w-16 h-16 relative bg-gray-200 dark:bg-gray-800 transition-colors duration-300">
+                      {item.image && (
+                        <Image 
+                          src={item.image} 
+                          alt={item.name} 
+                          fill 
+                          sizes="64px"
+                          style={{ objectFit: 'cover' }} 
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium">{item.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
+                        {item.size}{item.color ? `, ${item.color}` : ''} × {item.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p>L.E {(item.price * item.quantity).toFixed(0)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2 transition-colors duration-300">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>L.E {cartTotal.toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>L.E {shippingCost}</span>
+                </div>
+                <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                  <span>Total</span>
+                  <span>L.E {totalWithShipping.toFixed(0)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </main>
+      </div>
     </>
   )
 }

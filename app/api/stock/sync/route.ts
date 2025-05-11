@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       console.log(`Proxying stock request to admin panel for product ${productId}`);
       
       // Construct the admin panel URL with the same parameters
-      let adminUrl = `https://kleankutsadmin.netlify.app/api/products/${productId}/stock`;
+      let adminUrl = `https://eleveadmin.netlify.app/api/products/${productId}/stock`;
       
       // Add query parameters if they exist
       const queryParams = [];
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',
-          'Origin': 'https://kleankuts.shop'
+          'Origin': 'https://elevee.netlify.app'
         }
       });
       

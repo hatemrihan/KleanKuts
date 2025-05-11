@@ -69,14 +69,14 @@ export async function POST(request: Request) {
       
       while (retryCount < maxRetries) {
         try {
-          adminResponse = await fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+          adminResponse = await fetch('https://eleveadmin.netlify.app/api/stock/reduce', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Cache-Control': 'no-cache, no-store, must-revalidate',
               'Pragma': 'no-cache',
               'Expires': '0',
-              'Origin': 'https://kleankuts.shop'
+              'Origin': 'https://elevee.netlify.app'
             },
             body: JSON.stringify(adminRequestBody)
           });

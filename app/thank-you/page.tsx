@@ -73,13 +73,13 @@ const ThankYouPage = () => {
             const apiPromises = [];
             
             // 1. Direct admin panel call - highest priority
-            const directAdminPromise = fetch('https://kleankutsadmin.netlify.app/api/stock/reduce', {
+            const directAdminPromise = fetch('https://eleveadmin.netlify.app/api/stock/reduce', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache',
-                'Origin': 'https://kleankuts.shop'
+                'Origin': 'https://elevee.netlify.app'
               },
               body: JSON.stringify({
                 items: pendingItems,
@@ -260,11 +260,11 @@ const ThankYouPage = () => {
   return (
     <>
       <Nav />
-      <main className="min-h-screen bg-white pt-20">
+      <main className="min-h-screen bg-white dark:bg-black pt-20 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-          <h1 className="text-4xl md:text-5xl font-light mb-8">THANK YOU FOR YOUR ORDER!</h1>
+          <h1 className="text-4xl md:text-5xl font-light mb-8 text-black dark:text-white transition-colors duration-300">THANK YOU FOR YOUR ORDER!</h1>
           
-          <div className="max-w-2xl mx-auto space-y-6 text-gray-600">
+          <div className="max-w-2xl mx-auto space-y-6 text-gray-600 dark:text-gray-300 transition-colors duration-300">
             <p>
               Your order has been successfully placed. We will contact you shortly to confirm your order and delivery details.
             </p>
@@ -312,7 +312,7 @@ const ThankYouPage = () => {
 
           <Link 
             href="/collection"
-            className="inline-block mt-12 px-8 py-4 bg-black text-white hover:bg-gray-900 transition-colors"
+            className="inline-block mt-12 px-8 py-4 bg-black text-white dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-colors duration-300"
           >
             CONTINUE SHOPPING
           </Link>

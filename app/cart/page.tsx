@@ -161,19 +161,19 @@ export default function CartPage() {
   return (
     <>
       <Nav />
-      <main className="min-h-screen bg-white pt-20">
+      <main className="min-h-screen bg-white dark:bg-black pt-20 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <Link href="/collection" className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-8">
+          <Link href="/collection" className="inline-flex items-center gap-2 text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white mb-8 transition-colors duration-300">
             <span>←</span>
             <span>Continue Shopping</span>
           </Link>
 
-          <h1 className="text-4xl md:text-5xl font-light mb-12">CART</h1>
+          <h1 className="text-4xl md:text-5xl font-light mb-12 text-black dark:text-white transition-colors duration-300">CART</h1>
 
           {isCleaningCart ? (
-            <p className="text-center py-8">Validating cart items...</p>
+            <p className="text-center py-8 text-black dark:text-white transition-colors duration-300">Validating cart items...</p>
           ) : cart.length === 0 ? (
-            <p className="text-center py-8">Your cart is empty</p>
+            <p className="text-center py-8 text-black dark:text-white transition-colors duration-300">Your cart is empty</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-6">
@@ -189,16 +189,16 @@ export default function CartPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between">
-                        <h3 className="font-light">{item.name}</h3>
+                        <h3 className="font-light text-black dark:text-white transition-colors duration-300">{item.name}</h3>
                         <button 
                           onClick={() => removeFromCart(item.id, item.size, item.color)}
-                          className="text-sm text-red-500 hover:text-red-700"
+                          className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300"
                         >
                           Remove
                         </button>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">Size: {item.size === 'medium' ? 'M' : item.size === 'small' ? 'S' : item.size}</p>
-                      {item.color && <p className="text-sm text-gray-500">Color: {item.color}</p>}
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">Size: {item.size === 'medium' ? 'M' : item.size === 'small' ? 'S' : item.size}</p>
+                      {item.color && <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Color: {item.color}</p>}
                       <div className="flex justify-between items-center mt-2">
                         <div className="flex items-center gap-2">
                           <button 
@@ -207,7 +207,7 @@ export default function CartPage() {
                           >
                             -
                           </button>
-                          <span className="w-8 text-center">{item.quantity}</span>
+                          <span className="w-8 text-center text-black dark:text-white transition-colors duration-300">{item.quantity}</span>
                           <button 
                             onClick={() => updateQuantity(item.id, item.size, item.quantity + 1, item.color)}
                             className="text-gray-500 hover:text-black"
@@ -220,7 +220,7 @@ export default function CartPage() {
                             L.E {((item.price * (1 - item.discount/100)) * item.quantity).toFixed(0)}
                           </p>
                         ) : (
-                          <p>L.E {(item.price * item.quantity).toFixed(0)}</p>
+                          <p className="text-black dark:text-white transition-colors duration-300">L.E {(item.price * item.quantity).toFixed(0)}</p>
                         )}
                       </div>
                     </div>
@@ -229,8 +229,8 @@ export default function CartPage() {
               </div>
 
               <div className="lg:col-span-1">
-                <div className="bg-gray-50 p-6">
-                  <h2 className="text-xl font-light mb-4">ORDER SUMMARY</h2>
+                <div className="bg-gray-50 dark:bg-gray-900 p-6 transition-colors duration-300">
+                  <h2 className="text-xl font-light mb-4 text-black dark:text-white transition-colors duration-300">ORDER SUMMARY</h2>
                   <div className="space-y-2 pb-4 mb-4 border-b">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
@@ -241,7 +241,7 @@ export default function CartPage() {
                       <span>Calculated at checkout</span>
                     </div>
                   </div>
-                  <div className="flex justify-between font-medium mb-6">
+                  <div className="flex justify-between font-medium mb-6 text-black dark:text-white transition-colors duration-300">
                     <span>Total</span>
                     <span>L.E {cartTotal.toFixed(0)}</span>
                   </div>
@@ -249,7 +249,7 @@ export default function CartPage() {
                   <button
                     onClick={handleCheckout}
                     disabled={checkoutInProgress}
-                    className="block w-full bg-black text-white text-center py-4 hover:bg-gray-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="block w-full bg-black dark:bg-white text-white dark:text-black text-center py-4 hover:bg-gray-900 dark:hover:bg-gray-200 transition-colors duration-300 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                   >
                     {checkoutInProgress ? 'PROCESSING...' : 'PROCEED TO CHECKOUT'}
                   </button>

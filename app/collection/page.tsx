@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Nav from '../sections/nav';
 import Footer from '../sections/footer';
 import { optimizeCloudinaryUrl, processImageUrl } from '../utils/imageUtils';
+import NewFooter from '../sections/NewFooter';
 
 interface SizeStock {
   size: string;
@@ -18,7 +19,8 @@ interface Product {
   name: string;
   price: number;
   images: string[];
-  category: string;
+  category?: string;
+  categories?: string[];
   discount?: number;
   description: string;
   Material?: string[];
@@ -151,7 +153,7 @@ export default function Collection() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -187,7 +189,8 @@ export default function Collection() {
             _id: product._id || product.id || productId, // Support both _id and id fields
             name: (product.title || 'Untitled Product').replace(/\s*\b[0-9a-fA-F]{24}\b\s*/g, '').trim(),
             images: product.selectedImages?.map(img => processImageUrl(img)) || [],
-            category: (product.categories?.[0] || 'other').toLowerCase(),
+            category: product.categories?.[0] || 'other',
+            categories: product.categories || [],
             price: product.price || 0,
             discount: product.discount || 0,
             description: product.description || '',
@@ -197,19 +200,19 @@ export default function Collection() {
           return processedProduct;
         }).filter((product): product is Product => product !== null);
         
-        // Convert localProducts object to array
-        const localProductsArray = Object.values(localProducts);
+        // Only use MongoDB products if we have them, don't mix with local products
+        if (processedMongoProducts.length > 0) {
+          console.log('Using real products from MongoDB:', processedMongoProducts.length);
+          setProducts(processedMongoProducts);
+        } else {
+          // Fall back to local products only if no MongoDB products are available
+          const localProductsArray = Object.values(localProducts);
+          console.log('Falling back to local products:', localProductsArray.length);
+          setProducts(localProductsArray);
+        }
         
-        // Combine MongoDB products with local products, prioritizing MongoDB data
-        const combinedProducts = [...processedMongoProducts, ...localProductsArray];
-        
-        // Remove duplicates based on _id, keeping MongoDB versions if they exist
-        const uniqueProducts = Array.from(
-          new Map(combinedProducts.map(item => [item._id, item])).values()
-        );
-
-        console.log('Final products:', uniqueProducts);
-        setProducts(uniqueProducts);
+        console.log('Final products count:', processedMongoProducts.length > 0 ? 
+          processedMongoProducts.length : Object.values(localProducts).length);
       } catch (err: any) {
         console.error('Error fetching products:', err);
         setProducts(Object.values(localProducts));
@@ -232,25 +235,60 @@ export default function Collection() {
   }, []);
 
   // Get unique categories from all products
-  const categories = ['all', ...Array.from(new Set(products.map(product => 
-    product.category ? product.category.toLowerCase() : 'other'
-  )))].filter(category => 
-    // Filter out any category that looks like a MongoDB ID (24 character hex string)
-    !/^[0-9a-fA-F]{24}$/.test(category)
-  );
+  const categories = ['All'];
 
-  const filteredProducts = products.filter(product => 
-    selectedCategory === 'all' || product.category?.toLowerCase() === selectedCategory
-  );
+  // Filter products based on the admin categories
+  const filteredProducts = products.filter(product => {
+    if (selectedCategory === 'All') return true;
+    
+    // Check if product has the selected category in its categories array
+    if (product.categories && product.categories.length > 0) {
+      // More flexible matching for categories
+      return product.categories.some(cat => {
+        if (!cat) return false;
+        if (cat === selectedCategory) return true;
+        if (cat.toUpperCase() === selectedCategory.toUpperCase()) return true;
+        
+        // Handle partial matches based on the core category name
+        const selectedCategoryLower = selectedCategory.toLowerCase();
+        if (selectedCategoryLower === 'sage sets' && cat.toLowerCase().includes('set')) return true;
+        if (selectedCategoryLower === 'sage tops' && 
+            (cat.toLowerCase().includes('top') || cat.toLowerCase() === 'sage top')) return true;
+        if (selectedCategoryLower === 'sage pants' && cat.toLowerCase().includes('pant')) return true;
+        
+        return false;
+      });
+    }
+    
+    // Also check the category field with more flexible matching
+    if (product.category) {
+      if (product.category === selectedCategory) return true;
+      if (product.category.toUpperCase() === selectedCategory.toUpperCase()) return true;
+      
+      // Handle partial matches for single category field
+      const categoryLower = product.category.toLowerCase();
+      const selectedCategoryLower = selectedCategory.toLowerCase();
+      
+      if (selectedCategoryLower === 'sage sets' && categoryLower.includes('set')) return true;
+      if (selectedCategoryLower === 'sage tops' && 
+          (categoryLower.includes('top') || categoryLower === 'sage top')) return true;
+      if (selectedCategoryLower === 'sage pants' && categoryLower.includes('pant')) return true;
+    }
+    
+    return false;
+  });
+  
+  console.log('Selected category:', selectedCategory);
+  console.log('Filtered products count:', filteredProducts.length);
 
   return (
     <>
       <Nav />
-      <main className="min-h-screen bg-white pt-20">
+      <main className="min-h-screen bg-white dark:bg-black pt-20 transition-colors duration-300">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-light text-black">
+            <h1 className="text-3xl font-light text-black dark:text-white transition-colors duration-300">
               Collection
             </h1>
             {error && (
@@ -264,16 +302,10 @@ export default function Collection() {
               {categories.map((category) => (
                 <button
                   key={category}
+                  className={`px-4 py-2 text-sm whitespace-nowrap ${selectedCategory === category ? 'border-b-2 border-black font-medium' : 'text-gray-500 hover:text-black'}`}
                   onClick={() => setSelectedCategory(category)}
-                  className={`text-sm font-light tracking-wide whitespace-nowrap relative group
-                    ${selectedCategory === category
-                      ? 'text-black'
-                      : 'text-gray-500 hover:text-black'
-                    } transition-colors`}
                 >
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                  <span className={`absolute left-0 bottom-0 w-full h-[1px] bg-black transition-transform origin-left
-                    ${selectedCategory === category ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+                  {category}
                 </button>
               ))}
             </div>
@@ -304,7 +336,7 @@ export default function Collection() {
           )}
         </div>
       </main>
-      <Footer />
+      <NewFooter/>
     </>
   );
 }
@@ -341,7 +373,7 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
       href={`/product/${productId}`}
       className="group block relative"
     >
-      <div className={`aspect-[3/4] w-full overflow-hidden bg-gray-50 ${isMobile ? 'mb-1' : 'mb-2'}`}>
+      <div className={`aspect-[3/4] w-full overflow-hidden bg-gray-50 dark:bg-black ${isMobile ? 'mb-1' : 'mb-2'} transition-colors duration-300`}>
         {product.images && product.images[0] ? (
           <>
             <Image
@@ -354,24 +386,24 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
               unoptimized={false}
             />
             {stockStatus && (
-              <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
+              <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-semibold rounded transition-colors duration-300">
                 {stockStatus.text}
               </div>
             )}
           </>
         ) : (
-          <div className="h-full w-full flex items-center justify-center bg-gray-100">
-            <span className="text-gray-400">No image available</span>
+          <div className="h-full w-full flex items-center justify-center bg-gray-100 dark:bg-black transition-colors duration-300">
+            <span className="text-gray-400 dark:text-gray-500 transition-colors duration-300">No image available</span>
           </div>
         )}
       </div>
       
       <div className={`text-center ${isMobile ? 'mb-6' : 'mt-4'}`}>
-        <h3 className={`text-sm font-light text-black mb-1 ${isMobile ? 'text-xs' : ''}`}>
+        <h3 className={`text-sm font-light text-black dark:text-white mb-1 ${isMobile ? 'text-xs' : ''} transition-colors duration-300`}>
           {product.name}
         </h3>
         <div className={`font-light ${isMobile ? 'text-xs' : 'text-sm'}`}>
-          <span className="text-black">{displayPrice}</span>
+          <span className="text-black dark:text-white transition-colors duration-300">{displayPrice}</span>
         </div>
       </div>
     </Link>

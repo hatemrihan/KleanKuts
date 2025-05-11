@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { useCart } from '../context/CartContext'
 import { useSession, signIn, signOut } from "next-auth/react"
 import { useRouter } from 'next/navigation'
-import Image from "next/image"
+import { useTheme } from '../context/ThemeContext'
+import ThemeToggle from '../components/ThemeToggle'
 
 const navItems = [
   {
@@ -14,7 +15,7 @@ const navItems = [
     href: '/',
   },
   {
-    label: 'SHOP',
+    label: 'SHOP COLLECTION',
     href: '/collection',
   },
   {
@@ -22,6 +23,11 @@ const navItems = [
     href: '/#about',
     isScroll: true
   },
+  // {
+  //   label: 'MEN COLLECTION',
+  //   href: '/collection/men',
+  //   isScroll: true
+  // },
   {
     label: 'FAQS',
     href: '/#faqs',
@@ -34,20 +40,7 @@ const navItems = [
   },
 ];
 
-const adminNavItems = [
-  {
-    label: 'PRODUCTS',
-    href: '/products',
-  },
-  {
-    label: 'ORDERS',
-    href: '/orders',
-  },
-  {
-    label: 'SETTINGS',
-    href: '/settings',
-  },
-];
+
 
 const CloseIcon = () => (
   <svg 
@@ -73,6 +66,7 @@ const Nav = () => {
   const { itemCount } = useCart();
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : 'unset';
@@ -135,62 +129,80 @@ const Nav = () => {
           letter-spacing: 0.2em;
           opacity: 0.7;
         }
+        
+        /* Y-axis flip animation (vertical flip) */
+        @keyframes flipY {
+          0% { transform: perspective(400px) rotateY(0deg); }
+          50% { transform: perspective(400px) rotateY(180deg); }
+          100% { transform: perspective(400px) rotateY(360deg); }
+        }
+        
+        .logo-rotate {
+          animation: flipY 3s linear infinite;
+          display: inline-block;
+          transform-style: preserve-3d;
+          perspective: 800px;
+        }
+        
+        /* Tooltip styles */
+        .tooltip {
+          position: relative;
+        }
+        
+        .tooltip:hover::after {
+          content: 'Log in!';
+          position: absolute;
+          bottom: -25px;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          white-space: nowrap;
+          z-index: 10;
+        }
+        
       `}</style>
-      <div className="w-full bg-white transition-colors duration-300">
+      <div className="w-full bg-white dark:bg-black transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex-shrink-0 -ml-10">
-              <Link href="/" className="flex flex-col mr-32">
-                <Image
-                  src="/images/logo-image.jpg"
-                  alt="Klean Kuts Logo"
-                  width={200}
-                  height={48}
-                  className="h-12 w-auto object-contain"
-                />
+            <div className="flex-shrink-0">
+              <Link href="/" className="text-2xl font-bold text-black dark:text-white">
+                Eleve
               </Link>
             </div>
 
-            {/* Navigation Links */}
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-8">
-                {navItems.map(({ label, href, isScroll }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    onClick={(e) => handleNavClick(e, href, isScroll)}
-                    className="relative text-black hover:text-red-500 px-3 py-2 text-sm font-light cursor-pointer group"
-                  >
-                    {label}
-                    <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
-                  </Link>
-                ))}
-                {session?.user?.isAdmin && adminNavItems.map(({ label, href }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    className="relative text-black hover:text-red-500 px-3 py-2 text-sm font-light cursor-pointer group"
-                  >
-                    {label}
-                    <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
-                  </Link>
-                ))}
-              </div>
+            {/* Desktop Nav Links */}
+            <div className="flex space-x-8">
+              {navItems.map(({ label, href, isScroll }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={(e) => handleNavClick(e, href, isScroll)}
+                  className="text-sm font-light text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer relative group"
+                >
+                  {label}
+                  <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
+                </Link>
+              ))}
             </div>
 
             {/* Auth and Cart Section */}
-            <div className="hidden md:flex items-center space-x-4">
+            <div className="flex items-center space-x-8">
               {status === 'loading' ? (
                 <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full"></div>
               ) : session ? (
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-black/70">
+                  <span className="text-sm text-black dark:text-white">
                     {session.user?.name}
                   </span>
                   <button
                     onClick={() => signOut()}
-                    className="text-sm text-black hover:text-red-500 transition-colors"
+                    className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
                   >
                     Sign out
                   </button>
@@ -198,15 +210,20 @@ const Nav = () => {
               ) : (
                 <button
                   onClick={() => signIn('google')}
-                  className="text-sm text-black hover:text-red-500 transition-colors"
+                  className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors tooltip"
                 >
                   Sign in
                 </button>
               )}
 
+              {/* Theme Toggle Button */}
+              <div className="mr-2">
+                <ThemeToggle />
+              </div>
+              
               <Link 
                 href="/cart" 
-                className="relative text-black hover:text-red-500 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
+                className="relative text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
                 onClick={handleCartClick}
               >
                 <div className="relative">
@@ -215,13 +232,13 @@ const Nav = () => {
                     viewBox="0 0 24 24" 
                     fill="none" 
                     stroke="currentColor" 
-                    strokeWidth="2" 
+                    strokeWidth="1.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
                   >
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <path d="M16 10a4 4 0 0 1-8 0" />
+                    <circle cx="8" cy="21" r="1" />
+                    <circle cx="19" cy="21" r="1" />
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
                   </svg>
                   {itemCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
@@ -231,34 +248,63 @@ const Nav = () => {
                 </div>
                 <span className="relative">
                   Cart
-                  <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
                 </span>
               </Link>
             </div>
+          </div>
 
-            {/* Mobile Cart and Menu */}
-            <div className="md:hidden flex items-center gap-2">
+          {/* Mobile Navigation */}
+          <div className="md:hidden flex items-center justify-between h-16">
+            {/* Mobile Menu Button (Left) */}
+            <div>
+              {!isOpen && (
+                <button 
+                  className="flex flex-col justify-center items-center w-6 h-6 relative cursor-pointer gap-1.5"
+                  onClick={() => setIsOpen(true)}
+                  aria-label="Open Menu"
+                >
+                  <span className="w-6 h-0.5 bg-black dark:bg-white transition-all"></span>
+                  <span className="w-6 h-0.5 bg-black dark:bg-white transition-all"></span>
+                  <span className="w-6 h-0.5 bg-black dark:bg-white transition-all"></span>
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Logo (Center with rotation) */}
+            <div className="flex-shrink-0 flex items-center justify-center">
+              <Link href="/" className="text-2xl font-bold text-yellow-600 dark:text-yellow-600 logo-rotate inline-block">
+                Eleve
+              </Link>
+            </div>
+
+            {/* Mobile Cart and Sign In (Right) */}
+            <div className="flex items-center gap-3">
               {status === 'loading' ? (
-                <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full"></div>
+                <div className="w-6 h-6 animate-pulse bg-gray-200 rounded-full"></div>
               ) : session ? (
                 <button
                   onClick={() => signOut()}
-                  className="text-sm text-black hover:text-red-500"
+                  className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 >
-                  Sign out
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
                 </button>
               ) : (
                 <button
                   onClick={() => signIn('google')}
-                  className="text-sm text-black hover:text-red-500"
+                  className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors tooltip"
                 >
-                  Sign in
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
                 </button>
               )}
 
               <Link 
                 href="/cart" 
-                className="flex items-center justify-center text-black hover:text-red-500 transition-colors"
+                className="flex items-center justify-center text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 onClick={handleCartClick}
               >
                 <div className="relative">
@@ -267,13 +313,13 @@ const Nav = () => {
                     viewBox="0 0 24 24" 
                     fill="none" 
                     stroke="currentColor" 
-                    strokeWidth="2" 
+                    strokeWidth="1.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
                   >
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <path d="M16 10a4 4 0 0 1-8 0" />
+                    <circle cx="8" cy="21" r="1" />
+                    <circle cx="19" cy="21" r="1" />
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
                   </svg>
                   {itemCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
@@ -282,26 +328,6 @@ const Nav = () => {
                   )}
                 </div>
               </Link>
-
-              {!isOpen && (
-                <button 
-                  className="flex items-center justify-center w-6 h-6 relative cursor-pointer"
-                  onClick={() => setIsOpen(true)}
-                  aria-label="Open Menu"
-                >
-                  <motion.div
-                    initial={{ opacity: 0, rotate: 90 }}
-                    animate={{ opacity: 1, rotate: 0 }}
-                    exit={{ opacity: 0, rotate: -90 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="7" width="18" height="2" fill="black" />
-                      <rect x="3" y="15" width="18" height="2" fill="black" />
-                    </svg>
-                  </motion.div>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -309,7 +335,7 @@ const Nav = () => {
 
       {/* Mobile menu */}
       <div 
-        className="fixed inset-0 bg-white z-40 overflow-hidden transition-all duration-300"
+        className="fixed inset-0 bg-white dark:bg-black z-40 overflow-hidden transition-all duration-300"
         style={{ height: 0 }}
         ref={navScope}
       >
@@ -321,7 +347,7 @@ const Nav = () => {
               animate={{ opacity: 1, rotate: 0 }}
               exit={{ opacity: 0, rotate: 90 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-5 right-4 z-50 md:hidden flex items-center justify-center w-6 h-6 cursor-pointer text-black"
+              className="fixed top-5 right-4 z-50 md:hidden flex items-center justify-center w-6 h-6 cursor-pointer text-black dark:text-white"
               onClick={() => setIsOpen(false)}
               aria-label="Close Menu"
             >
@@ -340,16 +366,42 @@ const Nav = () => {
                   handleNavClick(e, href, isScroll);
                   setIsOpen(false);
                 }}
-                className="relative block text-black text-3xl font-light hover:text-gray-600 transition-colors cursor-pointer text-center group"
+                className="relative block text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group"
               >
                 {label}
-                <span className="absolute left-1/2 -translate-x-1/2 bottom-0 w-0 h-[1px] bg-black transition-all duration-300 group-hover:w-full"></span>
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
               </Link>
             ))}
+            
+            {/* Theme Toggle in Mobile Menu */}
+            <button
+              onClick={() => {
+                toggleTheme();
+                // Don't close the menu when toggling theme
+              }}
+              className="relative  text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span>Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
+            
             {/* Mobile Cart Link */}
             <Link
               href="/cart"
-              className="relative text-black text-3xl font-light hover:text-gray-600 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
+              className="relative text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
               onClick={(e) => {
                 setIsOpen(false);
                 handleCartClick(e);
@@ -361,13 +413,13 @@ const Nav = () => {
                   viewBox="0 0 24 24" 
                   fill="none" 
                   stroke="currentColor" 
-                  strokeWidth="2" 
+                  strokeWidth="1.5" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
                 >
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 0 1-8 0" />
+                  <circle cx="8" cy="21" r="1" />
+                  <circle cx="19" cy="21" r="1" />
+                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
                 </svg>
                 {itemCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">

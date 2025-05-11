@@ -1,40 +1,47 @@
 import React from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
-import ahlaImage from '@/public/images/ahla-image.jpg'
+import ahlaImage from '@/public/images/try-image.jpg'
 
 const Introducing = () => {
   return (
-    <section className="w-full h-screen bg-white relative flex flex-col lg:flex-row">
-      {/* Left content */}
-      <div className="absolute lg:relative w-full lg:w-1/2 h-full flex items-center justify-center lg:justify-start lg:pl-16 z-10">
-        <div className="space-y-4 lg:space-y-6 max-w-xl text-center lg:text-left px-6 md:px-12 lg:px-0">
-          <div className="space-y-2 lg:space-y-4">
-            <p className="text-white lg:text-black font-semibold text-sm md:text-xl">Introducing</p>
-            <h1 className="text-white lg:text-black text-4xl md:text-7xl lg:text-8xl font-bold leading-none">SAGE-25</h1>
+    <section className="w-full min-h-screen bg-white dark:bg-black flex flex-col lg:flex-row items-stretch overflow-hidden">
+      {/* Left: Small image and text block */}
+      <div className="flex flex-col lg:flex-row flex-1">
+        {/* Small image on the left - visible only on mobile and tablet */}
+        <div className="flex flex-col items-center justify-start pt-8 block lg:hidden px-4">
+          <div className="w-16 h-20 mb-6 relative">
+            <Image src={ahlaImage} alt="small" fill className="object-cover rounded" />
           </div>
-          <p className="text-white lg:text-black text-sm md:text-lg font-light leading-relaxed">
-          Get ready to change the scene with pieces that redefine the fashion landscape, blending daring edge with modern sophistication, Elevate your style.
-          </p>
-          <Link 
-            href="/collection" 
-            className="inline-block border border-white lg:border-black text-white lg:text-black px-6 md:px-12 py-2 md:py-3 rounded-full hover:bg-white hover:text-black lg:hover:bg-black lg:hover:text-white transition-colors text-sm md:text-lg"
-          >
-            Discover
-          </Link>
+        </div>
+        {/* Center: Headline and text */}
+        <div className="flex-1 flex flex-col justify-center items-center lg:items-start px-4 md:px-8 py-8">
+          <h1 className="text-black dark:text-white font-bold text-4xl sm:text-6xl md:text-7xl lg:text-8xl leading-none mb-8 text-center lg:text-left" style={{lineHeight:1.05}}>
+            First you<br />don't talk<br />about<br />design
+          </h1>
+          <div className="max-w-xl w-full flex flex-col md:flex-row gap-6 items-center md:items-start">
+            <div className="flex-1 text-center md:text-left">
+              <p className="text-2xl font-light mb-2 text-black dark:text-white">ПОЗВОЛЬТЕ СЕБЕ<br />БЫТЬ СОБОЙ<br />ПЕРЕД КАМЕРОЙ</p>
+              <div className="flex flex-col md:flex-row gap-4 text-xs text-gray-700 dark:text-gray-300 mt-4">
+                <div className="flex-1">
+                  Моя цель — это раскрыть вас актёра, обнажить вашу сущность и подчеркнуть эстетику через снимки.
+                </div>
+                <div className="flex-1">
+                  Мне важно — показать ваши эмоции, которые вы проживаете в моменте, показать вас настоящих.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Right content - Image */}
-      <div className="absolute lg:relative lg:w-1/2 inset-0 lg:inset-auto">
+      {/* Right: Large portrait image */}
+      <div className="relative w-full lg:w-[420px] xl:w-[520px] min-h-[320px] h-[50vw] lg:h-auto flex-shrink-0">
         <Image
           src={ahlaImage}
           alt="FW25 Collection Model"
           fill
-          className="object-cover"
+          className="object-cover object-right"
           priority
         />
-        <div className="absolute inset-0 bg-black/20 lg:hidden"></div>
       </div>
     </section>
   )

@@ -2,18 +2,20 @@
 
 import { CartProvider } from '@/app/context/CartContext';
 import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from '@/app/context/ThemeContext';
 
 type Props = {
   children: React.ReactNode;
-  session: any;
 };
 
-export function Providers({ children, session }: Props) {
+export function Providers({ children }: Props) {
   return (
-    <SessionProvider session={session}>
-      <CartProvider>
-        {children}
-      </CartProvider>
+    <SessionProvider>
+      <ThemeProvider>
+        <CartProvider>
+          {children}
+        </CartProvider>
+      </ThemeProvider>
     </SessionProvider>
   );
 } 
