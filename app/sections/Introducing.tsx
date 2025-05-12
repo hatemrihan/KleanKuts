@@ -16,17 +16,17 @@ const Introducing = () => {
         {/* Center: Headline and text */}
         <div className="flex-1 flex flex-col justify-center items-center lg:items-start px-4 md:px-8 py-8">
           <h1 className="text-black dark:text-white font-bold text-4xl sm:text-6xl md:text-7xl lg:text-8xl leading-none mb-8 text-center lg:text-left" style={{lineHeight:1.05}}>
-            First you<br />don't talk<br />about<br />design
+            Be <br />Uniquely<br />Different<br />
           </h1>
           <div className="max-w-xl w-full flex flex-col md:flex-row gap-6 items-center md:items-start">
             <div className="flex-1 text-center md:text-left">
               <p className="text-2xl font-light mb-2 text-black dark:text-white">ПОЗВОЛЬТЕ СЕБЕ<br />БЫТЬ СОБОЙ<br />ПЕРЕД КАМЕРОЙ</p>
               <div className="flex flex-col md:flex-row gap-4 text-xs text-gray-700 dark:text-gray-300 mt-4">
                 <div className="flex-1">
-                  Моя цель — это раскрыть вас актёра, обнажить вашу сущность и подчеркнуть эстетику через снимки.
-                </div>
+                  Discover Eleve, Egypt's premium clothing collection. Hoodies, t-shirts 
                 <div className="flex-1">
-                  Мне важно — показать ваши эмоции, которые вы проживаете в моменте, показать вас настоящих.
+                   pants with elegant designs & exceptional fabrics.
+                </div>
                 </div>
               </div>
             </div>
