@@ -99,7 +99,7 @@ const Waitlist = () => {
         
         {/* Thank You Section */}
         <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full text-center">
-          <h2 className="text-3xl font-bold mb-8 transition-colors duration-300">Thank you from "Wants and Needs"</h2>
+          <h2 className="text-3xl font-bold mb-8 transition-colors duration-300">ELEVE</h2>
           
           <p className="text-gray-600 dark:text-white/80 mb-6 max-w-2xl mx-auto transition-colors duration-300">
             We just wanted to thank you all for such intense support over our first drop. We're dedicated to
