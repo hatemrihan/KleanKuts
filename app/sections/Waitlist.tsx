@@ -46,9 +46,9 @@ const Waitlist = () => {
         {/* Hero Section */}
         <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           <div className="flex flex-col items-center text-center">            
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl">
-              Outline your tracking events,<br />
-              right on your website
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl">Eleve Egypt | Luxury Clothing Brand in Egypt 
+              <br />
+             Premium Quality
             </h1>
             
             <p className="text-gray-600 dark:text-white/80 mb-12 transition-colors duration-300">JOIN OUR WAITLIST</p>
