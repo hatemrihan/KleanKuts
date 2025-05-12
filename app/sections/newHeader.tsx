@@ -77,7 +77,8 @@ const NewHeader = () => {
         </div>
        
         <h1 className="text-3xl sm:text-4xl font-bold text-black dark:text-white mb-6 leading-tight">
-          ZOHO —<br />OVERSIZE SWEATSHIRT
+          The Silent Elite 
+<br />Eleve Tee
         </h1>
         {/* Horizontal Scrollable Images with Animation */}
         <div 
