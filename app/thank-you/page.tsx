@@ -72,28 +72,55 @@ const ThankYouPage = () => {
             // Start multiple API calls in parallel for faster processing
             const apiPromises = [];
             
-            // 1. Direct admin panel call - highest priority
-            const directAdminPromise = fetch('https://eleveadmin.netlify.app/api/stock/reduce', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Origin': 'https://elevee.netlify.app'
-              },
-              body: JSON.stringify({
-                items: pendingItems,
-                orderId: orderId,
-                afterOrder: true
-              })
-            }).then(res => {
-              console.log('📡 Direct admin API response status:', res.status);
-              return res.status >= 200 && res.status < 300;
-            }).catch(err => {
-              console.error('❌ Direct admin API call failed:', err);
-              return false;
+            // 1. Direct admin panel call - try multiple endpoints to ensure success
+            const adminEndpoints = [
+              'https://eleveadmin.netlify.app/api/stock/reduce',
+              'https://eleveadmin.netlify.app/api/inventory/reduce',
+              'https://eleveadmin.netlify.app/api/products/reduce-stock'
+            ];
+            
+            // Try each admin endpoint for maximum reliability
+            const adminPromises = adminEndpoints.map(endpoint => {
+              return fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'X-Order-ID': orderId,
+                  'X-Timestamp': Date.now().toString(),
+                  'X-Source': 'thank-you-page',
+                  'Origin': 'https://elevee.netlify.app'
+                },
+                body: JSON.stringify({
+                  items: pendingItems,
+                  orderId: orderId,
+                  afterOrder: true,
+                  timestamp: Date.now(),
+                  source: 'checkout-flow'
+                })
+              }).then(async res => {
+                console.log(`📡 Admin API call to ${endpoint} response status:`, res.status);
+                if (res.ok) {
+                  try {
+                    const data = await res.json();
+                    console.log(`✅ Admin API call to ${endpoint} returned:`, data);
+                    return true;
+                  } catch (e) {
+                    console.log(`⚠️ Admin API call to ${endpoint} returned invalid JSON`);
+                    // Still return true if status was ok
+                    return true;
+                  }
+                }
+                return false;
+              }).catch(err => {
+                console.error(`❌ Admin API call to ${endpoint} failed:`, err);
+                return false;
+              });
             });
-            apiPromises.push(directAdminPromise);
+            
+            // Add all admin promises to the main promises array
+            apiPromises.push(...adminPromises);
             
             // 2. Local proxy API call - backup option
             const proxyApiPromise = fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
@@ -129,8 +156,20 @@ const ThankYouPage = () => {
                 result.status === 'fulfilled' && result.value === true
               );
               
-              if (success) {
-                console.log('🚀 Stock reduction successful via parallel API calls!');
+              // Only show success if at least one API call truly succeeded
+              const genuineSuccess = results.some(result => 
+                result.status === 'fulfilled' && result.value === true
+              );
+              
+              if (genuineSuccess) {
+                console.log('🚀 Stock reduction GENUINELY successful via parallel API calls!');
+                
+                // Double-check if we actually have a positive response from an admin API
+                const adminSuccess = adminPromises.some((_, index) => 
+                  results[index]?.status === 'fulfilled' && results[index]?.value === true
+                );
+                
+                console.log('🔍 Admin API success status:', adminSuccess);
                 
                 // Store updated product IDs in sessionStorage to refresh them later
                 try {
@@ -139,16 +178,25 @@ const ThankYouPage = () => {
                   const uniqueProductIds = Array.from(new Set(productIds));
                   console.log('🔄 Products to update on next view:', uniqueProductIds);
                   
-                  // Store these IDs in sessionStorage
+                  // Store these IDs in sessionStorage along with success information
                   sessionStorage.setItem('productsToUpdate', JSON.stringify({
                     ids: uniqueProductIds,
+                    timestamp: Date.now(),
+                    adminSuccess: adminSuccess
+                  }));
+                  
+                  // Also store the raw order information for debugging/retrying
+                  localStorage.setItem('lastOrderDetails', JSON.stringify({
+                    items: pendingItems,
+                    orderId: orderId,
                     timestamp: Date.now()
                   }));
+                  
                 } catch (updateError) {
                   console.error('Error storing products to update:', updateError);
                 }
                 
-                // Update UI to show success
+                // Update UI to show success - ONLY if we had a genuine success
                 const successElement = document.getElementById('success-message');
                 if (successElement) {
                   successElement.style.display = 'block';

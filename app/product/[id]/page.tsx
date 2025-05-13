@@ -15,6 +15,8 @@ import axios from 'axios'
 // For WebSocket connection
 import { io } from 'socket.io-client';
 import NewFooter from '@/app/sections/NewFooter'
+import Products from '@/app/sections/products'
+import NewArrivals from '@/app/sections/NewArrivals'
 
 // Types
 interface CartItem {
@@ -1747,79 +1749,7 @@ const ProductPage = ({ params }: Props) => {
         </div>
       
 
-      {/* NEW ARRIVALS Section */}
-      <div className="w-full max-w-7xl mx-auto mt-20 mb-16 px-4 bg-white dark:bg-black">
-        <h2 className="text-3xl md:text-4xl font-light mb-12 text-center tracking-widest text-black dark:text-white">NEW ARRIVALS</h2>
-        
-        {loadingNewArrivals ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-          </div>
-        ) : (
-          <div className="flex overflow-x-auto scrollable-x gap-8 pb-8">
-            {newArrivals && newArrivals.length > 0 ? (
-              newArrivals.map((newProduct) => {
-                // Safely extract product data with fallbacks
-                const productId = newProduct._id || '';
-                const productName = newProduct.name || newProduct.title || 'Product';
-                const productPrice = typeof newProduct.price === 'number' ? newProduct.price : 0;
-                const productDiscount = typeof newProduct.discount === 'number' ? newProduct.discount : 0;
-                
-                // Safety check for invalid product IDs
-                if (!productId) return null;
-                
-                // Get image with fallback
-                let productImage = '/images/placeholder.jpg';
-                if (newProduct.images && Array.isArray(newProduct.images) && newProduct.images.length > 0) {
-                  productImage = newProduct.images[0];
-                }
-                
-                return (
-                  <Link
-                    key={productId}
-                    href={`/product/${productId}`}
-                    className="flex-shrink-0 flex flex-col items-center min-w-[260px] max-w-[320px] group cursor-pointer"
-                  >
-                    <div className="relative w-full aspect-[3/4] mb-4">
-                      <Image
-                        src={productImage}
-                        alt={productName}
-                        fill
-                        className="object-cover object-center"
-                        unoptimized={true}
-                      />
-                    </div>
-                    <div className="w-full text-center">
-                      <div className="text-xs tracking-widest mb-1 text-gray-600 dark:text-white group-hover:underline">
-                        {productName.toUpperCase()}
-                      </div>
-                      <div className="flex items-center justify-center gap-2 text-black dark:text-white">
-                        <span className="text-base">L.E {productPrice}</span>
-                        {productDiscount > 0 && (
-                          <span className="text-xs line-through text-gray-500 dark:text-gray-400">
-                            L.E {Math.round(productPrice / (1 - productDiscount / 100))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })
-            ) : (
-              <div className="w-full text-center py-8 text-gray-500">
-                No new products available at the moment
-              </div>
-            )}
-          </div>
-        )}
-        
-        {/* See all link */}
-        <div className="w-full flex justify-center mt-8">
-          <Link href="/collection" className="text-sm text-black dark:text-white border-b border-black dark:border-white pb-1 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-            SEE ALL
-          </Link>
-        </div>
-      </div>
+    <NewArrivals />
       
       <NewFooter />
     </>
