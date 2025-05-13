@@ -266,7 +266,7 @@ entranceAnimation();
             >
               <span>Eleve Egypt </span>
               <br />
-              <span classname="font-light">Luxury StreetWear Clothing Brand </span>
+              <span classname="font-light">Luxury StreetWear  </span>
             </motion.h1>
             
             {!isSubmitted ? (
