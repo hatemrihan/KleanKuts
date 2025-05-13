@@ -48,8 +48,9 @@ export async function GET(request: Request) {
     try {
       console.log(`Proxying stock request to admin panel for product ${productId}`);
       
-      // Construct the admin panel URL with the same parameters
-      let adminUrl = `https://eleveadmin.netlify.app/api/products/${productId}/stock`;
+      // Construct the admin panel URL with the correct endpoint structure
+      // Based on the admin panel's API format
+      let adminUrl = `https://eleveadmin.netlify.app/api/stock/${productId}`;
       
       // Add query parameters if they exist
       const queryParams = [];
@@ -57,23 +58,106 @@ export async function GET(request: Request) {
       if (randomValue) queryParams.push(`r=${randomValue}`);
       if (afterOrder) queryParams.push('afterOrder=true');
       
+      // Add bypass cache parameter to ensure fresh data
+      queryParams.push(`bypassCache=${Date.now()}`);
+      
+      // Add a special flag to indicate this is a stock sync request from the e-commerce site
+      queryParams.push('source=ecommerce');
+      
       if (queryParams.length > 0) {
         adminUrl += `?${queryParams.join('&')}`;
       }
       
-      // Make the request to the admin panel
-      const adminResponse = await fetch(adminUrl, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'Origin': 'https://elevee.netlify.app'
+      console.log(`Connecting to admin panel at: ${adminUrl}`);
+      
+      // Make the request to the admin panel with retry logic
+      let adminResponse = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          console.log(`Admin panel request attempt ${retryCount + 1}/${maxRetries + 1}`);
+          
+          // Try multiple potential endpoint formats
+          // This handles cases where the admin panel API might have been updated
+          const possibleEndpoints = [
+            adminUrl,
+            `https://eleveadmin.netlify.app/api/products/${productId}/stock`,
+            `https://eleveadmin.netlify.app/api/stock/query?productId=${productId}`,
+            `https://eleveadmin.netlify.app/api/inventory/${productId}`
+          ];
+          
+          // Try each endpoint until we find one that works
+          let endpointSuccess = false;
+          
+          for (const endpoint of possibleEndpoints) {
+            try {
+              console.log(`Trying endpoint: ${endpoint}`);
+              
+              adminResponse = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0',
+                  'Origin': 'https://elevee.netlify.app',
+                  'X-Request-Time': Date.now().toString(),
+                  'X-Source': 'ecommerce',
+                  'X-API-Version': '1.0'
+                },
+                // Add a reasonable timeout, but not too short
+                signal: AbortSignal.timeout(8000)
+              });
+              
+              if (adminResponse.ok) {
+                console.log(`Successfully connected using endpoint: ${endpoint}`);
+                endpointSuccess = true;
+                break;
+              }
+            } catch (endpointError) {
+              console.log(`Endpoint ${endpoint} failed:`, endpointError);
+              // Continue trying other endpoints
+            }
+          }
+          
+          if (!endpointSuccess || !adminResponse) {
+            throw new Error('All endpoints failed');
+          }
+          
+          // If successful, break out of the retry loop
+          if (adminResponse && adminResponse.ok) {
+            console.log(`Admin panel request succeeded on attempt ${retryCount + 1}`);
+            break;
+          } else {
+            console.log(`Admin panel request failed on attempt ${retryCount + 1} with status ${adminResponse.status}`);
+            retryCount++;
+            
+            if (retryCount <= maxRetries) {
+              // Wait before retrying (exponential backoff)
+              const waitTime = RETRY_DELAY * Math.pow(2, retryCount);
+              console.log(`Waiting ${waitTime}ms before retry ${retryCount + 1}`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+          }
+        } catch (fetchError) {
+          console.error(`Fetch error on attempt ${retryCount + 1}:`, fetchError);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying
+            const waitTime = RETRY_DELAY * Math.pow(2, retryCount);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          } else {
+            // All retries failed, continue to fallback
+            console.log('All admin panel request attempts failed, using fallback');
+            break;
+          }
         }
-      });
+      }
       
       // If the admin panel request was successful, return the response directly
-      if (adminResponse.ok) {
+      if (adminResponse && adminResponse.ok) {
         const adminData = await adminResponse.json();
         console.log(`Successfully fetched stock data from admin panel for product ${productId}`);
         
@@ -94,8 +178,10 @@ export async function GET(request: Request) {
             'Pragma': 'no-cache'
           }
         });
-      } else {
+      } else if (adminResponse) {
         console.error(`Admin panel returned error ${adminResponse.status} for product ${productId}`);
+      } else {
+        console.error(`No admin response received for product ${productId}`);
       }
     } catch (adminError) {
       console.error(`Error proxying request to admin panel: ${adminError}`);
@@ -103,7 +189,7 @@ export async function GET(request: Request) {
     }
     
     // FALLBACK: If admin panel request failed, use our local database
-    console.log(`Using fallback approach for product ${productId}`);
+    console.log(`Using fallback approach for product ${productId} - admin panel connection failed or returned error`);
     
     // Connect to the database
     const { db } = await connectToDatabase();

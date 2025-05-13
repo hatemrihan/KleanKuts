@@ -12,11 +12,25 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const category = url.searchParams.get('category');
     const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
+    const featured = url.searchParams.get('featured') === 'true';
+    const exclude = url.searchParams.get('exclude');
     
     // Build query
     const query: any = { deleted: { $ne: true } };
+    
+    // Add category filter if provided
     if (category) {
       query.categories = { $in: [category] };
+    }
+    
+    // Add featured filter if requested
+    if (featured) {
+      query.featured = true;
+    }
+    
+    // Exclude specific product if requested
+    if (exclude) {
+      query._id = { $ne: exclude };
     }
     
     // Execute query

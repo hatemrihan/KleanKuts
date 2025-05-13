@@ -12,7 +12,8 @@ interface SizeStock {
 }
 
 interface Product {
-  _id: string;
+  _id: string | object;
+  id?: string;
   name: string;
   title?: string;
   price: number;
@@ -24,6 +25,7 @@ interface Product {
   sizeVariants?: SizeStock[];
   description?: string;
   totalStock?: number;
+  extractedId?: string; // Added for processed IDs
 }
 
 // ProductCard component to display individual products
@@ -106,8 +108,7 @@ const Products = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Add query parameters to get a diverse set of products
-        const response = await fetch('/api/products?limit=8&distinct=true', {
+        const response = await fetch('/api/products', {
           cache: 'no-store'
         });
         
@@ -118,30 +119,48 @@ const Products = () => {
         const data = await response.json();
         console.log('Products loaded from API:', data.length);
         
-        // Ensure we have unique products by ID
-        const uniqueProducts: Product[] = [];
-        const seenIds = new Set<string>();
-        
+        // Deeply inspect and process the products to ensure proper IDs
         if (Array.isArray(data)) {
-          // If data is an array, process it directly
-          data.forEach((product: Product) => {
-            if (product._id && !seenIds.has(product._id)) {
-              seenIds.add(product._id);
-              uniqueProducts.push(product);
+          // Log the first product for debugging
+          console.log('Raw product data example:', JSON.stringify(data[0]));
+          
+          // Map through products and ensure each has a valid ID
+          const processedProducts = data.map((product, idx) => {
+            if (!product) return null;
+            
+            // Try to get the product ID from different possible locations
+            let productId = null;
+            if (typeof product._id === 'string') {
+              productId = product._id;
+            } else if (typeof product._id === 'object' && product._id && product._id.$oid) {
+              // MongoDB ObjectId format
+              productId = product._id.$oid;
+            } else if (product.id) {
+              productId = product.id;
             }
-          });
-        } else if (data.products && Array.isArray(data.products)) {
-          // If data has a products property that is an array, process that
-          data.products.forEach((product: Product) => {
-            if (product._id && !seenIds.has(product._id)) {
-              seenIds.add(product._id);
-              uniqueProducts.push(product);
-            }
-          });
+            
+            // Add a console log with detailed information
+            console.log(`Product ${idx}:`, {
+              name: product.name || product.title || 'unnamed',
+              rawId: product._id,
+              processedId: productId,
+              hasImages: !!product.images?.length,
+              price: product.price
+            });
+            
+            // Add the extracted ID back to the product
+            return {
+              ...product,
+              extractedId: productId
+            };
+          }).filter(Boolean); // Remove any null values
+          
+          console.log(`Processed ${processedProducts.length} products`);
+          setProducts(processedProducts);
+        } else {
+          console.error('API did not return an array of products');
+          setProducts([]);
         }
-        
-        // Take only the first 4 unique products
-        setProducts(uniqueProducts.slice(0, 4));
       } catch (err) {
         console.error('Error fetching products:', err);
         setError('Failed to load products. Please try again later.');
@@ -157,7 +176,7 @@ const Products = () => {
     <section className="w-full bg-white dark:bg-black py-16 px-4 md:px-8">
       {/* Section Header */}
       <div className="max-w-7xl mx-auto mb-12">
-        <h2 className="text-3xl md:text-4xl font-light mb-2 text-center tracking-widest text-black dark:text-white">NEW ARRIVALS</h2>
+        <h2 className="text-3xl md:text-4xl font-light mb-2 text-center tracking-widest text-black dark:text-white">EXPLORE OUR PRODUCTS</h2>
       </div>
 
       {/* Loading State */}
@@ -178,10 +197,10 @@ const Products = () => {
       {!loading && !error && (
         <div className="max-w-7xl mx-auto">
           <div className="flex overflow-x-auto gap-12 pb-4 scrollable-x items-stretch">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <Link
-                key={product._id}
-                href={`/product/${product._id}`}
+                key={product.extractedId || `product-${index}`}
+                href={product.extractedId ? `/product/${product.extractedId}` : `/collection`}
                 className="flex flex-col items-center min-w-[260px] max-w-[320px] mx-auto group cursor-pointer"
                 style={{ flex: '0 0 auto' }}
               >

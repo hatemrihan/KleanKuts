@@ -18,10 +18,22 @@ let recentlyOrderedProducts: Record<string, number> = {};
 const RECENT_ORDER_DURATION = 10000; // 10 seconds
 
 // Interval for regular polling (fallback)
-const POLL_INTERVAL = 3000; // 3 seconds - faster polling for better responsiveness
+const POLL_INTERVAL = 15000; // 15 seconds - reduced from 3 seconds to prevent API flooding
 
 // Shorter interval for active products (ones being viewed)
-const ACTIVE_POLL_INTERVAL = 300; // 300 milliseconds - very aggressive polling for real-time updates
+const ACTIVE_POLL_INTERVAL = 5000; // 5 seconds - reduced from 300ms which was too aggressive
+
+// Maximum number of consecutive errors before implementing circuit breaker
+const MAX_CONSECUTIVE_ERRORS = 3;
+
+// Time to wait after circuit breaker trips before trying again (in milliseconds)
+const CIRCUIT_BREAKER_RESET_TIME = 60000; // 1 minute
+
+// Track consecutive errors by product ID
+let consecutiveErrors: Record<string, number> = {};
+
+// Track circuit breaker status by product ID
+let circuitBreakerTripped: Record<string, number> = {};
 
 /**
  * Initialize stock synchronization for a product
@@ -33,12 +45,33 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
   // Track if this component is active (visible)
   let isActive = true;
   
-  // Initial fetch
-  fetchLatestStock(productId, 0, false).then(onStockChange);
+  // Reset consecutive error count for this product
+  consecutiveErrors[productId] = 0;
+  
+  // Initial fetch - only update UI if successful
+  fetchLatestStock(productId, 0, false).then(stockData => {
+    if (stockData && stockData.fetchSuccessful) {
+      onStockChange(stockData);
+    }
+  });
   
   // Set up frequent polling for active products
   const activePollInterval = setInterval(() => {
     if (isActive) {
+      // Check if circuit breaker is tripped for this product
+      const circuitBreakerTime = circuitBreakerTripped[productId] || 0;
+      if (circuitBreakerTime > 0) {
+        // Check if it's time to reset the circuit breaker
+        if (Date.now() - circuitBreakerTime >= CIRCUIT_BREAKER_RESET_TIME) {
+          console.log(`Circuit breaker reset for product ${productId}`);
+          circuitBreakerTripped[productId] = 0;
+          consecutiveErrors[productId] = 0;
+        } else {
+          // Circuit breaker still active, skip this update
+          return;
+        }
+      }
+      
       // Check if this product was recently updated after an order
       const wasRecentlyOrdered = productWasRecentlyOrdered(productId);
       
@@ -46,28 +79,49 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
       const lastUpdate = lastUpdateTimestamps[productId] || 0;
       
       fetchLatestStock(productId, lastUpdate, wasRecentlyOrdered).then(stockData => {
-        // Only trigger callback if stock has changed
-        if (hasStockChanged(productId, stockData, wasRecentlyOrdered)) {
-          console.log(`Stock changed for product ${productId}${wasRecentlyOrdered ? ' after order' : ''}, updating UI`);
-          onStockChange(stockData);
+        // Only process if the fetch was successful
+        if (stockData && stockData.fetchSuccessful) {
+          // Reset error count on success
+          consecutiveErrors[productId] = 0;
           
-          // If this was after an order, clear the flag after successful update
-          if (wasRecentlyOrdered) {
-            clearRecentOrderFlag(productId);
+          // Only trigger callback if stock has changed
+          if (hasStockChanged(productId, stockData, wasRecentlyOrdered)) {
+            console.log(`Stock changed for product ${productId}${wasRecentlyOrdered ? ' after order' : ''}, updating UI`);
+            onStockChange(stockData);
+            
+            // If this was after an order, clear the flag after successful update
+            if (wasRecentlyOrdered) {
+              clearRecentOrderFlag(productId);
+            }
           }
         }
+      }).catch(error => {
+        console.error(`Error in stock sync for product ${productId}:`, error);
       });
     }
   }, ACTIVE_POLL_INTERVAL);
   
   // Set up less frequent polling as backup
   const regularPollInterval = setInterval(() => {
+    // Skip if circuit breaker is tripped
+    if (circuitBreakerTripped[productId] > 0) {
+      return;
+    }
+
     fetchLatestStock(productId).then(stockData => {
-      // Only trigger callback if stock has changed
-      if (hasStockChanged(productId, stockData)) {
-        console.log(`Stock changed for product ${productId} (regular poll), updating UI`);
-        onStockChange(stockData);
+      // Only process if the fetch was successful
+      if (stockData && stockData.fetchSuccessful) {
+        // Reset error count on success
+        consecutiveErrors[productId] = 0;
+        
+        // Only trigger callback if stock has changed
+        if (hasStockChanged(productId, stockData)) {
+          console.log(`Stock changed for product ${productId} (regular poll), updating UI`);
+          onStockChange(stockData);
+        }
       }
+    }).catch(error => {
+      console.error(`Error in regular stock poll for product ${productId}:`, error);
     });
   }, POLL_INTERVAL);
   
@@ -109,7 +163,15 @@ export function initStockSync(productId: string, onStockChange: (stockData: any)
 export const fetchLatestStock = async (productId: string, lastUpdate = 0, afterOrder = false): Promise<any> => {
   if (!productId) {
     console.error('fetchLatestStock called without productId');
-    return null;
+    return { fetchSuccessful: false, sizeVariants: [] };
+  }
+  
+  // Check if circuit breaker is tripped for this product
+  if (circuitBreakerTripped[productId] > 0) {
+    console.log(`Circuit breaker active for product ${productId}, using cached data`);
+    return stockCache[productId] 
+      ? { ...stockCache[productId], fetchSuccessful: false, circuitBreakerActive: true } 
+      : { fetchSuccessful: false, sizeVariants: [], circuitBreakerActive: true };
   }
   
   try {
@@ -153,6 +215,15 @@ export const fetchLatestStock = async (productId: string, lastUpdate = 0, afterO
     }
     
     if (!response.ok) {
+      // Increment consecutive error count
+      consecutiveErrors[productId] = (consecutiveErrors[productId] || 0) + 1;
+      
+      // If we've had too many consecutive errors, trip the circuit breaker
+      if (consecutiveErrors[productId] >= MAX_CONSECUTIVE_ERRORS) {
+        console.log(`Circuit breaker tripped for product ${productId} after ${consecutiveErrors[productId]} consecutive errors`);
+        circuitBreakerTripped[productId] = Date.now();
+      }
+      
       throw new Error(`Failed to fetch stock: ${response.status}`);
     }
     
@@ -198,11 +269,30 @@ export const fetchLatestStock = async (productId: string, lastUpdate = 0, afterO
     
     console.log(`Updated stock for product ${productId}, timestamp: ${stockData.timestamp}`);
     console.log(`Size variants count: ${stockData.sizeVariants.length}`);
-    return stockData;
+    
+    // Mark the fetch as successful
+    return { ...stockData, fetchSuccessful: true };
   } catch (error) {
     console.error('Error fetching stock data:', error);
+    
+    // Increment consecutive error count if not already handled
+    if (!(circuitBreakerTripped[productId] > 0)) {
+      consecutiveErrors[productId] = (consecutiveErrors[productId] || 0) + 1;
+      
+      // If we've had too many consecutive errors, trip the circuit breaker
+      if (consecutiveErrors[productId] >= MAX_CONSECUTIVE_ERRORS) {
+        console.log(`Circuit breaker tripped for product ${productId} after ${consecutiveErrors[productId]} consecutive errors`);
+        circuitBreakerTripped[productId] = Date.now();
+      }
+    }
+    
     // Return cached data if available, otherwise empty object
-    return stockCache[productId] || { sizeVariants: [] };
+    // But mark the fetch as unsuccessful to prevent UI updates
+    return { 
+      ...(stockCache[productId] || { sizeVariants: [] }), 
+      fetchSuccessful: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 }
 

@@ -99,7 +99,7 @@ const ProductPage = ({ params }: Props) => {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState('')
   const [loadingNewArrivals, setLoadingNewArrivals] = useState(false)
-  const [newArrivals, setNewArrivals] = useState<any[]>([])
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [orderStatus, setOrderStatus] = useState('')
 
   // Handler functions for the buttons
@@ -232,15 +232,76 @@ const ProductPage = ({ params }: Props) => {
     const fetchNewArrivals = async () => {
       try {
         setLoadingNewArrivals(true);
-        const response = await fetch('/api/products?limit=4&featured=true');
+        
+        // Add timestamp to prevent caching and exclude current product
+        const timestamp = Date.now();
+        const randomValue = Math.random().toString(36).substring(2, 10); // Add random value to prevent caching
+        
+        // Use the updated API endpoint with proper query parameters
+        const response = await fetch(`/api/products?limit=6&featured=true&timestamp=${timestamp}&r=${randomValue}&exclude=${id}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          // Add a reasonable timeout
+          signal: AbortSignal.timeout(8000)
+        });
+        
         if (response.ok) {
           const data = await response.json();
-          if (data && Array.isArray(data.products)) {
-            setNewArrivals(data.products);
+          
+          // Handle both response formats (array or { products: array })
+          let productsArray = [];
+          
+          if (data && Array.isArray(data)) {
+            // Direct array response
+            console.log('Products API returned direct array');
+            productsArray = data;
+          } else if (data && Array.isArray(data.products)) {
+            // Object with products array
+            console.log('Products API returned object with products array');
+            productsArray = data.products;
           } else {
-            // Use empty array if no products returned
+            console.log('Unexpected products API response format:', data);
             setNewArrivals([]);
+            return;
           }
+          
+          // Filter out the current product if it's still in the results
+          // Also handle different ID formats
+          const filteredProducts = productsArray.filter((prod: any) => {
+            if (!prod) return false;
+            
+            // Check different ID formats
+            const prodId = typeof prod._id === 'string' ? prod._id : 
+                          (prod._id && prod._id.$oid) ? prod._id.$oid : 
+                          prod.id || '';
+                          
+            return prodId !== id;
+          });
+          
+          console.log(`Fetched ${filteredProducts.length} new arrivals products`);
+          
+          // Ensure products have valid IDs before setting state
+          const processedProducts = filteredProducts.map((prod: any) => {
+            if (!prod) return null;
+            
+            // Try to get the product ID from different possible locations
+            const productId = typeof prod._id === 'string' ? prod._id : 
+                             (prod._id && prod._id.$oid) ? prod._id.$oid : 
+                             prod.id || '';
+            
+            // Add the extracted ID back to the product
+            return {
+              ...prod,
+              _id: productId // Ensure _id is always a string
+            };
+          }).filter(Boolean); // Remove any null values
+          
+          setNewArrivals(processedProducts);
+        } else {
+          console.error(`Failed to fetch new arrivals: ${response.status}`);
+          setNewArrivals([]);
         }
       } catch (error) {
         console.error('Error fetching new arrivals:', error);
@@ -964,6 +1025,92 @@ const ProductPage = ({ params }: Props) => {
   }
 
   // Fetch product data with retry logic and better admin panel integration
+  // Load hard-coded sample products for NEW ARRIVALS
+  const loadSampleNewArrivals = () => {
+    setLoadingNewArrivals(true);
+    try {
+      // Create sample products directly
+      const sampleProducts: Product[] = [
+        {
+          _id: "1",
+          name: '01 Sage set in Rich brown',
+          price: 1300,
+          images: [
+            '/images/try-image.jpg',
+            '/images/try-image.jpg'
+          ],
+          description: 'Experience the perfect blend of luxury and ease with this Rich Brown French linen set.',
+          Material: ['French linen'],
+          sizes: [
+            { size: 'S', stock: 10, isPreOrder: false },
+            { size: 'M', stock: 10, isPreOrder: false },
+            { size: 'L', stock: 10, isPreOrder: false }
+          ],
+          materials: ['French linen']
+        },
+        {
+          _id: "2",
+          name: '02 Sage set in light beige',
+          price: 1300,
+          images: [
+            '/images/try-image.jpg',
+            '/images/try-image.jpg'
+          ],
+          description: 'Experience the perfect blend of luxury and ease with this light beige French linen set.',
+          Material: ['French linen'],
+          sizes: [
+            { size: 'S', stock: 10, isPreOrder: false },
+            { size: 'M', stock: 10, isPreOrder: false },
+            { size: 'L', stock: 10, isPreOrder: false }
+          ],
+          materials: ['French linen']
+        },
+        {
+          _id: "3",
+          name: 'Sage top in Rich brown',
+          price: 700,
+          images: [
+            '/images/try-image.jpg',
+            '/images/try-image.jpg'
+          ],
+          description: 'Effortlessly chic and breathable, this Rich Brown French linen top.',
+          Material: ['French linen'],
+          sizes: [
+            { size: 'S', stock: 10, isPreOrder: false },
+            { size: 'M', stock: 10, isPreOrder: false },
+            { size: 'L', stock: 10, isPreOrder: false }
+          ],
+          materials: ['French linen']
+        },
+        {
+          _id: "4",
+          name: 'Sage top in light beige',
+          price: 700,
+          images: [
+            '/images/try-image.jpg',
+            '/images/try-image.jpg'
+          ],
+          description: 'Effortlessly chic and breathable, this light beige French linen top.',
+          Material: ['French linen'],
+          sizes: [
+            { size: 'S', stock: 10, isPreOrder: false },
+            { size: 'M', stock: 10, isPreOrder: false },
+            { size: 'L', stock: 10, isPreOrder: false }
+          ],
+          materials: ['French linen']
+        }
+      ];
+      
+      console.log('Using sample products for NEW ARRIVALS:', sampleProducts.length);
+      setNewArrivals(sampleProducts);
+    } catch (err) {
+      console.error('Error loading sample products:', err);
+      setNewArrivals([]); // Set empty array as fallback
+    } finally {
+      setLoadingNewArrivals(false);
+    }
+  };
+  
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -974,8 +1121,6 @@ const ProductPage = ({ params }: Props) => {
         setSelectedSize('')
         setSelectedColor('')
         
-
-
         // Check if this product needs to be forcefully refreshed after an order
         if (typeof window !== 'undefined') {
           const productsToUpdateJson = sessionStorage.getItem('productsToUpdate');
@@ -1097,8 +1242,9 @@ const ProductPage = ({ params }: Props) => {
     }
 
     // Call the fetchProduct function
-
-    fetchProduct()
+    fetchProduct();
+    // Load new arrivals from sample data
+    loadSampleNewArrivals();
   }, [id])
 
   // Add to cart function with stock validation - NEVER reduces stock (only done after checkout)
@@ -1605,79 +1751,67 @@ const ProductPage = ({ params }: Props) => {
       <div className="w-full max-w-7xl mx-auto mt-20 mb-16 px-4 bg-white dark:bg-black">
         <h2 className="text-3xl md:text-4xl font-light mb-12 text-center tracking-widest text-black dark:text-white">NEW ARRIVALS</h2>
         
-        <div className="flex overflow-x-auto scrollable-x gap-8 pb-8">
-          {loadingNewArrivals ? (
-            // Show loading state while fetching
-            <div className="flex justify-center items-center py-12 w-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
-            </div>
-          ) : (
-            // Display new arrivals
-            newArrivals.length > 0 ? 
-              newArrivals.map((newProduct: any) => (
-                <Link
-                  key={newProduct._id}
-                  href={`/product/${newProduct._id}`}
-                  className="flex-shrink-0 flex flex-col items-center min-w-[260px] max-w-[320px] group cursor-pointer"
-                >
-                  <div className="relative w-full aspect-[3/4] mb-4">
-                    <Image
-                      src={(newProduct.images?.[0] || '/images/placeholder.jpg')}
-                      alt={newProduct.name}
-                      fill
-                      className="object-cover object-center"
-                      unoptimized={true}
-                    />
-                  </div>
-                  <div className="w-full text-center">
-                    <div className="text-xs tracking-widest mb-1 text-gray-600 dark:text-white group-hover:underline">
-                      {(newProduct.name || newProduct.title || 'Product').toUpperCase()}
+        {loadingNewArrivals ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+          </div>
+        ) : (
+          <div className="flex overflow-x-auto scrollable-x gap-8 pb-8">
+            {newArrivals && newArrivals.length > 0 ? (
+              newArrivals.map((newProduct) => {
+                // Safely extract product data with fallbacks
+                const productId = newProduct._id || '';
+                const productName = newProduct.name || newProduct.title || 'Product';
+                const productPrice = typeof newProduct.price === 'number' ? newProduct.price : 0;
+                const productDiscount = typeof newProduct.discount === 'number' ? newProduct.discount : 0;
+                
+                // Safety check for invalid product IDs
+                if (!productId) return null;
+                
+                // Get image with fallback
+                let productImage = '/images/placeholder.jpg';
+                if (newProduct.images && Array.isArray(newProduct.images) && newProduct.images.length > 0) {
+                  productImage = newProduct.images[0];
+                }
+                
+                return (
+                  <Link
+                    key={productId}
+                    href={`/product/${productId}`}
+                    className="flex-shrink-0 flex flex-col items-center min-w-[260px] max-w-[320px] group cursor-pointer"
+                  >
+                    <div className="relative w-full aspect-[3/4] mb-4">
+                      <Image
+                        src={productImage}
+                        alt={productName}
+                        fill
+                        className="object-cover object-center"
+                        unoptimized={true}
+                      />
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-black dark:text-white">
-                      <span className="text-base">L.E {newProduct.price}</span>
-                      {newProduct.discount && newProduct.discount > 0 && (
-                        <span className="text-xs line-through text-gray-500 dark:text-gray-400">
-                          L.E {Math.round(newProduct.price / (1 - newProduct.discount / 100))}
-                        </span>
-                      )}
+                    <div className="w-full text-center">
+                      <div className="text-xs tracking-widest mb-1 text-gray-600 dark:text-white group-hover:underline">
+                        {productName.toUpperCase()}
+                      </div>
+                      <div className="flex items-center justify-center gap-2 text-black dark:text-white">
+                        <span className="text-base">L.E {productPrice}</span>
+                        {productDiscount > 0 && (
+                          <span className="text-xs line-through text-gray-500 dark:text-gray-400">
+                            L.E {Math.round(productPrice / (1 - productDiscount / 100))}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))
-            : 
-              // Sample products as fallback
-              [...Array(4)].map((_, index) => (
-                <Link
-                  key={index}
-                  href="/collection"
-                  className="flex-shrink-0 flex flex-col items-center min-w-[260px] max-w-[320px] group cursor-pointer"
-                >
-                  <div className="relative w-full aspect-[3/4] mb-4">
-                    <Image
-                      src={product?.images?.[0] || '/images/placeholder.jpg'}
-                      alt="New Arrival"
-                      fill
-                      className="object-cover object-center"
-                      unoptimized={true}
-                    />
-                  </div>
-                  <div className="w-full text-center">
-                    <div className="text-xs tracking-widest mb-1 text-gray-600 dark:text-white group-hover:underline">
-                      {product.name.toUpperCase()}
-                    </div>
-                    <div className="flex items-center justify-center gap-2 text-black dark:text-white">
-                      <span className="text-base">L.E {product.price}</span>
-                      {product.discount && product.discount > 0 && (
-                        <span className="text-xs line-through text-gray-500 dark:text-gray-400">
-                          L.E {Math.round(product.price / (1 - product.discount / 100))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))
-          )}
-        </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="w-full text-center py-8 text-gray-500">
+                No new products available at the moment
+              </div>
+            )}
+          </div>
+        )}
         
         {/* See all link */}
         <div className="w-full flex justify-center mt-8">

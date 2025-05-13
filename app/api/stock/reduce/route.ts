@@ -69,25 +69,63 @@ export async function POST(request: Request) {
       
       while (retryCount < maxRetries) {
         try {
-          adminResponse = await fetch('https://eleveadmin.netlify.app/api/stock/reduce', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-              'Origin': 'https://elevee.netlify.app'
-            },
-            body: JSON.stringify(adminRequestBody)
-          });
+          // Add timestamp and random value to prevent caching
+          const timestamp = Date.now();
+          const randomValue = Math.random().toString(36).substring(2, 10);
+          
+          // Try multiple possible endpoint formats for stock reduction
+          const possibleEndpoints = [
+            `https://eleveadmin.netlify.app/api/stock/reduce?timestamp=${timestamp}&r=${randomValue}`,
+            `https://eleveadmin.netlify.app/api/inventory/reduce?timestamp=${timestamp}&r=${randomValue}`,
+            `https://eleveadmin.netlify.app/api/products/stock/reduce?timestamp=${timestamp}&r=${randomValue}`
+          ];
+          
+          let endpointSuccess = false;
+          
+          for (const endpoint of possibleEndpoints) {
+            try {
+              console.log(`Trying stock reduction endpoint: ${endpoint}`);
+              
+              adminResponse = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0',
+                  'Origin': 'https://elevee.netlify.app',
+                  'X-Request-Time': timestamp.toString(),
+                  'X-Order-ID': finalOrderId || 'unknown',
+                  'X-Source': 'ecommerce',
+                  'X-API-Version': '1.0'
+                },
+                body: JSON.stringify(adminRequestBody),
+                // Add a reasonable timeout
+                signal: AbortSignal.timeout(10000) // Increased timeout for stock reduction
+              });
+              
+              if (adminResponse.ok) {
+                console.log(`Successfully connected to stock reduction endpoint: ${endpoint}`);
+                endpointSuccess = true;
+                break;
+              }
+            } catch (endpointError) {
+              console.log(`Stock reduction endpoint ${endpoint} failed:`, endpointError);
+              // Continue trying other endpoints
+            }
+          }
+          
+          if (!endpointSuccess) {
+            throw new Error('All stock reduction endpoints failed');
+          }
           
           // If successful, break out of the retry loop
-          if (adminResponse.ok) {
+          if (adminResponse && adminResponse.ok) {
             console.log(`Admin panel request succeeded on attempt ${retryCount + 1}`);
             break;
-          } else {
+          } else if (adminResponse) {
             console.log(`Admin panel request failed on attempt ${retryCount + 1} with status ${adminResponse.status}`);
-            retryCount++;
+            retryCount++; 
             
             if (retryCount < maxRetries) {
               // Wait before retrying (exponential backoff)
@@ -583,21 +621,30 @@ export async function POST(request: Request) {
         
         while (syncAttempts < MAX_SYNC_ATTEMPTS && !syncSuccess) {
           try {
+            // Generate unique identifiers for this sync request
+            const syncTimestamp = Date.now();
+            const syncRandomValue = Math.random().toString(36).substring(2, 10);
+            
             // Make a POST request to the sync endpoint with afterOrder flag
-            const syncResponse = await fetch(`${origin}/api/stock/sync`, {
+            const syncResponse = await fetch(`${origin}/api/stock/sync?timestamp=${syncTimestamp}&r=${syncRandomValue}&afterOrder=true`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
+                'Pragma': 'no-cache',
+                'X-Request-Time': syncTimestamp.toString(),
+                'X-Order-ID': finalOrderId || 'unknown'
               },
               body: JSON.stringify({ 
                 productId,
-                timestamp: Date.now(),
+                timestamp: syncTimestamp,
                 forceUpdate: true, // Force immediate update
                 afterOrder: true, // Flag to indicate this is after an order for better real-time updates
-                orderId: finalOrderId || 'unknown' // Include order ID for tracking
-              })
+                orderId: finalOrderId || 'unknown', // Include order ID for tracking
+                bypassCache: true // Ensure we bypass any caching
+              }),
+              // Add a reasonable timeout
+              signal: AbortSignal.timeout(5000)
             });
             
             if (syncResponse.ok) {
@@ -650,12 +697,21 @@ export async function POST(request: Request) {
       // Don't throw the error, just log it
     }
     
+    // Return the results
     return NextResponse.json({ 
       success: true, 
-      message: 'Stock levels updated successfully',
+      message: 'Stock reduction processed',
       results,
       timestamp,
-      updatedAt: now
+      orderId: finalOrderId || 'unknown'
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Stock-Update-Time': Date.now().toString(),
+        'X-Order-ID': finalOrderId || 'unknown'
+      }
     });
     
   } catch (error: any) {
