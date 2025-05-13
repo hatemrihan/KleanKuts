@@ -10,29 +10,29 @@ import { useTheme } from '../context/ThemeContext'
 import ThemeToggle from '../components/ThemeToggle'
 
 const navItems = [
-  {
-    label: 'HOME',
-    href: '/',
-  },
-  {
-    label: 'SHOP COLLECTION',
-    href: '/collection',
-  },
-  {
-    label: 'ABOUT',
-    href: '/#about',
-    isScroll: true
-  },
+  // {
+  //   label: 'HOME',
+  //   href: '/',
+  // },
+  // {
+  //   label: 'SHOP COLLECTION',
+  //   href: '/collection',
+  // },
+  // {
+  //   label: 'ABOUT',
+  //   href: '/#about',
+  //   isScroll: true
+  // },
   // {
   //   label: 'MEN COLLECTION',
   //   href: '/collection/men',
   //   isScroll: true
   // },
-  {
-    label: 'FAQS',
-    href: '/#faqs',
-    isScroll: true
-  },
+  // {
+  //   label: 'FAQS',
+  //   href: '/#faqs',
+  //   isScroll: true
+  // },
   {
     label: 'SAY HI',
     href: '/#contact',
@@ -192,7 +192,7 @@ const Nav = () => {
             </div>
 
             {/* Auth and Cart Section */}
-            <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-8">
               {status === 'loading' ? (
                 <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full"></div>
               ) : session ? (
@@ -221,7 +221,7 @@ const Nav = () => {
                 <ThemeToggle />
               </div>
               
-              <Link 
+              {/* <Link 
                 href="/cart" 
                 className="relative text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
                 onClick={handleCartClick}
@@ -250,9 +250,9 @@ const Nav = () => {
                   Cart
                   <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
                 </span>
-              </Link>
+              </Link> */}
             </div>
-          </div>
+          </div> 
 
           {/* Mobile Navigation */}
           <div className="md:hidden flex items-center justify-between h-16">
@@ -302,7 +302,7 @@ const Nav = () => {
                 </button>
               )}
 
-              <Link 
+              {/* <Link 
                 href="/cart" 
                 className="flex items-center justify-center text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 onClick={handleCartClick}
@@ -327,7 +327,7 @@ const Nav = () => {
                     </span>
                   )}
                 </div>
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>
@@ -399,7 +399,7 @@ const Nav = () => {
             </button>
             
             {/* Mobile Cart Link */}
-            <Link
+            {/* <Link
               href="/cart"
               className="relative text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
               onClick={(e) => {
@@ -428,7 +428,7 @@ const Nav = () => {
                 )}
               </div>
               <span>Cart</span>
-            </Link>
+            </Link> */}
           </div>
         </div>
       </div>

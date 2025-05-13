@@ -1,14 +1,38 @@
 "use client";
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Nav from '@/app/sections/nav';
 import { toast } from 'react-hot-toast';
+import { useScroll, useTransform, motion } from 'framer-motion';
+import useTextRevealAnimation from '../hooks/UsingTextRevealAnimation';
 
 const Waitlist = () => {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const scrollingDiv = useRef<HTMLDivElement>(null);
+  const {scrollYProgress} = useScroll({
+    target: scrollingDiv,
+    offset: ["start end", "end end"]
+  });
+  const portraitWidth = useTransform(scrollYProgress, [0,1], ['100%', '240%']) ;
+  const {scope, controls, entranceAnimation} = useTextRevealAnimation();
+  useEffect(()=>{
+entranceAnimation();
+  },[entranceAnimation]);
+   const handleClickMobileNavItem= (e:React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      setIsOpen(false);
+      const url = new URL(e.currentTarget.href);
+      const hash = url.hash;
+      const target = document.querySelector(hash);
+      if (!target) return;
+      target.scrollIntoView({behavior:'smooth'});
+    }
+    const [isOpen, setIsOpen] = useState(false);
+  
+  // Animation will run automatically when component mounts (handled by the hook)
 
   // Exactly as requested: Submit using a hidden iframe technique with server response verification
   const submitViaIframe = (emailAddress: string): Promise<boolean> => {
@@ -229,16 +253,21 @@ const Waitlist = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col transition-colors duration-300">
       {/* Navigation */}
-      <Nav />
-      
+     
       <main className="flex-grow flex flex-col">
         {/* Hero Section */}
         <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           <div className="flex flex-col items-center py-12 max-w-2xl mx-auto text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl">Eleve Egypt | Luxury Clothing Brand in Egypt 
+            <motion.h1 
+              ref={scope}
+              initial={{ opacity: 0, y: 50 }}
+              animate={controls}
+              className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl uppercase tracking-wider"
+            >
+              <span>Eleve Egypt | Luxury Clothing Brand in Egypt</span>
               <br />
-              Premium Quality
-            </h1>
+              <span>Premium Quality</span>
+            </motion.h1>
             
             {!isSubmitted ? (
               <>
@@ -295,9 +324,9 @@ const Waitlist = () => {
                   Subscribe Another Email
                 </button>
                 
-                <Link href="/collection" className="text-black dark:text-white underline">
+                {/* <Link href="/collection" className="text-black dark:text-white underline">
                   Explore Our Collection
-                </Link>
+                </Link> */}
               </div>
             )}
           </div>
@@ -321,32 +350,74 @@ const Waitlist = () => {
         
         {/* Thank You Section */}
         <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full text-center">
-          <h2 className="text-3xl font-bold mb-8 transition-colors duration-300">ELEVE</h2>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={controls}
+            className="text-3xl font-bold mb-8 transition-colors duration-300 uppercase tracking-wider"
+          >
+            ELEVE
+          </motion.h2>
           
-          <p className="text-gray-600 dark:text-white/80 mb-6 max-w-2xl mx-auto transition-colors duration-300">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={controls}
+            transition={{ delay: 0.2 }}
+            className="text-gray-800 dark:text-white/90 mb-6 max-w-2xl mx-auto transition-colors duration-300 uppercase tracking-wider font-medium"
+          >
             We just wanted to thank you all for such intense support over our first drop. We're dedicated to
             continuing growth of this store alongside our community, and look forward to what is to come.
-          </p>
+          </motion.p>
           
-          <p className="text-xl font-semibold mb-8 transition-colors duration-300">P.S. TAKE ACTION.</p>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={controls}
+            transition={{ delay: 0.4 }}
+            className="text-xl font-semibold mb-8 transition-colors duration-300 uppercase tracking-wider"
+          >
+            P.S. TAKE ACTION.
+          </motion.p>
           
-          <div className="flex justify-center space-x-6">
-            <Link href="https://instagram.com" className="text-white hover:text-white/80 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-            </Link>
-            <Link href="https://tiktok.com" className="text-white hover:text-white/80 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 12a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path>
-                <path d="M15 8v8"></path>
-                <path d="M9 16v8"></path>
-                <path d="M15 8a4 4 0 0 0 4 4"></path>
-                <path d="M15 4a4 4 0 0 0-4 4h8"></path>
-              </svg>
-            </Link>
+          <div className="flex justify-center space-x-8">
+            {/* Instagram */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={controls}
+              transition={{ delay: 0.6 }}
+            >
+              <Link href="https://www.instagram.com/eleve__egy?igsh=b3NnYWw4eWgxcTcw" className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+              </Link>
+            </motion.div>
+            
+            {/* TikTok */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={controls}
+              transition={{ delay: 0.7 }}
+            >
+              <Link href="https://www.tiktok.com/@eleve__egy/" className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3V0Z"/>
+                </svg>
+              </Link>
+            </motion.div>
+            
+            {/* Gmail */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={controls}
+              transition={{ delay: 0.8 }}
+            >
+              <Link href="mailto:eleve.egy.1@gmail.com" className="text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757Zm3.436-.586L16 11.801V4.697l-5.803 3.546Z"/>
+                </svg>
+              </Link>
+            </motion.div>
           </div>
         </section>
       </main>

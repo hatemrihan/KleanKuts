@@ -10,17 +10,12 @@ import Waitlist from './sections/Waitlist';
 
 export default function Home() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Nav />
-      <Waitlist />
-      <Introducing />
+    <>
+    <Nav /><Waitlist />
+    </>
+    // <Suspense fallback={<div>Loading...</div>}>
      
-      <NewHeader />
-      <MovingWords />
-      <Products />
-      <FAQs /> 
-      <MovingWords/>
-     <NewFooter />
-    </Suspense>
+   
+   
   );
 }
