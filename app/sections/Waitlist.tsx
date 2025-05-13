@@ -264,9 +264,9 @@ entranceAnimation();
               animate={controls}
               className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl uppercase tracking-wider"
             >
-              <span>Eleve Egypt | Luxury Clothing Brand in Egypt</span>
+              <span>Eleve Egypt </span>
               <br />
-              <span>Premium Quality</span>
+              <span classname="font-light">Luxury Clothing Brand in Egypt</span>
             </motion.h1>
             
             {!isSubmitted ? (
