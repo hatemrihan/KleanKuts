@@ -10,29 +10,29 @@ import { useTheme } from '../context/ThemeContext'
 import ThemeToggle from '../components/ThemeToggle'
 
 const navItems = [
-  // {
-  //   label: 'HOME',
-  //   href: '/',
-  // },
-  // {
-  //   label: 'SHOP COLLECTION',
-  //   href: '/collection',
-  // },
-  // {
-  //   label: 'ABOUT',
-  //   href: '/#about',
-  //   isScroll: true
-  // },
-  // {
-  //   label: 'MEN COLLECTION',
-  //   href: '/collection/men',
-  //   isScroll: true
-  // },
-  // {
-  //   label: 'FAQS',
-  //   href: '/#faqs',
-  //   isScroll: true
-  // },
+  {
+    label: 'HOME',
+    href: '/',
+  },
+  {
+    label: 'SHOP COLLECTION',
+    href: '/collection',
+  },
+  {
+    label: 'ABOUT',
+    href: '/#about',
+    isScroll: true
+  },
+  {
+    label: 'MEN COLLECTION',
+    href: '/collection/men',
+    isScroll: true
+  },
+  {
+    label: 'FAQS',
+    href: '/#faqs',
+    isScroll: true
+  },
   {
     label: 'SAY HI',
     href: '/#contact',

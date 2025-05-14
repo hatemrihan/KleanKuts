@@ -9,6 +9,8 @@ import Nav from '../sections/nav'
 import { validateStock, reduceStock } from '../utils/stockUtils'
 import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
 import { redirectToThankYou, prepareOrderItemsForStockReduction, completeOrderAndRedirect } from '../utils/orderRedirect'
+import { toast } from 'react-hot-toast'
+import { validateCoupon, reportSuccessfulOrder, calculateDiscountAmount } from '../utils/couponUtils'
 
 interface FormData {
   firstName: string;
@@ -19,6 +21,7 @@ interface FormData {
   apartment: string;
   city: string;
   notes: string;
+  promoCode: string;
 }
 
 interface CartItem {
@@ -35,6 +38,17 @@ interface CartItem {
     size: string;
     color: string;
   };
+}
+
+interface PromoDiscount {
+  type: 'percentage' | 'fixed';
+  value: number;
+  minPurchase: number;
+  code: string;
+  referralCode: string | null;
+  ambassadorId?: string;
+  isAmbassador: boolean;
+  originalResponse?: any; // Store the full response from the API for reporting later
 }
 
 const shippingCosts = {
@@ -77,14 +91,25 @@ const CheckoutPage = () => {
     address: '',
     apartment: '',
     city: '',
-    notes: ''
+    notes: '',
+    promoCode: ''
   })
   const [errors, setErrors] = useState<Partial<FormData>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [orderError, setOrderError] = useState<string | null>(null)
+  const [promoDiscount, setPromoDiscount] = useState<PromoDiscount | null>(null)
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
 
   const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0
-  const totalWithShipping = cartTotal + shippingCost
+  
+  // Calculate discount amount using the utility function
+  const discountAmount = promoDiscount ? 
+    (promoDiscount.type === 'fixed' ? 
+      promoDiscount.value : 
+      calculateDiscountAmount(promoDiscount.value, cartTotal)) : 
+    0;
+  const totalWithShipping = cartTotal + shippingCost - discountAmount
 
   // We're using the static blacklist instead of loading from database
   // This ensures compatibility with Netlify deployment
@@ -192,7 +217,16 @@ const CheckoutPage = () => {
           totalAmount: totalWithShipping,
           status: 'pending',
           notes: formData.notes || '',
-          orderDate: new Date().toISOString()
+          orderDate: new Date().toISOString(),
+          promoCode: promoDiscount ? {
+            code: promoDiscount.code,
+            type: promoDiscount.type,
+            value: promoDiscount.value,
+            discountAmount: discountAmount,
+            referralCode: promoDiscount.referralCode,
+            isAmbassador: promoDiscount.isAmbassador,
+            ambassadorId: promoDiscount.ambassadorId
+          } : null
         }),
       })
 
@@ -200,6 +234,42 @@ const CheckoutPage = () => {
 
       if (response.ok) {
         try {
+          // Create order details object to reuse for both admin panel and ambassador reporting
+          const orderDetails = {
+            orderId: data.orderId || data._id || Date.now().toString(),
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email.trim(),
+            address: formData.address.trim(),
+            apartment: formData.apartment.trim(),
+            city: formData.city,
+            notes: formData.notes || '',
+            products: cart.map(item => ({
+              id: item.id,
+              productId: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              size: item.size,
+              color: item.color,
+              image: item.image
+            })),
+            total: Number(totalWithShipping.toFixed(0)),
+            subtotal: cartTotal,
+            shippingCost: shippingCost,
+            discountAmount: discountAmount,
+            promoCode: promoDiscount ? {
+              code: promoDiscount.code,
+              type: promoDiscount.type,
+              value: promoDiscount.value,
+              discountAmount: discountAmount,
+              referralCode: promoDiscount.referralCode,
+              isAmbassador: promoDiscount.isAmbassador,
+              ambassadorId: promoDiscount.ambassadorId
+            } : null
+          };
+          
           // Then, send to admin panel API
           console.log('Sending order to admin panel...');
           const adminResponse = await fetch('https://eleveadmin.netlify.app/api/orders', {
@@ -209,26 +279,7 @@ const CheckoutPage = () => {
               'Accept': 'application/json',
               'Origin': 'https://elevee.netlify.app'
             },
-            body: JSON.stringify({
-              firstName: formData.firstName.trim(),
-              lastName: formData.lastName.trim(),
-              phone: formData.phone.trim(),
-              email: formData.email.trim(),
-              address: formData.address.trim(),
-              apartment: formData.apartment.trim(),
-              city: formData.city,
-              notes: formData.notes || '',
-              products: cart.map(item => ({
-                productId: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                size: item.size,
-                color: item.color,
-                image: item.image
-              })),
-              total: Number(totalWithShipping.toFixed(0))
-            })
+            body: JSON.stringify(orderDetails)
           });
 
           console.log('Admin panel response status:', adminResponse.status);
@@ -237,6 +288,18 @@ const CheckoutPage = () => {
 
           if (adminResponse.ok) {
             console.log('✅ Order successfully sent to admin panel');
+            
+            // If there was a promo code used, report it to the ambassador system
+            if (promoDiscount && promoDiscount.code) {
+              try {
+                console.log('Reporting order with promo code to ambassador system...');
+                const reportResult = await reportSuccessfulOrder(orderDetails, promoDiscount.code);
+                console.log('Ambassador system report result:', reportResult);
+              } catch (ambassadorError) {
+                console.error('Error reporting to ambassador system:', ambassadorError);
+                // Don't block checkout flow if ambassador reporting fails
+              }
+            }
           } else {
             console.error('⚠️ Admin panel error:', adminData.error || 'Failed to sync with admin panel');
             // Main order was successful, so we still proceed, but log the issue
@@ -319,6 +382,55 @@ const CheckoutPage = () => {
     // Clear order error when user updates form
     if (orderError) {
       setOrderError(null)
+    }
+    
+    // Clear promo code when it's changed
+    if (name === 'promoCode') {
+      setPromoDiscount(null);
+      setPromoError(null);
+    }
+  }
+  
+  const validatePromoCode = async () => {
+    // Don't validate if empty
+    if (!formData.promoCode.trim()) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+    
+    setIsValidatingPromo(true);
+    setPromoError(null);
+    
+    try {
+      // Use the external API through our utility function
+      const result = await validateCoupon(formData.promoCode.trim());
+      console.log('Coupon validation result:', result);
+      
+      if (result.valid && result.discount) {
+        // Store the complete discount info from the API
+        setPromoDiscount({
+          ...result.discount,
+          originalResponse: result // Store the full response for reporting later
+        });
+        
+        // Show success message with the correct discount format
+        const discountText = result.discount.type === 'percentage' ? 
+          `${result.discount.value}% off` : 
+          `L.E ${result.discount.value} off`;
+          
+        toast.success(`Promo code applied: ${discountText}`);
+      } else {
+        setPromoError(result.message || 'Invalid promo code');
+        setPromoDiscount(null);
+        toast.error(result.message || 'Invalid promo code');
+      }
+    } catch (error) {
+      console.error('Error validating promo code:', error);
+      setPromoError('Failed to validate promo code');
+      setPromoDiscount(null);
+      toast.error('Failed to validate promo code');
+    } finally {
+      setIsValidatingPromo(false);
     }
   }
 
@@ -409,6 +521,40 @@ const CheckoutPage = () => {
                   />
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                    <span>Promo Code</span>
+                    {promoDiscount && (
+                      <span className="text-green-600 dark:text-green-400">Applied!</span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="promoCode"
+                      value={formData.promoCode}
+                      onChange={handleInputChange}
+                      placeholder="Enter promo code"
+                      className={`flex-grow p-3 border ${promoError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
+                      disabled={isValidatingPromo || !!promoDiscount}
+                    />
+                    <button 
+                      type="button"
+                      onClick={promoDiscount ? () => {
+                        setPromoDiscount(null);
+                        setFormData(prev => ({ ...prev, promoCode: '' }));
+                      } : validatePromoCode}
+                      className={`px-4 py-2 border ${promoDiscount ? 'bg-red-600 text-white border-red-600' : 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'} font-medium text-sm transition-colors duration-300`}
+                      disabled={isValidatingPromo}
+                    >
+                      {isValidatingPromo ? 'Checking...' : (promoDiscount ? 'Remove' : 'Apply')}
+                    </button>
+                  </div>
+                  {promoError && (
+                    <p className="text-red-500 text-sm mt-1">{promoError}</p>
                   )}
                 </div>
 
@@ -531,6 +677,15 @@ const CheckoutPage = () => {
                   <span>Shipping</span>
                   <span>L.E {shippingCost}</span>
                 </div>
+                {promoDiscount && (
+                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                    <span>
+                      Discount
+                      {promoDiscount.type === 'percentage' && <span> ({promoDiscount.value}%)</span>}
+                    </span>
+                    <span className="font-medium">-L.E {discountAmount.toFixed(0)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-200 dark:border-gray-700 transition-colors duration-300">
                   <span>Total</span>
                   <span>L.E {totalWithShipping.toFixed(0)}</span>

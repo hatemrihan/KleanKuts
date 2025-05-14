@@ -11,7 +11,9 @@ import Waitlist from './sections/Waitlist';
 export default function Home() {
   return (
     <>
-    <Nav /><Waitlist />
+    <Nav />
+    <Waitlist />
+    <Products />
     </>
     // <Suspense fallback={<div>Loading...</div>}>
      
