@@ -8,21 +8,24 @@ import Products from './sections/products';
 import NewFooter from './sections/NewFooter';
 import Waitlist from './sections/Waitlist';
 import NewMovingWords from './sections/NewMovingWords';
+import Hola from './sections/Hola';
 
 export default function Home() {
   return (
     // <Suspense fallback={<div>Loading...</div>}>
-    <> <Nav />
+   <>   <Nav />
+   <Hola />
       <Waitlist />
-      </> 
-    //   <Introducing />
+      </>
+       /* <Introducing />
      
-    //   <NewHeader />
-    //   <NewMovingWords />
-    //   <Products />
-    //   <FAQs /> 
-    //   <MovingWords/>
-    //  <NewFooter />
-    // </Suspense>
-  );
+      <NewHeader />
+      <NewMovingWords />
+      <Products />
+      <FAQs /> 
+      <MovingWords/>
+     <NewFooter />
+    </Suspense> */
+  
+); 
 }
