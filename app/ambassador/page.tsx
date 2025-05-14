@@ -72,8 +72,8 @@ const AmbassadorPage = () => {
       [name]: value
     }));
     
-    // Prevent default to ensure focus remains on the input
-    e.preventDefault();
+    // Do NOT prevent default or stop propagation - this was causing the focus issue
+    // Just let the normal input event flow continue
   };
 
   const handleShowApplicationForm = () => {
@@ -131,49 +131,69 @@ const AmbassadorPage = () => {
         return;
       }
       
-      // Perform the API request with proper error handling
+      // Simplify the data sent to the API to troubleshoot the 500 error
+      // Let's send only the essential fields that the API endpoint expects
       const response = await fetch('/api/ambassador/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Basic user info
+          // Only send the most basic required information
           name: formData.fullName || session?.user?.name || '',
           email: formData.email || session?.user?.email || '',
           
-          // Form data
-          formData: formData
+          // Send a simplified version of the form data to avoid potential serialization issues
+          formData: {
+            fullName: formData.fullName,
+            email: formData.email,
+            phoneNumber: formData.phoneNumber,
+            instagramHandle: formData.instagramHandle,
+            tiktokHandle: formData.tiktokHandle,
+            // Include only string values, not complex objects
+            otherSocialMedia: formData.otherSocialMedia.toString()
+          }
         }),
       });
 
-      // Handle response
+      // Add better error catching for network issues
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', response.status, errorText);
+        throw new Error(`API error: ${response.status} - ${errorText || 'No error details available'}`);
+      }
+      
+      // Handle successful response
       const data = await response.json();
 
-      if (response.ok) {
-        setRequestStatus('success');
-        setAmbassadorStatus('pending');
-        setShowApplicationForm(false); // Hide form after successful submission
-        // Show success message
-        alert('Your ambassador application has been submitted successfully!');
-      } else {
-        // Handle specific error cases
-        if (response.status === 409) {
-          setRequestStatus('error-duplicate');
-          alert(`${data.error || 'You already have a pending application'}`);
-        } else if (response.status === 401) {
-          setRequestStatus('error-auth');
-          alert('Please sign in again to submit your application');
-          // Re-authenticate the user
-          signIn('google');
-        } else {
-          setRequestStatus('error');
-          alert(`Error: ${data.error || 'There was a problem submitting your application. Please try again.'}`);
-        }
-      }
+      // Since we've already checked response.ok above and thrown if not ok,
+      // we know this line is only reached with successful responses
+      setRequestStatus('success');
+      setAmbassadorStatus('pending');
+      setShowApplicationForm(false); // Hide form after successful submission
+      // Show success message
+      alert('Your ambassador application has been submitted successfully!');
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
       setRequestStatus('error');
+      
+      // Display a more user-friendly error message
+      let errorMessage = 'There was a problem submitting your application.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('401')) {
+          errorMessage = 'You need to sign in again to continue.';
+          // Clear session and redirect to sign in
+          setTimeout(() => signIn('google', { callbackUrl: '/ambassador' }), 1500);
+        } else if (error.message.includes('409')) {
+          errorMessage = 'You already have a pending ambassador application.';
+        } else if (error.message.includes('500')) {
+          errorMessage = 'The server encountered an error. Please try again later.';
+        }
+      }
+      
+      // Show error message
+      alert(errorMessage);
     } finally {
       setIsRequesting(false);
     }
@@ -282,7 +302,9 @@ const AmbassadorPage = () => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   required
+                  autoComplete="name"
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 />
               </div>
@@ -294,7 +316,8 @@ const AmbassadorPage = () => {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  required
+                  onFocus={(e) => e.target.select()}
+                  autoComplete="tel"
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 />
               </div>
@@ -306,7 +329,9 @@ const AmbassadorPage = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   required
+                  autoComplete="email"
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 />
               </div>
@@ -325,7 +350,9 @@ const AmbassadorPage = () => {
                   name="instagramHandle"
                   value={formData.instagramHandle}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   required
+                  autoComplete="off"
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 />
               </div>
@@ -337,6 +364,8 @@ const AmbassadorPage = () => {
                   name="tiktokHandle"
                   value={formData.tiktokHandle}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
+                  autoComplete="off"
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 />
               </div>
@@ -348,6 +377,8 @@ const AmbassadorPage = () => {
                   name="otherSocialMedia"
                   value={formData.otherSocialMedia}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
+                  autoComplete="off"
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                   placeholder="e.g. Facebook, YouTube, etc."
                 />
@@ -394,6 +425,7 @@ const AmbassadorPage = () => {
                   name="promotionPlan"
                   value={formData.promotionPlan}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   rows={3}
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 ></textarea>
@@ -497,6 +529,7 @@ const AmbassadorPage = () => {
                   name="motivation"
                   value={formData.motivation}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   rows={3}
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 ></textarea>
@@ -566,6 +599,7 @@ const AmbassadorPage = () => {
                   name="additionalInfo"
                   value={formData.additionalInfo}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   rows={2}
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 ></textarea>
@@ -577,6 +611,7 @@ const AmbassadorPage = () => {
                   name="questions"
                   value={formData.questions}
                   onChange={handleInputChange}
+                  onFocus={(e) => e.target.select()}
                   rows={2}
                   className="w-full p-2 border border-black/20 dark:border-white/20 bg-transparent focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
                 ></textarea>
@@ -704,13 +739,13 @@ const AmbassadorPage = () => {
           </ol>
         </div>
         
-        <div className="mt-6 flex justify-end">
-          <button 
-            onClick={() => setShowTerms(false)}
-            className="py-2 px-6 border border-black dark:border-white text-sm hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+        <div className="mt-8 flex">
+          <Link
+            href="/ambassador/apply"
+            className="py-3 px-6 border border-black dark:border-white font-medium text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all text-sm"
           >
-            Close
-          </button>
+            Apply Now
+          </Link>
         </div>
       </div>
     </div>
@@ -865,13 +900,12 @@ const AmbassadorPage = () => {
                     </p>
                   </div>
                 ) : (
-                  <button
-                    onClick={handleShowApplicationForm}
-                    disabled={isRequesting}
-                    className="w-full py-3 px-4 inline-flex justify-center items-center gap-2 border border-black dark:border-white font-medium text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  <Link
+                    href="/ambassador/apply"
+                    className="w-full py-3 px-4 inline-flex justify-center items-center gap-2 border border-black dark:border-white font-medium text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all text-sm"
                   >
-                    {isRequesting ? 'Loading...' : 'Apply Now'}
-                  </button>
+                    Apply Now
+                  </Link>
                 )}
 
                 {requestStatus === 'success' && (
