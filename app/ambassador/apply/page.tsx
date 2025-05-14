@@ -5,6 +5,43 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// Function to notify our admin system
+const notifyAdminSystem = async (formData: FormData) => {
+  try {
+    const fullName = formData.get('fullName') as string;
+    const email = formData.get('email') as string;
+    
+    // Convert FormData to regular object
+    const formDataObj: Record<string, any> = {};
+    formData.forEach((value, key) => {
+      formDataObj[key] = value;
+    });
+    
+    // Remove form-name and bot-field from the data sent to admin
+    delete formDataObj['form-name'];
+    delete formDataObj['bot-field'];
+    
+    await fetch('https://eleveadmin.netlify.app/api/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SHARED_API_SECRET}`
+      },
+      body: JSON.stringify({
+        type: 'ambassador_application',
+        data: {
+          email,
+          name: fullName,
+          formData: formDataObj
+        }
+      })
+    });
+  } catch (error) {
+    console.error('Error notifying admin system:', error);
+    // Continue anyway - user doesn't need to know about this
+  }
+};
+
 const AmbassadorApplicationPage = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -105,82 +142,46 @@ const AmbassadorApplicationPage = () => {
         return;
       }
       
-      // Add retry logic for potential network issues
-      let response;
-      let retryCount = 0;
-      const maxRetries = 2;
+      // Get the form element
+      const myForm = e.target as HTMLFormElement;
+      const formDataObj = new FormData(myForm);
       
-      while (retryCount <= maxRetries) {
-        try {
-          response = await fetch('/api/ambassador/request', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: formData.fullName || session?.user?.name || '',
-              email: formData.email || session?.user?.email || '',
-              
-              // Send all form data but ensure proper serialization
-              formData: {
-                fullName: formData.fullName,
-                email: formData.email,
-                phoneNumber: formData.phoneNumber || '',
-                instagramHandle: formData.instagramHandle,
-                tiktokHandle: formData.tiktokHandle || '',
-                otherSocialMedia: typeof formData.otherSocialMedia === 'object' ? 
-                  JSON.stringify(formData.otherSocialMedia) : formData.otherSocialMedia?.toString() || '',
-                personalStyle: formData.personalStyle || '',
-                soldBefore: formData.soldBefore || '',
-                promotionPlan: formData.promotionPlan || '',
-                motivation: formData.motivation || '',
-                hasCamera: formData.hasCamera || '',
-                attendEvents: formData.attendEvents || '',
-                agreeToTerms: formData.agreeToTerms || false
-              }
-            }),
-          });
-          
-          // If we get here, request succeeded, so break the retry loop
-          break;
-        } catch (networkError) {
-          console.error(`Network error (attempt ${retryCount + 1}/${maxRetries + 1}):`, networkError);
-          retryCount++;
-          
-          // If we've reached max retries, rethrow to be caught by the outer catch
-          if (retryCount > maxRetries) {
-            throw networkError;
-          }
-          
-          // Wait before retrying (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+      // Add form name to identify which Netlify form to use
+      formDataObj.append('form-name', 'ambassador-form');
+      
+      try {
+        // Submit to Netlify's form handler
+        const response = await fetch('/__ambassador-form.html', {
+          method: 'POST',
+          body: formDataObj
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Netlify Form Error:', response.status, errorText);
+          throw new Error(`Netlify form submission error: ${response.status} - ${errorText || 'No error details available'}`);
         }
+        
+        // Form submitted successfully to Netlify
+        console.log('Form submitted successfully to Netlify');
+        
+        // Now notify our admin system
+        await notifyAdminSystem(formDataObj);
+        
+        // Update UI state
+        setRequestStatus('success');
+        
+        // Show success message
+        alert('Your ambassador application has been submitted successfully! Our team will review your application and contact you soon.');
+        
+        // Redirect to a special waiting/pending page that explains the approval process
+        router.push('/ambassador/pending');
+      } catch (formError) {
+        console.error('Error submitting form:', formError);
+        setRequestStatus('error');
+        alert('There was a problem submitting your application. Please try again later.');
+        setIsRequesting(false);
       }
-
-      // Add better error catching for network issues
-      if (!response || !response.ok) {
-        const errorText = response ? await response.text() : 'No response received';
-        console.error('API Error Response:', response ? response.status : 'No response', errorText);
-        throw new Error(`API error: ${response ? response.status : 'Network failure'} - ${errorText || 'No error details available'}`);
-      }
-      
-      // Handle successful response
-      const data = await response.json();
-      
-      // Log success for debugging
-      console.log('Application submitted successfully:', data);
-      
-      // Update UI state
-      setRequestStatus('success');
-      
-      // Show success message
-      alert('Your ambassador application has been submitted successfully! Our team will review your application and contact you soon.');
-      
-      // Redirect to a special waiting/pending page that explains the approval process
-      router.push('/ambassador/pending');
-      
-      // No need to store application status in localStorage as that's handled by the admin panel
-      // The status is now stored in the MongoDB database and managed by the admin panel at eleveadmin.netlify.app
       
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
@@ -208,6 +209,9 @@ const AmbassadorApplicationPage = () => {
         } else if (error.message.includes('Database connection failed')) {
           errorMessage = 'Our database is currently experiencing high traffic. Please try again in a few minutes.';
           shouldRetry = true;
+        } else {
+          // General error handling
+          errorMessage = 'There was a problem with your submission. Please try again later.';
         }
       }
       
@@ -251,7 +255,18 @@ const AmbassadorApplicationPage = () => {
           <h1 className="text-3xl font-medium mb-6">Ambassador Application</h1>
           <p className="text-black/70 dark:text-white/70 mb-8">Please fill out the following form to apply to become an Élevé Ambassador.</p>
           
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <form 
+            onSubmit={handleSubmit} 
+            className="flex flex-col gap-6"
+            data-netlify="true"
+            name="ambassador-form"
+            method="POST"
+            netlify-honeypot="bot-field"
+          >
+            <input type="hidden" name="form-name" value="ambassador-form" />
+            <p className="hidden">
+              <label>Don't fill this out if you're human: <input name="bot-field" /></label>
+            </p>
             {/* Basic Information */}
             <div className="border-b border-black/10 dark:border-white/10 pb-6">
               <h2 className="text-xl font-medium mb-4">Basic Information</h2>

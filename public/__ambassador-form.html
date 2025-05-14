@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ambassador Form</title>
+</head>
+<body>
+  <!-- Hidden form for Netlify form processing -->
+  <form name="ambassador-form" netlify netlify-honeypot="bot-field" hidden data-netlify="true">
+    <input type="hidden" name="form-name" value="ambassador-form" />
+    <!-- Bot field for spam prevention -->
+    <p class="hidden">
+      <label>Don't fill this out if you're human: <input name="bot-field" /></label>
+    </p>
+    
+    <!-- All fields from the visible form -->
+    <input type="text" name="fullName" />
+    <input type="email" name="email" />
+    <input type="tel" name="phoneNumber" />
+    <input type="text" name="instagramHandle" />
+    <input type="text" name="tiktokHandle" />
+    <input type="text" name="otherSocialMedia" />
+    <select name="personalStyle">
+      <option value="Minimalist and timeless">Minimalist and timeless</option>
+      <option value="Bold and trendy">Bold and trendy</option>
+      <option value="Luxury and high-end">Luxury and high-end</option>
+      <option value="Casual and comfortable">Casual and comfortable</option>
+      <option value="Eclectic and unique">Eclectic and unique</option>
+    </select>
+    <select name="soldBefore">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+    <textarea name="promotionPlan"></textarea>
+    <select name="investmentOption">
+      <option value="Yes, I'm interested in purchasing inventory.">Yes, I'm interested in purchasing inventory.</option>
+      <option value="Maybe, I need more details.">Maybe, I need more details.</option>
+      <option value="No, I prefer commission-only.">No, I prefer commission-only.</option>
+    </select>
+    <select name="contentComfort">
+      <option value="Very comfortable—I create content regularly.">Very comfortable—I create content regularly.</option>
+      <option value="Somewhat comfortable—I'm willing to learn.">Somewhat comfortable—I'm willing to learn.</option>
+      <option value="Not very comfortable—I'll need guidance.">Not very comfortable—I'll need guidance.</option>
+    </select>
+    <input type="text" name="instagramFollowers" />
+    <input type="text" name="tiktokFollowers" />
+    <input type="text" name="otherFollowers" />
+    <select name="targetAudience">
+      <option value="Fashion enthusiasts">Fashion enthusiasts</option>
+      <option value="Luxury shoppers">Luxury shoppers</option>
+      <option value="General consumers">General consumers</option>
+      <option value="Other">Other</option>
+    </select>
+    <input type="text" name="otherAudience" />
+    <textarea name="motivation"></textarea>
+    <select name="hasCamera">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+    <select name="attendEvents">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+      <option value="Depends">Depends</option>
+    </select>
+    <select name="agreeToTerms">
+      <option value="Yes, I agree.">Yes, I agree.</option>
+    </select>
+    <textarea name="additionalInfo"></textarea>
+    <textarea name="questions"></textarea>
+  </form>
+</body>
+</html>
