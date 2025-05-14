@@ -24,17 +24,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email mismatch' }, { status: 403 })
     }
 
-    // Connect to MongoDB
-    await dbConnect()
+    try {
+      // Connect to MongoDB
+      await dbConnect()
+    } catch (dbError) {
+      console.error('MongoDB connection error:', dbError)
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
+    }
 
     // Check if this user already has an ambassador request
-    const existingRequest = await Ambassador.findOne({ email })
-    
-    if (existingRequest) {
-      return NextResponse.json({ 
-        error: 'You already have an ambassador request',
-        status: existingRequest.status 
-      }, { status: 409 })
+    let existingRequest
+    try {
+      existingRequest = await Ambassador.findOne({ email })
+      
+      if (existingRequest) {
+        return NextResponse.json({ 
+          error: 'You already have an ambassador request',
+          status: existingRequest.status 
+        }, { status: 409 })
+      }
+    } catch (findError) {
+      console.error('Error checking for existing ambassador:', findError)
+      // Continue even if this fails - we'll try to create a new entry
     }
 
     // Generate a unique referral link
@@ -47,52 +58,69 @@ export async function POST(request: NextRequest) {
     const adminSiteUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://eleveadmin.netlify.app'
     
     // Create the ambassador record
-    const result = await Ambassador.create({
-      name,
-      email,
-      userId: session.user?.email || '', // Use email as unique identifier
-      referralCode,
-      referralLink,
-      couponCode: '', // Will be assigned by admin
-      status: 'pending', // pending, approved, rejected
-      createdAt: new Date(),
-      // Store the full form data for admin review
-      applicationDetails: formData,
-      // Initialize tracking stats
-      referrals: 0,
-      orders: 0,
-      conversions: 0,
-      sales: 0,
-      earnings: 0,
-      paymentsPending: 0,
-      paymentsPaid: 0
-    })
-
-    // Notify admin about the new ambassador request via localStorage and admin dashboard API
+    let result
     try {
-      // Attempt to notify the admin site about the new request
-      // In a production environment, this would be implemented with a webhook or admin notification API
-      // For now, we'll log the information that would be sent
-      console.log(`New ambassador request notification for admin site (${adminSiteUrl}):`)
-      console.log({
-        type: 'new_ambassador_request',
+      result = await Ambassador.create({
         name,
         email,
-        userId: session.user?.email || '',
-        requestId: result._id.toString(),
-        timestamp: new Date().toISOString(),
-        status: 'pending'
+        userId: session.user?.email || '', // Use email as unique identifier
+        referralCode,
+        referralLink,
+        couponCode: '', // Will be assigned by admin
+        status: 'pending', // pending, approved, rejected
+        createdAt: new Date(),
+        // Store the full form data for admin review
+        applicationDetails: formData,
+        // Initialize tracking stats
+        referrals: 0,
+        orders: 0,
+        conversions: 0,
+        sales: 0,
+        earnings: 0,
+        paymentsPending: 0,
+        paymentsPaid: 0,
+        commissionRate: 50 // Default 50% commission
       })
+    } catch (createError) {
+      console.error('Error creating ambassador record:', createError)
+      return NextResponse.json({ error: 'Failed to create ambassador record. Please try again later.' }, { status: 500 })
+    }
 
-      // In a real implementation, you would send this data to the admin site
-      // await fetch(`${adminSiteUrl}/api/notifications`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     type: 'new_ambassador_request',
-      //     data: { name, email, requestId: result._id.toString() }
-      //   })
-      // })
+    // Notify admin about the new ambassador request by sending data to the admin panel
+    try {
+      // Send notification to the admin site about the new request
+      const adminApiUrl = `${adminSiteUrl}/api/notifications` || 'https://eleveadmin.netlify.app/api/notifications';
+      
+      console.log(`Sending notification to admin panel at: ${adminApiUrl}`);
+      
+      // Send the data to the admin panel
+      const adminNotifyResponse = await fetch(adminApiUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.ADMIN_API_KEY || 'admin-api-key'}` // Use environment variable or default
+        },
+        body: JSON.stringify({
+          type: 'new_ambassador_request',
+          data: { 
+            name, 
+            email, 
+            userId: session.user?.email || '',
+            requestId: result._id.toString(),
+            timestamp: new Date().toISOString(),
+            status: 'pending',
+            applicationDetails: formData
+          }
+        })
+      });
+      
+      // Log the response from admin notification
+      if (adminNotifyResponse.ok) {
+        console.log('Successfully notified admin panel about new ambassador application');
+      } else {
+        const errorText = await adminNotifyResponse.text();
+        console.error('Failed to notify admin panel:', adminNotifyResponse.status, errorText);
+      }
     } catch (notifyError) {
       // Don't fail the request if notification fails, just log it
       console.error('Error notifying admin site:', notifyError)

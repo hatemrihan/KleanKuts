@@ -17,10 +17,22 @@ export async function GET(request: NextRequest) {
     const ambassador = await Ambassador.findOne({ email })
 
     if (!ambassador) {
-      return NextResponse.json({ status: 'none' })
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ status: ambassador.status })
+    // Return detailed application information
+    return NextResponse.json({ 
+      application: {
+        status: ambassador.status,
+        name: ambassador.name,
+        email: ambassador.email,
+        referralCode: ambassador.referralCode,
+        referralLink: ambassador.referralLink,
+        // Only include couponCode if application is approved
+        ...(ambassador.status === 'approved' && { couponCode: ambassador.couponCode }),
+        createdAt: ambassador.createdAt
+      }
+    })
   } catch (error) {
     console.error('Error checking ambassador status:', error)
     return NextResponse.json({ error: 'Failed to check ambassador status' }, { status: 500 })

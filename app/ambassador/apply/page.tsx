@@ -105,52 +105,82 @@ const AmbassadorApplicationPage = () => {
         return;
       }
       
-      // Simplify the data sent to the API to troubleshoot the 500 error
-      const response = await fetch('/api/ambassador/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          // Only send the most basic required information
-          name: formData.fullName || session?.user?.name || '',
-          email: formData.email || session?.user?.email || '',
+      // Add retry logic for potential network issues
+      let response;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          response = await fetch('/api/ambassador/request', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: formData.fullName || session?.user?.name || '',
+              email: formData.email || session?.user?.email || '',
+              
+              // Send all form data but ensure proper serialization
+              formData: {
+                fullName: formData.fullName,
+                email: formData.email,
+                phoneNumber: formData.phoneNumber || '',
+                instagramHandle: formData.instagramHandle,
+                tiktokHandle: formData.tiktokHandle || '',
+                otherSocialMedia: typeof formData.otherSocialMedia === 'object' ? 
+                  JSON.stringify(formData.otherSocialMedia) : formData.otherSocialMedia?.toString() || '',
+                personalStyle: formData.personalStyle || '',
+                soldBefore: formData.soldBefore || '',
+                promotionPlan: formData.promotionPlan || '',
+                motivation: formData.motivation || '',
+                hasCamera: formData.hasCamera || '',
+                attendEvents: formData.attendEvents || '',
+                agreeToTerms: formData.agreeToTerms || false
+              }
+            }),
+          });
           
-          // Send a simplified version of the form data to avoid potential serialization issues
-          formData: {
-            fullName: formData.fullName,
-            email: formData.email,
-            phoneNumber: formData.phoneNumber,
-            instagramHandle: formData.instagramHandle,
-            tiktokHandle: formData.tiktokHandle,
-            otherSocialMedia: formData.otherSocialMedia.toString(),
-            personalStyle: formData.personalStyle,
-            soldBefore: formData.soldBefore,
-            promotionPlan: formData.promotionPlan,
-            motivation: formData.motivation,
-            hasCamera: formData.hasCamera,
-            attendEvents: formData.attendEvents,
-            agreeToTerms: formData.agreeToTerms
+          // If we get here, request succeeded, so break the retry loop
+          break;
+        } catch (networkError) {
+          console.error(`Network error (attempt ${retryCount + 1}/${maxRetries + 1}):`, networkError);
+          retryCount++;
+          
+          // If we've reached max retries, rethrow to be caught by the outer catch
+          if (retryCount > maxRetries) {
+            throw networkError;
           }
-        }),
-      });
+          
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+        }
+      }
 
       // Add better error catching for network issues
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', response.status, errorText);
-        throw new Error(`API error: ${response.status} - ${errorText || 'No error details available'}`);
+      if (!response || !response.ok) {
+        const errorText = response ? await response.text() : 'No response received';
+        console.error('API Error Response:', response ? response.status : 'No response', errorText);
+        throw new Error(`API error: ${response ? response.status : 'Network failure'} - ${errorText || 'No error details available'}`);
       }
       
       // Handle successful response
       const data = await response.json();
-
-      // Since we've already checked response.ok above and thrown if not ok,
-      // we know this line is only reached with successful responses
+      
+      // Log success for debugging
+      console.log('Application submitted successfully:', data);
+      
+      // Update UI state
       setRequestStatus('success');
       
-      // Redirect to success page
-      router.push('/ambassador/success');
+      // Show success message
+      alert('Your ambassador application has been submitted successfully! Our team will review your application and contact you soon.');
+      
+      // Redirect to a special waiting/pending page that explains the approval process
+      router.push('/ambassador/pending');
+      
+      // No need to store application status in localStorage as that's handled by the admin panel
+      // The status is now stored in the MongoDB database and managed by the admin panel at eleveadmin.netlify.app
       
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
@@ -158,6 +188,7 @@ const AmbassadorApplicationPage = () => {
       
       // Display a more user-friendly error message
       let errorMessage = 'There was a problem submitting your application.';
+      let shouldRetry = false;
       
       if (error instanceof Error) {
         if (error.message.includes('401')) {
@@ -165,14 +196,33 @@ const AmbassadorApplicationPage = () => {
           // Clear session and redirect to sign in
           setTimeout(() => signIn('google', { callbackUrl: '/ambassador/apply' }), 1500);
         } else if (error.message.includes('409')) {
-          errorMessage = 'You already have a pending ambassador application.';
+          errorMessage = 'You already have a pending ambassador application. Please wait for admin approval at eleveadmin.netlify.app';
+          // Redirect to the pending page with the application email as a query parameter
+          setTimeout(() => router.push(`/ambassador/pending?email=${encodeURIComponent(formData.email)}`), 2000);
         } else if (error.message.includes('500')) {
-          errorMessage = 'The server encountered an error. Please try again later.';
+          errorMessage = 'The server encountered an error. We\'ve logged this issue and will fix it soon. Please try again in a few minutes.';
+          shouldRetry = true;
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          errorMessage = 'Network connection issue. Please check your internet connection and try again.';
+          shouldRetry = true;
+        } else if (error.message.includes('Database connection failed')) {
+          errorMessage = 'Our database is currently experiencing high traffic. Please try again in a few minutes.';
+          shouldRetry = true;
         }
       }
       
       // Show error message
       alert(errorMessage);
+      
+      // If we should retry, offer a retry button
+      if (shouldRetry) {
+        const retry = confirm('Would you like to try submitting your application again?');
+        if (retry) {
+          // Wait a moment before retrying
+          setTimeout(() => handleSubmit(e), 1000);
+          return;
+        }
+      }
     } finally {
       setIsRequesting(false);
     }
