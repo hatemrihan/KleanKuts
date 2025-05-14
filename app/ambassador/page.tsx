@@ -65,15 +65,22 @@ const AmbassadorPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
+    
+    // Use functional update to ensure we're working with the latest state
+    setFormData(prevData => ({
+      ...prevData,
       [name]: value
     }));
+    
+    // Prevent default to ensure focus remains on the input
+    e.preventDefault();
   };
 
   const handleShowApplicationForm = () => {
     if (!session) {
-      signIn('google');
+      // Store current path before redirecting to sign in
+      localStorage.setItem('lastPath', '/ambassador');
+      signIn('google', { callbackUrl: '/ambassador' });
       return;
     }
     
@@ -93,7 +100,9 @@ const AmbassadorPage = () => {
     if (e) e.preventDefault();
     
     if (!session) {
-      signIn('google');
+      // Store current path before redirecting to sign in
+      localStorage.setItem('lastPath', '/ambassador');
+      signIn('google', { callbackUrl: '/ambassador' });
       return;
     }
 
@@ -107,6 +116,22 @@ const AmbassadorPage = () => {
     setRequestStatus('');
 
     try {
+      // Validate required fields before submission
+      if (!formData.fullName && !session?.user?.name) {
+        setRequestStatus('error-validation');
+        alert('Full name is required');
+        setIsRequesting(false);
+        return;
+      }
+      
+      if (!formData.email && !session?.user?.email) {
+        setRequestStatus('error-validation');
+        alert('Email is required');
+        setIsRequesting(false);
+        return;
+      }
+      
+      // Perform the API request with proper error handling
       const response = await fetch('/api/ambassador/request', {
         method: 'POST',
         headers: {
@@ -114,22 +139,37 @@ const AmbassadorPage = () => {
         },
         body: JSON.stringify({
           // Basic user info
-          name: formData.fullName || session.user?.name,
-          email: formData.email || session.user?.email,
+          name: formData.fullName || session?.user?.name || '',
+          email: formData.email || session?.user?.email || '',
           
           // Form data
           formData: formData
         }),
       });
 
+      // Handle response
       const data = await response.json();
 
       if (response.ok) {
         setRequestStatus('success');
         setAmbassadorStatus('pending');
         setShowApplicationForm(false); // Hide form after successful submission
+        // Show success message
+        alert('Your ambassador application has been submitted successfully!');
       } else {
-        setRequestStatus('error');
+        // Handle specific error cases
+        if (response.status === 409) {
+          setRequestStatus('error-duplicate');
+          alert(`${data.error || 'You already have a pending application'}`);
+        } else if (response.status === 401) {
+          setRequestStatus('error-auth');
+          alert('Please sign in again to submit your application');
+          // Re-authenticate the user
+          signIn('google');
+        } else {
+          setRequestStatus('error');
+          alert(`Error: ${data.error || 'There was a problem submitting your application. Please try again.'}`);
+        }
       }
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
@@ -139,12 +179,69 @@ const AmbassadorPage = () => {
     }
   };
 
-  // Initial loading or redirecting states
-  if (status === 'loading' || (ambassadorStatus === 'approved' && status === 'authenticated')) {
-    // If approved, redirect to dashboard
-    if (ambassadorStatus === 'approved' && status === 'authenticated') {
-      router.push('/ambassador/dashboard');
+  // Store current URL before authentication for returning the user to the same page
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      // Store current path in localStorage to redirect back after authentication
+      localStorage.setItem('lastPath', window.location.pathname);
     }
+  }, [status]);
+
+  // Handle redirect after authentication
+  useEffect(() => {
+    if (status === 'authenticated' && !isLoaded) {
+      // Check if we need to redirect back to a previous page
+      const lastPath = localStorage.getItem('lastPath');
+      if (lastPath && lastPath !== window.location.pathname) {
+        // Clear the stored path and redirect
+        localStorage.removeItem('lastPath');
+        // Only redirect if not already on the correct path
+        if (window.location.pathname !== lastPath) {
+          router.push(lastPath);
+        }
+      }
+    }
+  }, [status, isLoaded, router]);
+
+  // Show welcome message for approved ambassadors
+  if (ambassadorStatus === 'approved' && status === 'authenticated') {
+    // Display welcome message for 5 seconds before redirecting
+    useEffect(() => {
+      const redirectTimer = setTimeout(() => {
+        router.push('/ambassador/dashboard');
+      }, 5000);
+      
+      return () => clearTimeout(redirectTimer);
+    }, []);
+    
+    return (
+      <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white overflow-x-hidden">
+        <div className="fixed inset-0 z-[100] bg-white dark:bg-black flex flex-col items-center justify-center transition-opacity duration-700 opacity-100">
+          <div className="text-4xl font-serif mb-4">ÉLEVE</div>
+          <div className="text-xl mb-6">Welcome, {session?.user?.name || 'Ambassador'}!</div>
+          <div className="text-base mb-8 animate-pulse">Redirecting to your dashboard...</div>
+          
+          <div className="flex space-x-6">
+            <a 
+              href="/" 
+              className="py-2 px-6 border border-black dark:border-white text-sm hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all font-medium"
+            >
+              HOME
+            </a>
+            <a 
+              href="/ambassador/dashboard" 
+              className="py-2 px-6 border border-black dark:border-white text-sm hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all font-medium"
+            >
+              DASHBOARD
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Initial loading state
+  if (status === 'loading') {
     
     return (
       <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white overflow-x-hidden">
@@ -668,7 +765,7 @@ const AmbassadorPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-1">Negotiation</h3>
-                  <p className="text-sm">Starting from 20% Commission</p>
+                  <p className="text-sm">Starting from 10% Commission</p>
                 </div>
                 <div>
                   <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-1">Status</h3>
@@ -729,7 +826,8 @@ const AmbassadorPage = () => {
                 <h2 className="text-sm uppercase tracking-wider text-black/60 dark:text-white/60 mb-3">Benefits</h2>
                 <div className="space-y-2">
                   <p className="text-black/80 dark:text-white/80 text-sm leading-relaxed">
-                    • Earn a generous 20% commission on all sales through your referral link
+                    • Earn up to 25% commission on all sales through your referral link or code
+
                   </p>
                   <p className="text-black/80 dark:text-white/80 text-sm leading-relaxed">
                     • Get exclusive early access to new product launches

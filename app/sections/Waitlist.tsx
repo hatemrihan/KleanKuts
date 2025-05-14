@@ -262,7 +262,7 @@ entranceAnimation();
               ref={scope}
               initial={{ opacity: 0, y: 50 }}
               animate={controls}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl uppercase tracking-wider"
+              className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-10 max-w-4xl uppercase tracking-wider"
             >
               <span>Eleve Egypt </span>
               <br />

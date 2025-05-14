@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { name, email, userId } = await request.json()
+    const { name, email, formData } = await request.json()
     
     if (!email || !name) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
@@ -39,18 +39,26 @@ export async function POST(request: NextRequest) {
 
     // Generate a unique referral link
     const referralCode = generateReferralCode(name)
-    const referralLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'}?ref=${referralCode}`
+    // Ensure we're using the correct production URL
+    const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'
+    const referralLink = `${mainSiteUrl}?ref=${referralCode}`
+    
+    // Get admin site URL for notification purposes
+    const adminSiteUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://eleveadmin.netlify.app'
     
     // Create the ambassador record
     const result = await Ambassador.create({
       name,
       email,
-      userId,
+      userId: session.user?.email || '', // Use email as unique identifier
       referralCode,
       referralLink,
       couponCode: '', // Will be assigned by admin
       status: 'pending', // pending, approved, rejected
       createdAt: new Date(),
+      // Store the full form data for admin review
+      applicationDetails: formData,
+      // Initialize tracking stats
       referrals: 0,
       orders: 0,
       conversions: 0,
@@ -60,8 +68,35 @@ export async function POST(request: NextRequest) {
       paymentsPaid: 0
     })
 
-    // Notify admin about the new ambassador request (you'd implement this part)
-    // This could be an email notification or a webhook to another service
+    // Notify admin about the new ambassador request via localStorage and admin dashboard API
+    try {
+      // Attempt to notify the admin site about the new request
+      // In a production environment, this would be implemented with a webhook or admin notification API
+      // For now, we'll log the information that would be sent
+      console.log(`New ambassador request notification for admin site (${adminSiteUrl}):`)
+      console.log({
+        type: 'new_ambassador_request',
+        name,
+        email,
+        userId: session.user?.email || '',
+        requestId: result._id.toString(),
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+      })
+
+      // In a real implementation, you would send this data to the admin site
+      // await fetch(`${adminSiteUrl}/api/notifications`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     type: 'new_ambassador_request',
+      //     data: { name, email, requestId: result._id.toString() }
+      //   })
+      // })
+    } catch (notifyError) {
+      // Don't fail the request if notification fails, just log it
+      console.error('Error notifying admin site:', notifyError)
+    }
 
     return NextResponse.json({ 
       success: true,

@@ -98,7 +98,7 @@ const Design = () => {
   }, []);
 
   return (
-    <div className="container max-w-screen-xl mx-auto px-6 md:px-12 pt-16 -mb-32 dark:bg-black">
+    <div className="container max-w-screen-xl mx-auto px-6 md:px-12 pt-16 -mb-36 dark:bg-black">
         <div className="absolute inset-x-0 top-0 z-0 pointer-events-none" style={{ height: 'calc(100% - 100px)' }}>
          
         </div>
