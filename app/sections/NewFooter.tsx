@@ -27,7 +27,7 @@ const NewFooter = () => {
         {/* Top Section - Email Subscription */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div className="max-w-md">
-            <h3 className="text-xl font-light tracking-wider mb-4">Hire Different</h3>
+            <h3 className="text-xl font-light tracking-wider mb-4">ABOUT ELEVE</h3>
             <p className="text-sm text-black/70 dark:text-white/70 mb-4">Join our newsletter to stay up to date on features and releases.</p>
           </div>
           <form onSubmit={handleSubmit} className="w-full md:w-auto max-w-md">
@@ -56,16 +56,19 @@ const NewFooter = () => {
           <div>
             <h3 className="font-medium mb-4">Find US</h3>
             <ul className="space-y-3">
-              <li><Link href="#" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">INSTAGRAM</Link></li>
-              <li><Link href="#" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">TIKTOK</Link></li>
+              <li><Link href="https://www.instagram.com/eleve__egy?igsh=b3NnYWw4eWgxcTcw" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">INSTAGRAM</Link></li>
+              <li><Link href="https://www.tiktok.com/@eleve__egy/" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">TIKTOK</Link></li>
               <li><Link href="mailto:eleve.egy.1@gmail.com" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">GMAIL</Link></li>
             </ul>
           </div>
           <div>
-            <h3 className="font-medium mb-4">Find People</h3>
+            <h3 className="font-medium mb-4">KNOW MORE</h3>
             <ul className="space-y-3">
-              <li><Link href="#" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">Learn More</Link></li>
-              <li><Link href="#" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">Sign up</Link></li>
+              <li><Link href="/ShippingPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">SHIPPING POLICY</Link></li>
+              <li><Link href="/RefundPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Refund & Returns Policy</Link></li>
+              <li><Link href="TermsOfService" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Terms of Service</Link></li>
+              <li><Link href="PrivacyPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Privacy Policy</Link></li>
+
             </ul>
           </div>
           

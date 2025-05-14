@@ -10,29 +10,29 @@ import { useTheme } from '../context/ThemeContext'
 import ThemeToggle from '../components/ThemeToggle'
 
 const navItems = [
-  {
-    label: 'HOME',
-    href: '/',
-  },
-  {
-    label: 'SHOP COLLECTION',
-    href: '/collection',
-  },
-  {
-    label: 'ABOUT',
-    href: '/#about',
-    isScroll: true
-  },
-  {
-    label: 'MEN COLLECTION',
-    href: '/collection/men',
-    isScroll: true
-  },
-  {
-    label: 'FAQS',
-    href: '/#faqs',
-    isScroll: true
-  },
+  // {
+  //   label: 'HOME',
+  //   href: '/',
+  // },
+  // {
+  //   label: 'SHOP COLLECTION',
+  //   href: '/collection',
+  // },
+  // {
+  //   label: 'ABOUT',
+  //   href: '/#about',
+  //   isScroll: true
+  // },
+  // {
+  //   label: 'MEN COLLECTION',
+  //   href: '/collection/men',
+  //   isScroll: true
+  // },
+  // {
+  //   label: 'FAQS',
+  //   href: '/#faqs',
+  //   isScroll: true
+  // },
   {
     label: 'SAY HI',
     href: '/#contact',
@@ -92,25 +92,19 @@ const Nav = () => {
     router.push('/cart');
   };
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, isScroll?: boolean) => {
+  const handleNavClick = (e: React.MouseEvent, href: string, isScroll?: boolean) => {
     if (isScroll && href.startsWith('/#')) {
       e.preventDefault();
       const targetId = href.replace('/#', '');
-      const element = document.getElementById(targetId);
-      
-      if (element) {
-        setIsOpen(false);
-        const navHeight = 64;
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - navHeight;
-
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
         window.scrollTo({
-          top: offsetPosition,
-          behavior: "smooth"
+          top: targetElement.offsetTop,
+          behavior: 'smooth'
         });
-      } else if (window.location.pathname !== '/') {
-        router.push(`/${href}`);
       }
+      router.push(href); 
+      setIsOpen(false); 
     }
   };
 
@@ -168,61 +162,114 @@ const Nav = () => {
           z-index: 10;
         }
         
+        /* Logo rotation animation */
+        @keyframes logo-spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .logo-rotate:hover {
+          animation: logo-spin 5s linear infinite;
+        }
+
+        /* EXTREME image background removal - applies to ALL images */
+        img {
+          background-color: transparent !important;
+          background: none !important;
+          mix-blend-mode: normal !important;
+          isolation: isolate !important;
+          -webkit-mask-image: none !important;
+          mask-image: none !important;
+          box-shadow: none !important;
+        }
+        
+        /* Force dark mode images to be completely transparent */
+        .dark img {
+          background-color: transparent !important;
+          background: none !important;
+          background-image: none !important;
+          mix-blend-mode: normal !important;
+          -webkit-filter: drop-shadow(0 0 0 transparent) !important;
+          filter: drop-shadow(0 0 0 transparent) !important;
+        }
+        
+        /* Override ALL image backgrounds at the highest specificity */
+        html body img, html body .dark img, :root img, #__next img {
+          background-color: transparent !important;
+          background-image: none !important;
+          -webkit-mask-image: none !important;
+          mask-image: none !important;
+        }
+        
+        /* Target specific image containers */
+        [class*="product"] img,
+        [class*="item"] img,
+        [class*="card"] img {
+          background: transparent !important;
+        }
+        
       `}</style>
       <div className="w-full bg-white dark:bg-black transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <Link href="/" className="text-2xl font-bold text-black dark:text-white">
-                Eleve
-              </Link>
-            </div>
-
-            {/* Desktop Nav Links */}
-            <div className="flex space-x-8">
-              {navItems.map(({ label, href, isScroll }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  onClick={(e) => handleNavClick(e, href, isScroll)}
-                  className="text-sm font-light text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer relative group"
-                >
-                  {label}
-                  <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
+          {/* Desktop Navigation - Properly Centered */}
+          <div className="hidden md:flex items-center justify-center h-16 w-full">
+            {/* Single wrapper for all navigation elements */}
+            <div className="flex items-center justify-between w-full max-w-6xl">
+              {/* Logo - Left Section */}
+              <div className="flex-shrink-0">
+                <Link href="/" className="text-2xl font-bold text-yellow-500 dark:text-yellow-500">
+                  Eleve
                 </Link>
-              ))}
-            </div>
-
-            {/* Auth and Cart Section */}
-          <div className="flex items-center space-x-8">
-              {status === 'loading' ? (
-                <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full"></div>
-              ) : session ? (
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-black dark:text-white">
-                    {session.user?.name}
-                  </span>
-                  <button
-                    onClick={() => signOut()}
-                    className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              </div>
+              
+              {/* Desktop Nav Links - Center Section */}
+              <div className="flex space-x-8">
+                {navItems.map(({ label, href, isScroll }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    onClick={(e) => handleNavClick(e, href, isScroll)}
+                    className="text-sm font-light text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer relative group"
                   >
-                    Sign out
+                    {label}
+                    <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Auth and Cart Section - Right Section */}
+              <div className="flex items-center space-x-8">
+                {status === 'loading' ? (
+                  <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full"></div>
+                ) : session ? (
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-yellow-500 dark:text-yellow-500">
+                      {session.user?.name}
+                    </span>
+                    <button
+                      onClick={() => signOut()}
+                      className="text-sm text-yellow-500 dark:text-yellow-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => signIn('google')}
+                    className="text-sm text-yellow-500 dark:text-yellow-500 hover:text-red-500 dark:hover:text-red-400 transition-colors tooltip"
+                  >
+                    Sign in
                   </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => signIn('google')}
-                  className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors tooltip"
-                >
-                  Sign in
-                </button>
-              )}
+                )}
 
-              {/* Theme Toggle Button */}
-              <div className="mr-2">
-                <ThemeToggle />
+                {/* Theme Toggle Button */}
+                <div className="mr-2">
+                  <ThemeToggle />
+                </div>
               </div>
               
               {/* <Link 
@@ -268,9 +315,9 @@ const Nav = () => {
                   onClick={() => setIsOpen(true)}
                   aria-label="Open Menu"
                 >
-                  <span className="w-6 h-0.5 bg-black dark:bg-white transition-all"></span>
-                  <span className="w-6 h-0.5 bg-black dark:bg-white transition-all"></span>
-                  <span className="w-6 h-0.5 bg-black dark:bg-white transition-all"></span>
+                  <span className="w-6 h-0.5 bg-yellow-500 dark:bg-yellow-500 transition-all"></span>
+                  <span className="w-6 h-0.5 bg-yellow-500 dark:bg-yellow-500 transition-all"></span>
+                  <span className="w-6 h-0.5 bg-yellow-500 dark:bg-yellow-500 transition-all"></span>
                 </button>
               )}
             </div>
@@ -289,18 +336,18 @@ const Nav = () => {
               ) : session ? (
                 <button
                   onClick={() => signOut()}
-                  className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  className="text-sm text-yellow-500 dark:text-yellow-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#eab308">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
                 </button>
               ) : (
                 <button
                   onClick={() => signIn('google')}
-                  className="text-sm text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors tooltip"
+                  className="text-sm text-yellow-500 dark:text-yellow-500 hover:text-red-500 dark:hover:text-red-400 transition-colors tooltip"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="#eab308">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
                 </button>
@@ -339,19 +386,23 @@ const Nav = () => {
 
       {/* Mobile menu */}
       <div 
-        className="fixed inset-0 bg-white dark:bg-black z-40 overflow-hidden transition-all duration-300"
-        style={{ height: 0 }}
+        className="fixed inset-0 bg-white dark:bg-black z-40 overflow-hidden transition-all duration-200"
+        style={{
+          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+          opacity: isOpen ? 1 : 0,
+          visibility: isOpen ? 'visible' : 'hidden'
+        }}
         ref={navScope}
       >
         {/* Close button positioned on top */}
         <AnimatePresence>
           {isOpen && (
-            <motion.button 
-              initial={{ opacity: 0, rotate: -90 }}
+            <motion.button
+              initial={{ opacity: 0, rotate: 90 }}
               animate={{ opacity: 1, rotate: 0 }}
               exit={{ opacity: 0, rotate: 90 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-5 right-4 z-50 md:hidden flex items-center justify-center w-6 h-6 cursor-pointer text-black dark:text-white"
+              className="fixed top-5 right-4 z-50 md:hidden flex items-center justify-center w-6 h-6 cursor-pointer text-yellow-500 dark:text-yellow-500"
               onClick={() => setIsOpen(false)}
               aria-label="Close Menu"
             >
@@ -360,59 +411,50 @@ const Nav = () => {
           )}
         </AnimatePresence>
 
-        <div className="h-full flex flex-col items-center justify-center">
-          <div className="space-y-8">
+        {/* Mobile menu content with absolute centering */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center w-full h-full">
+          <div className="text-center space-y-8 w-full max-w-sm mx-auto">
+            {/* Navigation links */}
             {navItems.map(({ label, href, isScroll }) => (
-              <Link
-                key={label}
-                href={href}
-                onClick={(e) => {
-                  handleNavClick(e, href, isScroll);
-                  setIsOpen(false);
-                }}
-                className="relative block text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group"
-              >
-                {label}
-                <span className="absolute left-1/2 -translate-x-1/2 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
-              </Link>
+              <div key={label} className="text-center">
+                <Link
+                  href={href}
+                  onClick={(e) => {
+                    handleNavClick(e, href, isScroll);
+                    setIsOpen(false);
+                  }}
+                  className="relative inline-block text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group"
+                >
+                  {label}
+                  <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
+                </Link>
+              </div>
             ))}
             
-            {/* Theme Toggle in Mobile Menu */}
-            <button
-              onClick={() => {
-                toggleTheme();
-                // Don't close the menu when toggling theme
-              }}
-              className="relative  text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
-            >
-              {theme === 'dark' ? (
-                <>
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  <span>Light Mode</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                  <span>Dark Mode</span>
-                </>
-              )}
-            </button>
-            
-            {/* Mobile Cart Link */}
-            {/* <Link
-              href="/cart"
-              className="relative text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group flex items-center justify-center gap-2"
-              onClick={(e) => {
-                setIsOpen(false);
-                handleCartClick(e);
-              }}
-            >
+            {/* Theme toggle button - CENTERED */}
+            <div className="flex justify-center items-center w-full pt-4">
+              <button 
+                onClick={toggleTheme}
+                className="inline-flex items-center justify-center mx-auto p-3 rounded-full"
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                <div className="flex items-center justify-center">
+                  {theme === 'dark' ? (
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="#eab308">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="#eab308">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            </div>
+            {/* <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsMenuOpen(false)} className='flex flex-col items-center justify-center w-16 h-auto'>
               <div className="relative">
                 <svg 
+                  xmlns="http://www.w3.org/2000/svg"
                   className="w-6 h-6" 
                   viewBox="0 0 24 24" 
                   fill="none" 

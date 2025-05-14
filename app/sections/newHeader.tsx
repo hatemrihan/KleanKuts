@@ -68,7 +68,7 @@ const NewHeader = () => {
   }, []);
 
   return (
-    <div className="relative w-full min-h-screen bg-white dark:bg-black flex flex-col justify-center items-center overflow-hidden">
+    <div className="relative w-full min-h-screen  dark:bg-black flex flex-col justify-center items-center overflow-hidden">
       {/* Mobile Layout */}
       <div className="block lg:hidden w-full max-w-2xl mx-auto px-4 py-10">
         {/* Section Header */}
@@ -108,7 +108,7 @@ const NewHeader = () => {
                   console.error('Error loading image:', e);
                 }}
               />
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-black/80 opacity-0 transition-opacity duration-300 hover:opacity-100 group-hover:opacity-100">
+              <div className="absolute inset-0 flex flex-col items-center justify-center  dark:bg-black/80 opacity-0 transition-opacity duration-300 hover:opacity-100 group-hover:opacity-100">
                 <h6 className="text-sm font-medium text-black dark:text-white">ZOHO Collection</h6>
                 <span className="text-xs text-black/70 dark:text-white/70">Oversized Style</span>
               </div>

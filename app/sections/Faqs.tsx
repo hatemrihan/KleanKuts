@@ -15,45 +15,25 @@ const faqs: FaqItem[] = [
     answer: "We use premium quality materials sourced from sustainable suppliers. Our fabrics include organic cotton, linen, and recycled polyester blends that are both comfortable and environmentally friendly.",
   },
   {
-    question: "How do I care for my garments?",
-    answer: "Most of our garments can be machine washed on a gentle cycle with cold water and similar colors. We recommend air drying to maintain the shape and quality of the fabrics. Detailed care instructions are included on each product's label.",
+    question: "Shipping Time",
+    answer: "3-5 days || Dilevery is free.",
   },
   {
     question: "What is your shipping policy?",
-    answer: "We offer free standard shipping on all orders over $100. Standard shipping typically takes 3-5 business days. Express shipping options are available at checkout for an additional fee. International shipping is available to select countries.",
+answer: "Shipping Coverage We currently ship only within the Arab Republic of Egypt. - Carrier  Deliveries are handled via Engez courier service. a Cost Free shipping anywhere in Egypt, with no minimum order value. Delivery Time Orders arrive within 3–5 business days from confirmation. Same‑day delivery is not available. Order Tracking & Support For updates or questions, contact us via: Phone/WhatsApp: 01024491885  Email:[eleve.egy.1@gmail.com](mailto:eleve.egy.1@gmail.com)* *Damaged in Transit* If your item arrives *damaged during shipping*, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment."
   },
   {
-    question: "Can I return or exchange items?",
-    answer: "Yes, we accept returns and exchanges within 30 days of purchase for unworn items with original tags attached. Return shipping is free for exchanges, but a small fee applies for returns. Sale items are final sale and cannot be returned or exchanged.",
-  },
-  {
-    question: "Do you offer size customization?",
-    answer: "We currently don't offer custom sizing, but we're working on implementing this feature in the future. Our sizing chart provides detailed measurements to help you find the best fit. If you're between sizes, we generally recommend sizing up.",
-  },
-  {
-    question: "How sustainable are your practices?",
-    answer: "Sustainability is at the core of our brand. We use eco-friendly materials, minimize waste in our production process, use recyclable packaging, and partner with manufacturers who maintain fair labor practices. We're constantly working to improve our environmental impact.",
-  },
-  {
-    question: "How this work?",
+    question: "How can i track my orders?",
     answer:
-      "Yet bed any for assistance indulgence unpleasing. Not thoughts all exercise blessing. Indulgence way everything joy alteration boisterous the attachment.",
+      "By contacting us on our email or social media.",
   },
   {
-    question: "Are there any additional fee?",
+    question: "How to join our Ambassadors program?",
     answer:
-      "Yet bed any for assistance indulgence unpleasing. Not thoughts all exercise blessing. Indulgence way everything joy alteration boisterous the attachment.",
+      "By applying in our website and following the instructions.",
   },
-  {
-    question: "How can I get the app?",
-    answer:
-      "Yet bed any for assistance indulgence unpleasing. Not thoughts all exercise blessing. Indulgence way everything joy alteration boisterous the attachment.",
-  },
-  {
-    question: "What features do you offer and other not?",
-    answer:
-      "Yet bed any for assistance indulgence unpleasing. Not thoughts all exercise blessing. Indulgence way everything joy alteration boisterous the attachment.",
-  },
+  
+ 
 ];
 
 const FAQs = () => {
@@ -67,7 +47,7 @@ const FAQs = () => {
     // Measure heights of all answer elements
     const heights = answerRefs.current.map((ref) => ref?.scrollHeight || 0);
     setItemHeights(heights);
-  }, []);
+  }, [faqs]); // Re-measure when faqs content changes
 
   const toggleFaq = (index: number) => {
     setActiveIndex(activeIndex === index ? null : index);
@@ -96,11 +76,7 @@ const FAQs = () => {
               Any questions?<br />
              ELEVE  got you.
             </h2>
-            <p className="text-gray-700 dark:text-white/70">
-              Yet bed any for assistance indulgence unpleasing. Not thoughts all
-              exercise blessing. Indulgence way everything joy alteration
-              boisterous the attachment.
-            </p>
+           
 
             <motion.div
               className="mt-6"
@@ -192,11 +168,11 @@ const FAQs = () => {
                     <motion.div
                       initial={false}
                       animate={{
-                        height: activeIndex === index ? itemHeights[index] || 'auto' : 0,
+                        height: activeIndex === index ? 'auto' : 0,
                         opacity: activeIndex === index ? 1 : 0
                       }}
                       transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
+                      className="overflow-visible"
                     >
                       <div 
                         ref={(el) => {
@@ -204,10 +180,15 @@ const FAQs = () => {
                             answerRefs.current[index] = el;
                           }
                         }}
-                        className="py-4 text-black/70 dark:text-white/70"
-                      >
-                        {faq.answer}
-                      </div>
+                        className="py-4 text-black/70 dark:text-white/70 whitespace-normal break-words"
+                        dangerouslySetInnerHTML={{
+                          __html: faq.answer
+                            .replace(/\n/g, '<br/>')
+                            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                            .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-blue-500 underline">$1</a>')
+                        }}
+                      />
                     </motion.div>
                   </div>
                 </motion.div>

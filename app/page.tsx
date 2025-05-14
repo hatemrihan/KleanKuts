@@ -7,17 +7,22 @@ import FAQs from './sections/Faqs';
 import Products from './sections/products';
 import NewFooter from './sections/NewFooter';
 import Waitlist from './sections/Waitlist';
+import NewMovingWords from './sections/NewMovingWords';
 
 export default function Home() {
   return (
-    <>
-    <Nav />
-    <Waitlist />
-    <Products />
-    </>
     // <Suspense fallback={<div>Loading...</div>}>
+    <> <Nav />
+      <Waitlist />
+      </> 
+    //   <Introducing />
      
-   
-   
+    //   <NewHeader />
+    //   <NewMovingWords />
+    //   <Products />
+    //   <FAQs /> 
+    //   <MovingWords/>
+    //  <NewFooter />
+    // </Suspense>
   );
 }

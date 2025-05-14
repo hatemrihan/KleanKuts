@@ -218,7 +218,7 @@ const Products = () => {
                     {(product.name || product.title || 'Product').toUpperCase()}
                   </div>
                   <div className="flex items-center gap-2 text-black/80 dark:text-white/80">
-                    <span className="text-base md:text-lg">{product.price} $</span>
+                    <span className="text-base md:text-lg">{product.price} L.E</span>
                     {(product.variants || product.sizes || []).every(variant => variant.isPreOrder) && (
                       <span className="text-xs font-semibold text-black dark:text-white border border-black dark:border-white px-2 py-1 ml-2">PRE-ORDER</span>
                     )}
