@@ -1,5 +1,8 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import type { NextAuthOptions } from "next-auth";
+
+console.log("NextAuth initialization with NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
 
 declare module "next-auth" {
   interface Session {
@@ -12,7 +15,7 @@ declare module "next-auth" {
   }
 }
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -20,6 +23,28 @@ export const authOptions = {
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
+  debug: true, // Enable debugging
+  callbacks: {
+    async signIn({ user, account, profile }) {
+      console.log("Sign in callback triggered", { user, account });
+      return true;
+    },
+    async redirect({ url, baseUrl }) {
+      console.log("Redirect callback", { url, baseUrl });
+      return url.startsWith(baseUrl) ? url : baseUrl;
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      console.error(`Auth error (${code}):`, metadata);
+    },
+    warn(code) {
+      console.warn(`Auth warning: ${code}`);
+    },
+    debug(code, metadata) {
+      console.log(`Auth debug (${code}):`, metadata);
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);
