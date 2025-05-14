@@ -38,6 +38,10 @@ const navItems = [
     href: '/#contact',
     isScroll: true
   },
+  {
+    label: 'BE OUR AMBASSADOR',
+    href: '/ambassador',
+  },
 ];
 
 

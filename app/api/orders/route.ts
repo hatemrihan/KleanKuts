@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
+import Ambassador from '@/models/Ambassador';
 
 interface OrderProduct {
   productId: string;
@@ -25,6 +26,14 @@ interface OrderData {
   status?: string;
   notes?: string;
   orderDate?: string;
+  couponCode?: string;
+  ambassador?: {
+    ambassadorId?: string;
+    referralCode?: string;
+    couponCode?: string;
+    commissionRate?: number;
+    commission?: number;
+  };
 }
 
 export async function POST(req: Request) {
@@ -56,6 +65,36 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check if there's an ambassador coupon code provided
+    let ambassadorData = null;
+    if (body.couponCode) {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'}/api/coupon/validate?code=${encodeURIComponent(body.couponCode)}`);
+        const couponValidation = await response.json();
+        
+        if (couponValidation.valid) {
+          // Calculate ambassador commission
+          const commissionRate = couponValidation.commissionRate || 50;
+          const commission = (body.totalAmount * (commissionRate / 100)).toFixed(2);
+          
+          ambassadorData = {
+            ambassadorId: couponValidation.ambassadorId,
+            referralCode: couponValidation.referralCode,
+            couponCode: body.couponCode,
+            commissionRate: commissionRate,
+            commission: parseFloat(commission),
+            paymentStatus: 'pending'
+          };
+          
+          // Update ambassador statistics
+          await updateAmbassadorStats(couponValidation.ambassadorId, parseFloat(commission), body.totalAmount);
+        }
+      } catch (error) {
+        console.error('Error validating coupon code:', error);
+        // Continue with order creation even if coupon validation fails
+      }
+    }
+
     // Create the order with the exact schema structure
     const order = await Order.create({
       customer: {
@@ -75,7 +114,8 @@ export async function POST(req: Request) {
       totalAmount: body.totalAmount,
       status: body.status || 'pending',
       notes: body.notes || '',
-      orderDate: body.orderDate ? new Date(body.orderDate) : new Date()
+      orderDate: body.orderDate ? new Date(body.orderDate) : new Date(),
+      ambassador: ambassadorData // Add ambassador data if a valid coupon was used
     });
 
     // Return success response
@@ -111,6 +151,25 @@ export async function POST(req: Request) {
 }
 
 // Add GET route to fetch orders
+// Helper function to update ambassador statistics when an order is placed with their coupon code
+async function updateAmbassadorStats(ambassadorId: string, commission: number, orderTotal: number) {
+  try {
+    const ambassador = await Ambassador.findById(ambassadorId);
+    if (!ambassador) return;
+    
+    // Update statistics
+    ambassador.orders += 1;
+    ambassador.sales += orderTotal;
+    ambassador.earnings += commission;
+    ambassador.paymentsPending += commission;
+    
+    await ambassador.save();
+    console.log(`Updated ambassador stats for ${ambassador.name}`);
+  } catch (error) {
+    console.error('Error updating ambassador stats:', error);
+  }
+}
+
 export async function GET() {
   try {
     await dbConnect();

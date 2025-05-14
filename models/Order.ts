@@ -56,6 +56,25 @@ const orderSchema = new mongoose.Schema({
   orderDate: {
     type: Date,
     default: Date.now
+  },
+  ambassador: {
+    ambassadorId: String,
+    referralCode: String,
+    couponCode: String,
+    commissionRate: {
+      type: Number,
+      default: 50
+    },
+    commission: {
+      type: Number,
+      default: 0
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid'],
+      default: 'pending'
+    },
+    paymentDate: Date
   }
 }, {
   timestamps: true
