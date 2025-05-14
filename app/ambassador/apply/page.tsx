@@ -142,30 +142,53 @@ const AmbassadorApplicationPage = () => {
         return;
       }
       
-      // Get the form element
-      const myForm = e.target as HTMLFormElement;
-      const formDataObj = new FormData(myForm);
-      
-      // Add form name to identify which Netlify form to use
-      formDataObj.append('form-name', 'ambassador-form');
-      
       try {
-        // Submit to Netlify's form handler
-        const response = await fetch('/__ambassador-form.html', {
+        // Direct API call to admin system (similar to checkout functionality)
+        const response = await fetch('https://eleveadmin.netlify.app/api/ambassadors/apply', {
           method: 'POST',
-          body: formDataObj
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SHARED_API_SECRET}`
+          },
+          body: JSON.stringify({
+            fullName: formData.fullName,
+            email: formData.email,
+            phoneNumber: formData.phoneNumber,
+            instagramHandle: formData.instagramHandle,
+            tiktokHandle: formData.tiktokHandle,
+            otherSocialMedia: formData.otherSocialMedia,
+            personalStyle: formData.personalStyle,
+            soldBefore: formData.soldBefore,
+            promotionPlan: formData.promotionPlan,
+            investmentOption: formData.investmentOption,
+            contentComfort: formData.contentComfort,
+            instagramFollowers: formData.instagramFollowers,
+            tiktokFollowers: formData.tiktokFollowers,
+            otherFollowers: formData.otherFollowers,
+            targetAudience: formData.targetAudience,
+            otherAudience: formData.otherAudience,
+            motivation: formData.motivation,
+            hasCamera: formData.hasCamera,
+            attendEvents: formData.attendEvents,
+            agreeToTerms: formData.agreeToTerms,
+            additionalInfo: formData.additionalInfo,
+            questions: formData.questions,
+            user: {
+              name: session?.user?.name || '',
+              email: session?.user?.email || ''
+            }
+          })
         });
         
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Netlify Form Error:', response.status, errorText);
-          throw new Error(`Netlify form submission error: ${response.status} - ${errorText || 'No error details available'}`);
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Error response:', response.status, errorData);
+          throw new Error(`${response.status}`);
         }
         
-        // Form submitted successfully to Netlify
-        console.log('Form submitted successfully to Netlify');
-        
-        // Now notify our admin system
+        // Also notify our admin system as a backup
+        const formEl = e.target as HTMLFormElement;
+        const formDataObj = new FormData(formEl);
         await notifyAdminSystem(formDataObj);
         
         // Update UI state
@@ -175,14 +198,11 @@ const AmbassadorApplicationPage = () => {
         alert('Your ambassador application has been submitted successfully! Our team will review your application and contact you soon.');
         
         // Redirect to a special waiting/pending page that explains the approval process
-        router.push('/ambassador/pending');
-      } catch (formError) {
-        console.error('Error submitting form:', formError);
-        setRequestStatus('error');
-        alert('There was a problem submitting your application. Please try again later.');
-        setIsRequesting(false);
+        router.push(`/ambassador/pending?email=${encodeURIComponent(formData.email)}`);
+      } catch (error) {
+        console.error('Error in direct API call:', error);
+        throw error; // Let the outer catch block handle this
       }
-      
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
       setRequestStatus('error');
@@ -258,15 +278,7 @@ const AmbassadorApplicationPage = () => {
           <form 
             onSubmit={handleSubmit} 
             className="flex flex-col gap-6"
-            data-netlify="true"
-            name="ambassador-form"
-            method="POST"
-            netlify-honeypot="bot-field"
           >
-            <input type="hidden" name="form-name" value="ambassador-form" />
-            <p className="hidden">
-              <label>Don't fill this out if you're human: <input name="bot-field" /></label>
-            </p>
             {/* Basic Information */}
             <div className="border-b border-black/10 dark:border-white/10 pb-6">
               <h2 className="text-xl font-medium mb-4">Basic Information</h2>
