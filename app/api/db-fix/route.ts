@@ -25,18 +25,32 @@ export async function GET(request: NextRequest) {
       const indexes = await ambassadorCollection.indexes();
       console.log('Current indexes:', indexes);
       
-      const referralCodeIndex = indexes.find(
-        (idx: any) => idx.name === 'referralCode_1' || idx.key?.referralCode === 1
+      // Find ALL indexes related to referralCode
+      const referralCodeIndexes = indexes.filter(
+        (idx: any) => 
+          idx.name === 'referralCode_1' || 
+          idx.name?.includes('referralCode') ||
+          (idx.key && typeof idx.key === 'object' && 'referralCode' in idx.key)
       );
       
-      if (referralCodeIndex) {
-        console.log('Found referralCode index, dropping it...');
+      // Drop ALL referralCode indexes to start fresh
+      if (referralCodeIndexes.length > 0) {
+        console.log(`Found ${referralCodeIndexes.length} referralCode indexes, dropping them...`);
         
-        // 2. Drop the problematic index
-        await ambassadorCollection.dropIndex('referralCode_1');
-        console.log('Successfully dropped the index');
+        for (const idx of referralCodeIndexes) {
+          try {
+            if (idx.name && idx.name !== '_id_') {
+              await ambassadorCollection.dropIndex(idx.name);
+              console.log(`Successfully dropped index: ${idx.name}`);
+            } else {
+              console.log('Skipping unnamed index or _id_ index');
+            }
+          } catch (dropError) {
+            console.error(`Error dropping index ${idx.name || 'unnamed'}:`, dropError);
+          }
+        }
       } else {
-        console.log('No problematic index found');
+        console.log('No referralCode indexes found');
       }
       
       // 3. Create a new sparse index
@@ -73,4 +87,4 @@ export async function GET(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error' 
     }, { status: 500 });
   }
-} 
+}

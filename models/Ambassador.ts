@@ -43,7 +43,11 @@ const ambassadorSchema = new Schema<IAmbassador>(
         // Generate a guaranteed unique code using uuid
         return `elv_${uuidv4().replace(/-/g, '').substring(0, 8)}`;
       },
-      unique: true 
+      index: {
+        unique: true,
+        sparse: true,
+        name: 'referralCode_1_sparse'
+      }
     },
     referralLink: { type: String, required: true },
     couponCode: { type: String, sparse: true, unique: true },
