@@ -49,19 +49,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a unique referral link - ensure name is not empty
-    let referralCode = generateReferralCode(name.trim() || `user${Date.now()}`)
+    let referralCode = name ? generateReferralCode(name.trim()) : null;
     
-    // Validate referral code is not null or empty
-    if (!referralCode || referralCode.trim() === '') {
-      // Fallback to a completely random code if something went wrong
-      const timestamp = Date.now().toString(36)
-      const randomStr = Math.random().toString(36).substring(2, 8)
-      referralCode = `eleve${timestamp}${randomStr}`
-    }
-    
-    // Ensure we're using the correct production URL
+    // We'll let MongoDB handle null values with the sparse index
+    // Only generate a referralLink if we have a referralCode
     const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'
-    let referralLink = `${mainSiteUrl}?ref=${referralCode}`
+    let referralLink = referralCode ? `${mainSiteUrl}?ref=${referralCode}` : '';
     
     // Get admin site URL for notification purposes
     const adminSiteUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://eleveadmin.netlify.app'
@@ -73,27 +66,6 @@ export async function POST(request: NextRequest) {
     
     while (retryCount < maxRetries) {
       try {
-        // If this is a retry, generate a new referral code
-        if (retryCount > 0) {
-          console.log(`Retrying with a new referral code (attempt ${retryCount + 1})`)
-          // Create a completely new referral code instead of modifying the existing one
-          referralCode = generateReferralCode(`${name}_${Date.now()}_${retryCount}`)
-          referralLink = `${mainSiteUrl}?ref=${referralCode}`
-        }
-        
-        // Extra validation to ensure referralCode is not null
-        if (!referralCode || typeof referralCode !== 'string' || referralCode.trim() === '') {
-          // Generate a completely new one with timestamp
-          const fallbackTimestamp = Date.now().toString(36)
-          const fallbackRandom = Math.random().toString(36).substring(2, 8)
-          referralCode = `eleve${fallbackTimestamp}${fallbackRandom}`
-          referralLink = `${mainSiteUrl}?ref=${referralCode}`
-          console.log('Generated fallback referral code:', referralCode)
-        }
-        
-        // Log the referral code being used (helps with debugging)
-        console.log('Attempting to create ambassador with referral code:', referralCode)
-        
         // Attempt to create the ambassador record
         result = await Ambassador.create({
           name,
@@ -123,6 +95,8 @@ export async function POST(request: NextRequest) {
         // Check if this is a duplicate key error
         if (createError.code === 11000 && createError.keyPattern?.referralCode && retryCount < maxRetries - 1) {
           console.log('Encountered duplicate referral code, will retry with a new one')
+          // Generate a new referral code for the retry
+          referralCode = null; // Let the model's pre-save hook generate a new code
           retryCount++
           continue
         }

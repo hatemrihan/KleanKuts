@@ -27,14 +27,8 @@ const ambassadorSchema = new Schema<IAmbassador>(
     userId: { type: String },
     referralCode: { 
       type: String, 
-      required: true, 
-      unique: true,
-      validate: [
-        function(v: string) {
-          return v && v.trim().length > 0;
-        },
-        'Referral code cannot be empty'
-      ]
+      sparse: true,  // This is critical - makes index ignore null values
+      unique: true
     },
     referralLink: { type: String, required: true },
     couponCode: { type: String, sparse: true, unique: true },
@@ -56,13 +50,14 @@ const ambassadorSchema = new Schema<IAmbassador>(
   { timestamps: true }
 );
 
-// Add a pre-save hook to ensure referralCode is never null
+// Add a pre-save hook to ensure referralCode is generated if needed
 ambassadorSchema.pre('save', function(next) {
-  // If referralCode is null or empty, generate a new one
-  if (!this.referralCode || this.referralCode.trim() === '') {
+  // Only generate a referralCode if we're creating a new document and it doesn't have one
+  if (this.isNew && !this.referralCode) {
     const timestamp = Date.now().toString(36);
     const randomStr = Math.random().toString(36).substring(2, 8);
-    this.referralCode = `fallback_${timestamp}_${randomStr}`;
+    this.referralCode = `eleve_${timestamp}${randomStr}`;
+    
     // Also update the referral link
     const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app';
     this.referralLink = `${mainSiteUrl}?ref=${this.referralCode}`;
