@@ -167,10 +167,8 @@ const AmbassadorApplicationPage = () => {
         mode: 'cors',
         body: JSON.stringify({
           ...formData,
-          user: {
-            name: session?.user?.name || '',
-            email: session?.user?.email || ''
-          }
+          userName: session?.user?.name || '',
+          userEmail: session?.user?.email || ''
         })
       });
       
