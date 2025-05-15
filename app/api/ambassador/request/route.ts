@@ -48,134 +48,77 @@ export async function POST(request: NextRequest) {
       // Continue even if this fails - we'll try to create a new entry
     }
 
-    // Generate a unique referral link - ensure name is not empty
-    let referralCode = name ? generateReferralCode(name.trim()) : null;
-    
-    // We'll let MongoDB handle null values with the sparse index
-    // Only generate a referralLink if we have a referralCode
-    const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'
-    let referralLink = referralCode ? `${mainSiteUrl}?ref=${referralCode}` : '';
-    
     // Get admin site URL for notification purposes
     const adminSiteUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://eleveadmin.netlify.app'
     
-    // Create the ambassador record
-    let result
-    let retryCount = 0
-    const maxRetries = 3
-    
-    while (retryCount < maxRetries) {
-      try {
-        // Attempt to create the ambassador record
-        result = await Ambassador.create({
-          name,
-          email,
-          userId: session.user?.email || '', // Use email as unique identifier
-          referralCode,
-          referralLink,
-          couponCode: '', // Will be assigned by admin
-          status: 'pending', // pending, approved, rejected
-          createdAt: new Date(),
-          // Store the full form data for admin review
-          applicationDetails: formData,
-          // Initialize tracking stats
-          referrals: 0,
-          orders: 0,
-          conversions: 0,
-          sales: 0,
-          earnings: 0,
-          paymentsPending: 0,
-          paymentsPaid: 0,
-          commissionRate: 50 // Default 50% commission
-        })
-        
-        // If we reach here, the creation was successful
-        break
-      } catch (createError: any) {
-        // Check if this is a duplicate key error
-        if (createError.code === 11000 && createError.keyPattern?.referralCode && retryCount < maxRetries - 1) {
-          console.log('Encountered duplicate referral code, will retry with a new one')
-          // Generate a new referral code for the retry
-          referralCode = null; // Let the model's pre-save hook generate a new code
-          retryCount++
-          continue
-        }
-        
-        // For other errors or if we've exhausted retries, throw the error
-        console.error('Error creating ambassador record:', createError)
-        return NextResponse.json({ error: 'Failed to create ambassador record. Please try again later.' }, { status: 500 })
-      }
-    }
-
-    // Notify admin about the new ambassador request by sending data to the admin panel
+    // Create the ambassador record - the schema will handle the referral code
     try {
-      // Only send notification if result exists
-      if (!result) {
-        throw new Error('Ambassador creation failed with no error')
-      }
+      // Simplified create call - we let the schema handle defaults
+      const result = await Ambassador.create({
+        name,
+        email,
+        userId: session.user?.email || '', // Use email as unique identifier
+        couponCode: '', // Will be assigned by admin
+        applicationDetails: formData,
+      })
       
-      // Send notification to the admin site about the new request
-      const adminApiUrl = `${adminSiteUrl}/api/notifications` || 'https://eleveadmin.netlify.app/api/notifications';
-      
-      console.log(`Sending notification to admin panel at: ${adminApiUrl}`);
-      
-      // Send the data to the admin panel
-      const adminNotifyResponse = await fetch(adminApiUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.ADMIN_API_KEY || 'admin-api-key'}` // Use environment variable or default
-        },
-        body: JSON.stringify({
-          type: 'new_ambassador_request',
-          data: { 
-            name, 
-            email, 
-            userId: session.user?.email || '',
-            requestId: result._id.toString(),
-            timestamp: new Date().toISOString(),
-            status: 'pending',
-            applicationDetails: formData
+      // Notify admin about the new ambassador request
+      if (result) {
+        try {
+          // Send notification to the admin site about the new request
+          const adminApiUrl = `${adminSiteUrl}/api/notifications` || 'https://eleveadmin.netlify.app/api/notifications';
+          
+          console.log(`Sending notification to admin panel at: ${adminApiUrl}`);
+          
+          // Send the data to the admin panel
+          const adminNotifyResponse = await fetch(adminApiUrl, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.ADMIN_API_KEY || 'admin-api-key'}` // Use environment variable or default
+            },
+            body: JSON.stringify({
+              type: 'new_ambassador_request',
+              data: { 
+                name, 
+                email, 
+                userId: session.user?.email || '',
+                requestId: result._id.toString(),
+                timestamp: new Date().toISOString(),
+                status: 'pending',
+                applicationDetails: formData
+              }
+            })
+          });
+          
+          // Log the response from admin notification
+          if (adminNotifyResponse.ok) {
+            console.log('Successfully notified admin panel about new ambassador application');
+          } else {
+            const errorText = await adminNotifyResponse.text();
+            console.error('Failed to notify admin panel:', adminNotifyResponse.status, errorText);
           }
-        })
-      });
-      
-      // Log the response from admin notification
-      if (adminNotifyResponse.ok) {
-        console.log('Successfully notified admin panel about new ambassador application');
-      } else {
-        const errorText = await adminNotifyResponse.text();
-        console.error('Failed to notify admin panel:', adminNotifyResponse.status, errorText);
+        } catch (notifyError) {
+          // Don't fail the request if notification fails, just log it
+          console.error('Error notifying admin site:', notifyError)
+        }
       }
-    } catch (notifyError) {
-      // Don't fail the request if notification fails, just log it
-      console.error('Error notifying admin site:', notifyError)
-    }
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Ambassador request submitted successfully'
-    })
-    
+      return NextResponse.json({ 
+        success: true,
+        message: 'Ambassador request submitted successfully'
+      })
+      
+    } catch (createError) {
+      console.error('Error creating ambassador record:', createError)
+      return NextResponse.json({ 
+        error: 'Failed to create ambassador record. Please try again later.',
+        details: createError instanceof Error ? createError.message : 'Unknown error' 
+      }, { status: 500 })
+    }
   } catch (error) {
     console.error('Error creating ambassador request:', error)
     return NextResponse.json({ error: 'Failed to submit ambassador request' }, { status: 500 })
   }
-}
-
-// Helper function to generate a referral code based on name
-function generateReferralCode(name: string): string {
-  if (!name || name.trim() === '') {
-    // If no name is provided, use a timestamp and random string
-    const timestamp = Date.now().toString(36)
-    const randomString = Math.random().toString(36).substring(2, 8)
-    return `amb${timestamp}${randomString}`
-  }
-  
-  const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '')
-  // Add a timestamp to make the code more unique
-  const timestamp = Date.now().toString(36)
-  const randomString = Math.random().toString(36).substring(2, 6)
-  return `${cleanName.substring(0, 6)}${timestamp.substring(0, 4)}${randomString}`
 }
 

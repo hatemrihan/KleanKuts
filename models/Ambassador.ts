@@ -1,4 +1,5 @@
 import mongoose, { Schema, Model } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface IAmbassador {
   name: string;
@@ -20,15 +21,29 @@ export interface IAmbassador {
   commissionRate: number;
 }
 
+// Drop existing indexes to prevent conflicts
+// This will recreate the schema from scratch
+try {
+  if (mongoose.models.Ambassador) {
+    delete mongoose.models.Ambassador;
+  }
+} catch (error) {
+  console.error('Error resetting Ambassador model:', error);
+}
+
 const ambassadorSchema = new Schema<IAmbassador>(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     userId: { type: String },
+    // We'll generate the referral code internally, so it's always set
     referralCode: { 
-      type: String, 
-      sparse: true,  // This is critical - makes index ignore null values
-      unique: true
+      type: String,
+      default: function() {
+        // Generate a guaranteed unique code using uuid
+        return `elv_${uuidv4().replace(/-/g, '').substring(0, 8)}`;
+      },
+      unique: true 
     },
     referralLink: { type: String, required: true },
     couponCode: { type: String, sparse: true, unique: true },
@@ -50,18 +65,10 @@ const ambassadorSchema = new Schema<IAmbassador>(
   { timestamps: true }
 );
 
-// Add a pre-save hook to ensure referralCode is generated if needed
+// Always ensure referralLink is set based on the referralCode
 ambassadorSchema.pre('save', function(next) {
-  // Only generate a referralCode if we're creating a new document and it doesn't have one
-  if (this.isNew && !this.referralCode) {
-    const timestamp = Date.now().toString(36);
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    this.referralCode = `eleve_${timestamp}${randomStr}`;
-    
-    // Also update the referral link
-    const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app';
-    this.referralLink = `${mainSiteUrl}?ref=${this.referralCode}`;
-  }
+  const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app';
+  this.referralLink = `${mainSiteUrl}?ref=${this.referralCode}`;
   next();
 });
 

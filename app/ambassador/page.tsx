@@ -141,75 +141,43 @@ const AmbassadorPage = () => {
         return;
       }
       
-      // Add a unique timestamp to avoid duplicate collisions
-      const uniqueTimestamp = Date.now().toString();
-      
-      // Attempt to submit the form with retries
-      let retryCount = 0;
-      let submitted = false;
-      const maxRetries = 3;
-      
-      while (retryCount < maxRetries && !submitted) {
-        try {
-          // Simplify the data sent to the API to troubleshoot the 500 error
-          const response = await fetch('/api/ambassador/request', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Request-Time': uniqueTimestamp, // Add timestamp to help ensure uniqueness
-            },
-            body: JSON.stringify({
-              // Only send the most basic required information
-              name: `${formData.fullName || session?.user?.name || ''}_${retryCount > 0 ? retryCount : ''}`,
-              email: formData.email || session?.user?.email || '',
-              
-              // Send a simplified version of the form data to avoid potential serialization issues
-              formData: {
-                fullName: formData.fullName,
-                email: formData.email,
-                phoneNumber: formData.phoneNumber,
-                instagramHandle: formData.instagramHandle,
-                tiktokHandle: formData.tiktokHandle,
-                // Include only string values, not complex objects
-                otherSocialMedia: formData.otherSocialMedia.toString()
-              }
-            }),
-          });
-
-          // Check if response is OK
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Response Status:', response.status);
-            console.error('API Response Text:', errorText);
+      // Simple, direct form submission - no retries needed with our new schema
+      try {
+        const response = await fetch('/api/ambassador/request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.fullName || session?.user?.name || '',
+            email: formData.email || session?.user?.email || '',
             
-            // Check if this is a duplicate key error
-            if (response.status === 500 && errorText.includes('E11000') && retryCount < maxRetries - 1) {
-              console.log(`Retrying submission (attempt ${retryCount + 1})...`);
-              retryCount++;
-              continue;
+            // Send complete form data
+            formData: {
+              ...formData
             }
-            
-            // For other errors, or if we've exhausted retries, throw
-            throw new Error(`API error: ${response.status} - ${errorText || 'No error details available'}`);
-          }
+          }),
+        });
+
+        // Handle response
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error('API Response Status:', response.status);
+          console.error('API Response Data:', errorData);
           
-          // If we get here, submission was successful
-          const data = await response.json();
-          submitted = true;
-          
-          setRequestStatus('success');
-          setAmbassadorStatus('pending');
-          setShowApplicationForm(false); // Hide form after successful submission
-          // Show success message
-          alert('Your ambassador application has been submitted successfully!');
-        } catch (retryError) {
-          if (retryCount < maxRetries - 1) {
-            console.log(`Retry failed, trying again (${retryCount + 1})...`);
-            retryCount++;
-          } else {
-            throw retryError; // Re-throw if all retries failed
-          }
+          throw new Error(`API error: ${response.status} - ${errorData || 'No error details available'}`);
         }
+        
+        // Success
+        const data = await response.json();
+        
+        setRequestStatus('success');
+        setAmbassadorStatus('pending');
+        setShowApplicationForm(false);
+        alert('Your ambassador application has been submitted successfully!');
+      } catch (error) {
+        console.error('Application submission error:', error);
+        throw error;
       }
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
@@ -676,30 +644,6 @@ const AmbassadorPage = () => {
           </div>
 
           <div className="flex justify-end space-x-4 pt-4 border-t border-black/10 dark:border-white/10">
-            {/* Terms and Conditions Checkbox */}
-            <div className="flex-1 items-center space-x-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="terms_checkbox"
-                  className="h-4 w-4 rounded-sm border border-black/20 dark:border-white/20"
-                  required
-                />
-                <label
-                  htmlFor="terms_checkbox"
-                  className="text-sm leading-none ml-2"
-                >
-                  I have read and accept the{" "}
-                  <button 
-                    type="button" 
-                    className="underline font-medium text-black dark:text-white hover:text-black/70 dark:hover:text-white/70"
-                    onClick={() => setShowTerms(true)}
-                  >
-                    terms and conditions
-                  </button>
-                </label>
-              </div>
-            </div>
             <button
               type="button"
               onClick={() => setShowApplicationForm(false)}
