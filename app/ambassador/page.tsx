@@ -5,6 +5,7 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import Nav from "@/app/sections/nav"
+import Loader from "@/components/loader";
 
 const AmbassadorPage = () => {
   const { data: session, status } = useSession();
@@ -131,6 +132,15 @@ const AmbassadorPage = () => {
         return;
       }
       
+      // Check if terms checkbox is checked
+      const termsCheckbox = document.getElementById('terms_checkbox') as HTMLInputElement;
+      if (!termsCheckbox?.checked) {
+        setRequestStatus('error-validation');
+        alert('You must accept the terms and conditions');
+        setIsRequesting(false);
+        return;
+      }
+      
       // Simplify the data sent to the API to troubleshoot the 500 error
       // Let's send only the essential fields that the API endpoint expects
       const response = await fetch('/api/ambassador/request', {
@@ -189,6 +199,10 @@ const AmbassadorPage = () => {
           errorMessage = 'You already have a pending ambassador application.';
         } else if (error.message.includes('500')) {
           errorMessage = 'The server encountered an error. Please try again later.';
+          // Check if it's a duplicate key error
+          if (error.message.includes('duplicate key') || error.message.includes('E11000')) {
+            errorMessage = 'A technical issue occurred. Please try again - the system will generate a new unique code for you.';
+          }
         }
       }
       
@@ -262,17 +276,7 @@ const AmbassadorPage = () => {
   
   // Initial loading state
   if (status === 'loading') {
-    
-    return (
-      <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white overflow-x-hidden">
-        {/* Initial loader */}
-        <div 
-          className="fixed inset-0 z-[100] bg-white dark:bg-black flex items-center justify-center transition-opacity duration-700 opacity-100"
-        >
-          <div className="text-3xl font-serif animate-pulse">ELEVE</div>
-        </div>
-      </div>
-    );
+    return <Loader />;
   }
 
   // Application Form Component
@@ -592,6 +596,30 @@ const AmbassadorPage = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Terms and Conditions Checkbox */}
+              <div className="flex items-center space-x-2 mt-4">
+                <input
+                  type="checkbox"
+                  id="terms_checkbox"
+                  className="h-4 w-4 rounded-sm border border-black/20 dark:border-white/20"
+                  required
+                />
+                <label
+                  htmlFor="terms_checkbox"
+                  className="text-sm leading-none"
+                >
+                  I have read and accept the{" "}
+                  <button 
+                    type="button" 
+                    className="underline font-medium text-black dark:text-white hover:text-black/70 dark:hover:text-white/70"
+                    onClick={() => setShowTerms(true)}
+                  >
+                    terms and conditions
+                  </button>
+                </label>
+              </div>
+
               <div>
                 <label htmlFor="additionalInfo" className="block text-sm font-medium mb-1">Anything else you'd like us to know about you?</label>
                 <textarea
@@ -620,6 +648,30 @@ const AmbassadorPage = () => {
           </div>
 
           <div className="flex justify-end space-x-4 pt-4 border-t border-black/10 dark:border-white/10">
+            {/* Terms and Conditions Checkbox */}
+            <div className="flex-1 items-center space-x-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="terms_checkbox"
+                  className="h-4 w-4 rounded-sm border border-black/20 dark:border-white/20"
+                  required
+                />
+                <label
+                  htmlFor="terms_checkbox"
+                  className="text-sm leading-none ml-2"
+                >
+                  I have read and accept the{" "}
+                  <button 
+                    type="button" 
+                    className="underline font-medium text-black dark:text-white hover:text-black/70 dark:hover:text-white/70"
+                    onClick={() => setShowTerms(true)}
+                  >
+                    terms and conditions
+                  </button>
+                </label>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setShowApplicationForm(false)}
@@ -852,7 +904,7 @@ const AmbassadorPage = () => {
                 <div className="mb-4">
                   <p className="text-black/80 dark:text-white/80 text-sm leading-relaxed font-medium">4. Earn commissions</p>
                   <p className="text-black/70 dark:text-white/70 text-xs leading-relaxed">
-                    Earn a 20% commission on every purchase made with your referral link or code
+                    Earn a 25% commission on every purchase made with your referral link or code
                   </p>
                 </div>
               </div>

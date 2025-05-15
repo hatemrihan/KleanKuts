@@ -49,45 +49,74 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a unique referral link
-    const referralCode = generateReferralCode(name)
+    let referralCode = generateReferralCode(name)
     // Ensure we're using the correct production URL
     const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'
-    const referralLink = `${mainSiteUrl}?ref=${referralCode}`
+    let referralLink = `${mainSiteUrl}?ref=${referralCode}`
     
     // Get admin site URL for notification purposes
     const adminSiteUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://eleveadmin.netlify.app'
     
     // Create the ambassador record
     let result
-    try {
-      result = await Ambassador.create({
-        name,
-        email,
-        userId: session.user?.email || '', // Use email as unique identifier
-        referralCode,
-        referralLink,
-        couponCode: '', // Will be assigned by admin
-        status: 'pending', // pending, approved, rejected
-        createdAt: new Date(),
-        // Store the full form data for admin review
-        applicationDetails: formData,
-        // Initialize tracking stats
-        referrals: 0,
-        orders: 0,
-        conversions: 0,
-        sales: 0,
-        earnings: 0,
-        paymentsPending: 0,
-        paymentsPaid: 0,
-        commissionRate: 50 // Default 50% commission
-      })
-    } catch (createError) {
-      console.error('Error creating ambassador record:', createError)
-      return NextResponse.json({ error: 'Failed to create ambassador record. Please try again later.' }, { status: 500 })
+    let retryCount = 0
+    const maxRetries = 3
+    
+    while (retryCount < maxRetries) {
+      try {
+        // If this is a retry, generate a new referral code
+        if (retryCount > 0) {
+          console.log(`Retrying with a new referral code (attempt ${retryCount + 1})`)
+          const referralCodeSuffix = Math.random().toString(36).substring(2, 8)
+          referralCode = `${referralCode.substring(0, 8)}${referralCodeSuffix}`
+          referralLink = `${mainSiteUrl}?ref=${referralCode}`
+        }
+        
+        result = await Ambassador.create({
+          name,
+          email,
+          userId: session.user?.email || '', // Use email as unique identifier
+          referralCode,
+          referralLink,
+          couponCode: '', // Will be assigned by admin
+          status: 'pending', // pending, approved, rejected
+          createdAt: new Date(),
+          // Store the full form data for admin review
+          applicationDetails: formData,
+          // Initialize tracking stats
+          referrals: 0,
+          orders: 0,
+          conversions: 0,
+          sales: 0,
+          earnings: 0,
+          paymentsPending: 0,
+          paymentsPaid: 0,
+          commissionRate: 50 // Default 50% commission
+        })
+        
+        // If we reach here, the creation was successful
+        break
+      } catch (createError: any) {
+        // Check if this is a duplicate key error
+        if (createError.code === 11000 && createError.keyPattern?.referralCode && retryCount < maxRetries - 1) {
+          console.log('Encountered duplicate referral code, will retry with a new one')
+          retryCount++
+          continue
+        }
+        
+        // For other errors or if we've exhausted retries, throw the error
+        console.error('Error creating ambassador record:', createError)
+        return NextResponse.json({ error: 'Failed to create ambassador record. Please try again later.' }, { status: 500 })
+      }
     }
 
     // Notify admin about the new ambassador request by sending data to the admin panel
     try {
+      // Only send notification if result exists
+      if (!result) {
+        throw new Error('Ambassador creation failed with no error')
+      }
+      
       // Send notification to the admin site about the new request
       const adminApiUrl = `${adminSiteUrl}/api/notifications` || 'https://eleveadmin.netlify.app/api/notifications';
       
@@ -140,6 +169,8 @@ export async function POST(request: NextRequest) {
 // Helper function to generate a referral code based on name
 function generateReferralCode(name: string): string {
   const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '')
+  // Add a timestamp to make the code more unique
+  const timestamp = Date.now().toString(36)
   const randomString = Math.random().toString(36).substring(2, 6)
-  return `${cleanName.substring(0, 6)}${randomString}`
+  return `${cleanName.substring(0, 6)}${timestamp.substring(0, 4)}${randomString}`
 }

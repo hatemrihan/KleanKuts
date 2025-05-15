@@ -1010,7 +1010,12 @@ const ProductPage = ({ params }: Props) => {
         sizes: productSizes,
         sizeVariants: productSizeVariants,
         discount: typeof data.discount === 'number' ? data.discount : 0,
-        categories: Array.isArray(data.categories) ? data.categories : []
+        categories: Array.isArray(data.categories) ? data.categories : [],
+        // Add the admin-controlled fields from the updated Product model
+        materials: Array.isArray(data.materials) ? data.materials : [],
+        sizeGuide: data.sizeGuide || '',
+        packaging: data.packaging || '',
+        shippingReturns: data.shippingReturns || ''
       }
 
       console.log('Transformed product:', transformedProduct)
@@ -1048,7 +1053,10 @@ const ProductPage = ({ params }: Props) => {
             { size: 'M', stock: 10, isPreOrder: false },
             { size: 'L', stock: 10, isPreOrder: false }
           ],
-          materials: ['French linen']
+          materials: ['French linen', 'Organic cotton', '100% sustainable'],
+          sizeGuide: 'XS fits UK size 6-8<br>S fits UK size 8-10<br>M fits UK size 10-12<br>L fits UK size 12-14',
+          packaging: 'Each item comes in an elegant eco-friendly Eleve branded box with tissue paper wrapping.',
+          shippingReturns: '<ul><li>Free shipping on orders over 2000 EGP</li><li>Standard delivery: 3-5 business days</li><li>Express delivery available for an additional fee</li><li>Returns accepted within 3 days of delivery with original packaging</li></ul>'
         },
         {
           _id: "2",
@@ -1484,7 +1492,13 @@ const ProductPage = ({ params }: Props) => {
                       title: "MATERIALS",
                       content: (
                         <ul className="text-sm text-gray-700 dark:text-gray-300">
-                          {product.Material ? product.Material.map((m, i) => <li key={i}>{m}</li>) : <li>French linen</li>}
+                          {/* Use the admin-provided materials field if available, otherwise fall back to Material */}
+                          {product.materials && product.materials.length > 0 
+                            ? product.materials.map((m, i) => <li key={i}>{m}</li>) 
+                            : (product.Material 
+                                ? product.Material.map((m, i) => <li key={i}>{m}</li>) 
+                                : <li>French linen</li>)
+                          }
                         </ul>
                       )
                     },
@@ -1492,27 +1506,47 @@ const ProductPage = ({ params }: Props) => {
                       title: "SIZE GUIDE",
                       content: (
                         <div className="text-sm text-gray-700 dark:text-gray-300">
-                          <p>XS fits from 45 to 50 kgs</p>
-                          <p>Small fits from 50 to 58 kgs</p>
-                          <p>Medium from 59 to 70 kgs</p>
-                          <p>Large from 71 to 80 kgs</p>
+                          {/* Use the admin-provided size guide if available, otherwise show default content */}
+                          {product.sizeGuide 
+                            ? <div dangerouslySetInnerHTML={{ __html: product.sizeGuide }} />
+                            : <>
+                                <p>XS fits from 45 to 50 kgs</p>
+                                <p>Small fits from 50 to 58 kgs</p>
+                                <p>Medium from 59 to 70 kgs</p>
+                                <p>Large from 71 to 80 kgs</p>
+                              </>
+                          }
                         </div>
                       )
                     },
                     {
                       title: "PACKAGING",
-                      content: <div className="text-sm text-gray-700 dark:text-gray-300">All items are carefully packaged to ensure they arrive in perfect condition.</div>
+                      content: (
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                          {/* Use the admin-provided packaging info if available, otherwise show default content */}
+                          {product.packaging 
+                            ? <div dangerouslySetInnerHTML={{ __html: product.packaging }} />
+                            : "All items are carefully packaged to ensure they arrive in perfect condition."
+                          }
+                        </div>
+                      )
                     },
                     {
                       title: "SHIPPING & RETURNS",
                       content: (
-                        <ul className="text-sm list-disc pl-4 space-y-2 text-gray-700 dark:text-gray-300">
-                          <li>Shipping in 3-7 days</li>
-                          <li><strong>On-the-Spot Trying:</strong> Customers have the ability to try on the item while the courier is present at the time of delivery.</li>
-                          <li><strong>Immediate Return Requirement:</strong> If the customer is not satisfied, they must return the item immediately to the courier. Once the courier leaves, the item is considered accepted, and no returns or refunds will be processed.</li>
-                          <li><strong>Condition of Return:</strong> The item must be undamaged, and in its original packaging for a successful return.</li>
-                          <li><strong>No Returns After Courier Departure:</strong> After the courier has left, all sales are final, and no returns, exchanges, or refunds will be accepted.</li>
-                        </ul>
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                          {/* Use the admin-provided shipping & returns info if available, otherwise show default content */}
+                          {product.shippingReturns 
+                            ? <div dangerouslySetInnerHTML={{ __html: product.shippingReturns }} />
+                            : <ul className="list-disc pl-4 space-y-2">
+                                <li>Shipping in 3-7 days</li>
+                                <li><strong>On-the-Spot Trying:</strong> Customers have the ability to try on the item while the courier is present at the time of delivery.</li>
+                                <li><strong>Immediate Return Requirement:</strong> If the customer is not satisfied, they must return the item immediately to the courier. Once the courier leaves, the item is considered accepted, and no returns or refunds will be processed.</li>
+                                <li><strong>Condition of Return:</strong> The item must be undamaged, and in its original packaging for a successful return.</li>
+                                <li><strong>No Returns After Courier Departure:</strong> After the courier has left, all sales are final, and no returns, exchanges, or refunds will be accepted.</li>
+                              </ul>
+                          }
+                        </div>
                       )
                     }
                   ].map((section, index) => (

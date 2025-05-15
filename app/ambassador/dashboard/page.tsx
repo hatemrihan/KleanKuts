@@ -103,11 +103,23 @@ const AmbassadorDashboard = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <h1 className="text-3xl font-semibold">Ambassador Dashboard</h1>
           <div className="mt-4 md:mt-0">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-              <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-              Active Ambassador
-            </span>
+            <Link 
+              href="/"
+              className="inline-flex items-center px-6 py-2 rounded-md text-sm font-medium border border-black hover:bg-black hover:text-white dark:border-white dark:hover:bg-white dark:hover:text-black transition-colors duration-300"
+            >
+              BACK TO ELEVE
+            </Link>
           </div>
+        </div>
+        
+        {/* Welcome Message */}
+        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6 mb-8">
+          <h2 className="text-2xl font-medium text-amber-800 dark:text-amber-200">
+            WELCOME {session?.user?.name?.toUpperCase() || 'AMBASSADOR'}
+          </h2>
+          <p className="mt-2 text-amber-700 dark:text-amber-300">
+            Thank you for being part of our ambassador program. You can use this dashboard to track your referrals and earnings.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

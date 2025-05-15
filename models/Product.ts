@@ -9,6 +9,23 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // Additional content fields that only admin can modify
+  materials: {
+    type: [String],
+    default: [],
+  },
+  sizeGuide: {
+    type: String, 
+    default: '',
+  },
+  packaging: {
+    type: String,
+    default: '',
+  },
+  shippingReturns: {
+    type: String,
+    default: '',
+  },
   price: {
     type: Number,
     required: true,

@@ -157,6 +157,10 @@ const AmbassadorApplicationPage = () => {
       // Log form data before submission
       console.log('Form data being submitted:', formData);
       
+      // Generate a unique referral code based on user info and timestamp
+      const timestamp = Date.now();
+      const uniqueReferralCode = `${formData.fullName.trim().split(' ')[0].toLowerCase()}_${timestamp.toString().slice(-6)}`;
+      
       // Submit to admin API using exact endpoint
       console.log('Submitting application to admin API...');
       const response = await fetch('https://eleveadmin.netlify.app/api/ambassadors/apply', {
@@ -170,7 +174,8 @@ const AmbassadorApplicationPage = () => {
         body: JSON.stringify({
           ...formData,
           userName: session?.user?.name || '',
-          userEmail: session?.user?.email || ''
+          userEmail: session?.user?.email || '',
+          referralCode: uniqueReferralCode
         })
       });
       
