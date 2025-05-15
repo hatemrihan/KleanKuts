@@ -525,7 +525,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                  <label className="text-sm font-medium text-gray-700 mb-1 flex justify-between">
                     <span>Promo Code</span>
                     {promoDiscount && (
                       <span className="text-green-600 dark:text-green-400">Applied!</span>
