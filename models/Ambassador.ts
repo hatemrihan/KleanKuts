@@ -25,7 +25,17 @@ const ambassadorSchema = new Schema<IAmbassador>(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     userId: { type: String },
-    referralCode: { type: String, required: true, unique: true },
+    referralCode: { 
+      type: String, 
+      required: true, 
+      unique: true,
+      validate: [
+        function(v: string) {
+          return v && v.trim().length > 0;
+        },
+        'Referral code cannot be empty'
+      ]
+    },
     referralLink: { type: String, required: true },
     couponCode: { type: String, sparse: true, unique: true },
     status: { 
@@ -45,6 +55,20 @@ const ambassadorSchema = new Schema<IAmbassador>(
   },
   { timestamps: true }
 );
+
+// Add a pre-save hook to ensure referralCode is never null
+ambassadorSchema.pre('save', function(next) {
+  // If referralCode is null or empty, generate a new one
+  if (!this.referralCode || this.referralCode.trim() === '') {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    this.referralCode = `fallback_${timestamp}_${randomStr}`;
+    // Also update the referral link
+    const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app';
+    this.referralLink = `${mainSiteUrl}?ref=${this.referralCode}`;
+  }
+  next();
+});
 
 // Create or get the Ambassador model
 const Ambassador = (mongoose.models.Ambassador as Model<IAmbassador>) || 

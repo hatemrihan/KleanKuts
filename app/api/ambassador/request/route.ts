@@ -48,8 +48,17 @@ export async function POST(request: NextRequest) {
       // Continue even if this fails - we'll try to create a new entry
     }
 
-    // Generate a unique referral link
-    let referralCode = generateReferralCode(name)
+    // Generate a unique referral link - ensure name is not empty
+    let referralCode = generateReferralCode(name.trim() || `user${Date.now()}`)
+    
+    // Validate referral code is not null or empty
+    if (!referralCode || referralCode.trim() === '') {
+      // Fallback to a completely random code if something went wrong
+      const timestamp = Date.now().toString(36)
+      const randomStr = Math.random().toString(36).substring(2, 8)
+      referralCode = `eleve${timestamp}${randomStr}`
+    }
+    
     // Ensure we're using the correct production URL
     const mainSiteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'
     let referralLink = `${mainSiteUrl}?ref=${referralCode}`
@@ -67,11 +76,25 @@ export async function POST(request: NextRequest) {
         // If this is a retry, generate a new referral code
         if (retryCount > 0) {
           console.log(`Retrying with a new referral code (attempt ${retryCount + 1})`)
-          const referralCodeSuffix = Math.random().toString(36).substring(2, 8)
-          referralCode = `${referralCode.substring(0, 8)}${referralCodeSuffix}`
+          // Create a completely new referral code instead of modifying the existing one
+          referralCode = generateReferralCode(`${name}_${Date.now()}_${retryCount}`)
           referralLink = `${mainSiteUrl}?ref=${referralCode}`
         }
         
+        // Extra validation to ensure referralCode is not null
+        if (!referralCode || typeof referralCode !== 'string' || referralCode.trim() === '') {
+          // Generate a completely new one with timestamp
+          const fallbackTimestamp = Date.now().toString(36)
+          const fallbackRandom = Math.random().toString(36).substring(2, 8)
+          referralCode = `eleve${fallbackTimestamp}${fallbackRandom}`
+          referralLink = `${mainSiteUrl}?ref=${referralCode}`
+          console.log('Generated fallback referral code:', referralCode)
+        }
+        
+        // Log the referral code being used (helps with debugging)
+        console.log('Attempting to create ambassador with referral code:', referralCode)
+        
+        // Attempt to create the ambassador record
         result = await Ambassador.create({
           name,
           email,
@@ -168,9 +191,17 @@ export async function POST(request: NextRequest) {
 
 // Helper function to generate a referral code based on name
 function generateReferralCode(name: string): string {
+  if (!name || name.trim() === '') {
+    // If no name is provided, use a timestamp and random string
+    const timestamp = Date.now().toString(36)
+    const randomString = Math.random().toString(36).substring(2, 8)
+    return `amb${timestamp}${randomString}`
+  }
+  
   const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '')
   // Add a timestamp to make the code more unique
   const timestamp = Date.now().toString(36)
   const randomString = Math.random().toString(36).substring(2, 6)
   return `${cleanName.substring(0, 6)}${timestamp.substring(0, 4)}${randomString}`
 }
+

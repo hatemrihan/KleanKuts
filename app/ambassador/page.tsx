@@ -141,48 +141,76 @@ const AmbassadorPage = () => {
         return;
       }
       
-      // Simplify the data sent to the API to troubleshoot the 500 error
-      // Let's send only the essential fields that the API endpoint expects
-      const response = await fetch('/api/ambassador/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          // Only send the most basic required information
-          name: formData.fullName || session?.user?.name || '',
-          email: formData.email || session?.user?.email || '',
-          
-          // Send a simplified version of the form data to avoid potential serialization issues
-          formData: {
-            fullName: formData.fullName,
-            email: formData.email,
-            phoneNumber: formData.phoneNumber,
-            instagramHandle: formData.instagramHandle,
-            tiktokHandle: formData.tiktokHandle,
-            // Include only string values, not complex objects
-            otherSocialMedia: formData.otherSocialMedia.toString()
-          }
-        }),
-      });
-
-      // Add better error catching for network issues
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', response.status, errorText);
-        throw new Error(`API error: ${response.status} - ${errorText || 'No error details available'}`);
-      }
+      // Add a unique timestamp to avoid duplicate collisions
+      const uniqueTimestamp = Date.now().toString();
       
-      // Handle successful response
-      const data = await response.json();
+      // Attempt to submit the form with retries
+      let retryCount = 0;
+      let submitted = false;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries && !submitted) {
+        try {
+          // Simplify the data sent to the API to troubleshoot the 500 error
+          const response = await fetch('/api/ambassador/request', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Request-Time': uniqueTimestamp, // Add timestamp to help ensure uniqueness
+            },
+            body: JSON.stringify({
+              // Only send the most basic required information
+              name: `${formData.fullName || session?.user?.name || ''}_${retryCount > 0 ? retryCount : ''}`,
+              email: formData.email || session?.user?.email || '',
+              
+              // Send a simplified version of the form data to avoid potential serialization issues
+              formData: {
+                fullName: formData.fullName,
+                email: formData.email,
+                phoneNumber: formData.phoneNumber,
+                instagramHandle: formData.instagramHandle,
+                tiktokHandle: formData.tiktokHandle,
+                // Include only string values, not complex objects
+                otherSocialMedia: formData.otherSocialMedia.toString()
+              }
+            }),
+          });
 
-      // Since we've already checked response.ok above and thrown if not ok,
-      // we know this line is only reached with successful responses
-      setRequestStatus('success');
-      setAmbassadorStatus('pending');
-      setShowApplicationForm(false); // Hide form after successful submission
-      // Show success message
-      alert('Your ambassador application has been submitted successfully!');
+          // Check if response is OK
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Response Status:', response.status);
+            console.error('API Response Text:', errorText);
+            
+            // Check if this is a duplicate key error
+            if (response.status === 500 && errorText.includes('E11000') && retryCount < maxRetries - 1) {
+              console.log(`Retrying submission (attempt ${retryCount + 1})...`);
+              retryCount++;
+              continue;
+            }
+            
+            // For other errors, or if we've exhausted retries, throw
+            throw new Error(`API error: ${response.status} - ${errorText || 'No error details available'}`);
+          }
+          
+          // If we get here, submission was successful
+          const data = await response.json();
+          submitted = true;
+          
+          setRequestStatus('success');
+          setAmbassadorStatus('pending');
+          setShowApplicationForm(false); // Hide form after successful submission
+          // Show success message
+          alert('Your ambassador application has been submitted successfully!');
+        } catch (retryError) {
+          if (retryCount < maxRetries - 1) {
+            console.log(`Retry failed, trying again (${retryCount + 1})...`);
+            retryCount++;
+          } else {
+            throw retryError; // Re-throw if all retries failed
+          }
+        }
+      }
     } catch (error) {
       console.error('Error submitting ambassador request:', error);
       setRequestStatus('error');
@@ -822,6 +850,13 @@ const AmbassadorPage = () => {
 
       <Nav />
       
+      {/* User signed in confirmation - Mobile View */}
+      {session && status === 'authenticated' && (
+        <div className="fixed top-14 left-0 right-0 bg-black/5 dark:bg-white/5 py-2 px-6 text-sm text-center md:hidden z-10">
+          Welcome, <span className="font-medium">{session.user?.name || 'User'}</span>
+        </div>
+      )}
+      
       <main className="py-32">
         <div className="container max-w-6xl mx-auto px-6 md:px-12">
           <nav className="flex items-center justify-between mb-20">
@@ -843,7 +878,7 @@ const AmbassadorPage = () => {
               
               <div className="relative h-[50vh] mb-6">
                 <img 
-                  src="/images/amb-image.jpg" 
+                  src="/images/ambb-image.jpg" 
                   alt="Eleve Ambassador Program"
                   className="w-full h-full object-cover"
                 />
@@ -930,7 +965,7 @@ const AmbassadorPage = () => {
 
               <div className="relative h-[30vh] mb-6">
                 <img 
-                  src="/images/amb-image.jpg"
+                  src="/images/brand-image.jpg"
                   alt="Eleve Ambassador"
                   className="w-full h-full object-cover"
                 />
