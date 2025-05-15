@@ -154,14 +154,16 @@ const AmbassadorApplicationPage = () => {
         return;
       }
       
-      // Submit to admin API
+      // Log form data before submission
+      console.log('Form data being submitted:', formData);
+      
+      // Submit to admin API using exact endpoint
       console.log('Submitting application to admin API...');
       const response = await fetch('https://eleveadmin.netlify.app/api/ambassadors/apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SHARED_API_SECRET}`,
+          'Authorization': `Bearer elv_sk_aP8d2Kw7BxJn5mGq9LrF3yTzVcH6tE4s`,
           'Origin': 'https://elevee.netlify.app'
         },
         mode: 'cors',
@@ -175,6 +177,8 @@ const AmbassadorApplicationPage = () => {
       // Log responses for debugging
       console.log('API Response Status:', response.status);
       
+      // Clone the response before parsing it (to avoid consuming the response body)
+      const responseClone = response.clone();
       const data = await response.json();
       console.log('API Response Data:', data);
       
