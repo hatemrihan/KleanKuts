@@ -4,6 +4,19 @@ import { Providers } from "./providers";
 import "./globals.css";
 import ThemeInitializer from "./components/ThemeInitializer";
 import Script from "next/script";
+import dynamic from 'next/dynamic';
+
+// Dynamically import the FacebookPixelManager component with SSR disabled
+const FacebookPixelManagerWithNoSSR = dynamic(
+  () => import('../components/FacebookPixelManager'),
+  { ssr: false }
+);
+
+// Dynamically import the SiteStatusCheck component with SSR disabled
+const SiteStatusCheckWithNoSSR = dynamic(
+  () => import('../components/SiteStatusCheck'),
+  { ssr: false }
+);
 
 const openSans = Open_Sans({ subsets: ['latin'] });
 const abrilFatface = Abril_Fatface({ 
@@ -55,31 +68,16 @@ export default function RootLayout({
             `,
           }}
         />
-        
-        {/* Meta Pixel Code */}
-        <Script
-          id="facebook-pixel"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', 'XXXXXXXXXXXXXXX');
-              fbq('track', 'PageView');
-            `,
-          }}
-        />
       </head>
       <body className={openSans.className}>
         <Providers>
           <ThemeInitializer />
-          {children}
+          <SiteStatusCheckWithNoSSR>
+            {children}
+          </SiteStatusCheckWithNoSSR>
+          
+          {/* Add the dynamic Facebook Pixel component - it will fetch the pixel ID from the admin */}
+          <FacebookPixelManagerWithNoSSR />
         </Providers>
       </body>
     </html>

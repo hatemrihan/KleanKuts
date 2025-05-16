@@ -2,9 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-
 import Nav from '../sections/nav'
-
 
 const ThankYouPage = () => {
 
@@ -14,43 +12,34 @@ const ThankYouPage = () => {
       <Nav />
       <main className="min-h-screen bg-white dark:bg-black pt-20 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-          <h1 className="text-4xl md:text-5xl font-light mb-8 text-black dark:text-white transition-colors duration-300">THANK YOU FOR YOUR ORDER!</h1>
+          <h1 className="text-4xl md:text-5xl font-light mb-8 text-black dark:text-white transition-colors duration-300">SHIPPING POLICY</h1>
           
           <div className="max-w-2xl mx-auto space-y-6 text-gray-600 dark:text-gray-300 transition-colors duration-300">
             <p>
-              Your order has been successfully placed. We will contact you shortly to confirm your order and delivery details.
+            Shipping Coverage
+  We currently ship *only within the Arab Republic of Egypt.
+  <br />
+Carrier
+  Deliveries are handled via Engez courier service.
+  <br />
+Cost
+  Free shipping anywhere in Egypt, with no minimum order value.
+  <br />
+Delivery Time
+  Orders arrive within 3–5 business days from confirmation. Same‑day delivery is not available.
+<br />
+Order Tracking & Support
+  For updates or questions, contact us via:
+
+  Phone/WhatsApp: 01024491885
+  Email: [eleve.egy.1@gmail.com](mailto:eleve.egy.1@gmail.com)
+Damaged in Transit
+  If your item arrives damaged during shipping, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment.
+
             </p>
             
-            {/* Stock reduction processing message - hidden by default */}
-            <div id="processing-message" className="bg-blue-50 p-4 rounded-md text-blue-700 hidden">
-              <p className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing inventory update...
-              </p>
-            </div>
-            
-            {/* Stock reduction success message - hidden by default */}
-            <div id="success-message" className="bg-green-50 p-4 rounded-md text-green-700 hidden">
-              <p className="flex items-center justify-center">
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                Inventory has been updated successfully!
-              </p>
-            </div>
-            
-            {/* Stock reduction error message - hidden by default */}
-            <div id="error-message" className="bg-red-50 p-4 rounded-md text-red-700 hidden">
-              <p className="flex items-center justify-center">
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-                There was an issue updating inventory. Don't worry, your order is still confirmed.
-              </p>
-            </div>
+         
+       
             
             {/* Navigation buttons */}
            
@@ -63,10 +52,10 @@ const ThankYouPage = () => {
           </div>
 
           <Link 
-            href="/collection"
+            href="/"
             className="inline-block mt-12 px-8 py-4 bg-black text-white dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-colors duration-300"
           >
-            CONTINUE SHOPPING
+            Back to Home
           </Link>
         </div>
       </main>

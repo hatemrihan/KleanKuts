@@ -12,43 +12,41 @@ const ThankYouPage = () => {
       <Nav />
       <main className="min-h-screen bg-white dark:bg-black pt-20 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-          <h1 className="text-4xl md:text-5xl font-light mb-8 text-black dark:text-white transition-colors duration-300">THANK YOU FOR YOUR ORDER!</h1>
+          <h1 className="text-4xl md:text-5xl font-light mb-8 text-black dark:text-white transition-colors duration-300">TERMS OF SERVICE</h1>
           
           <div className="max-w-2xl mx-auto space-y-6 text-gray-600 dark:text-gray-300 transition-colors duration-300">
             <p>
-              Your order has been successfully placed. We will contact you shortly to confirm your order and delivery details.
+            Governing Law & Jurisdiction
+   These terms are governed by Egyptian law, and any disputes shall be brought before the courts of Cairo.
+<br />
+2. Who May Use the Site
+   The site is open to all visitors aged 12 and above.
+   <br />
+3. Customer Responsibilities
+
+    Provide *accurate information* when registering and placing orders.
+    Ensure *payment for all purchases.
+    <br />
+4. Élevé’s Rights
+
+    Modify prices at any time.
+    Discontinue products or services without prior notice.
+    Update or change any policy as needed.
+    <br />
+5. Intellectual Property
+   All text, images, logos, and other content on the site are proprietary to Élevé and may not be used without prior written permission.
+<br />
+6. Limitation of Liability
+   Élevé is not liable* for any direct or indirect damages arising from use of the site or products, except as provided for in the Returns Policy.
+<br />
+7. Dispute Resolution
+   We strive to resolve any disputes amicably through negotiation. If this fails, parties may seek alternative dispute resolution or arbitration under Egyptian law.
+
+
             </p>
             
-            {/* Stock reduction processing message - hidden by default */}
-            <div id="processing-message" className="bg-blue-50 p-4 rounded-md text-blue-700 hidden">
-              <p className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing inventory update...
-              </p>
-            </div>
-            
-            {/* Stock reduction success message - hidden by default */}
-            <div id="success-message" className="bg-green-50 p-4 rounded-md text-green-700 hidden">
-              <p className="flex items-center justify-center">
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                Inventory has been updated successfully!
-              </p>
-            </div>
-            
-            {/* Stock reduction error message - hidden by default */}
-            <div id="error-message" className="bg-red-50 p-4 rounded-md text-red-700 hidden">
-              <p className="flex items-center justify-center">
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-                There was an issue updating inventory. Don't worry, your order is still confirmed.
-              </p>
-            </div>
+         
+       
             
             {/* Navigation buttons */}
            
@@ -61,10 +59,10 @@ const ThankYouPage = () => {
           </div>
 
           <Link 
-            href="/collection"
+            href="/"
             className="inline-block mt-12 px-8 py-4 bg-black text-white dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-colors duration-300"
           >
-            CONTINUE SHOPPING
+            Back to Home
           </Link>
         </div>
       </main>

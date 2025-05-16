@@ -9,23 +9,34 @@ import NewFooter from './sections/NewFooter';
 import Waitlist from './sections/Waitlist';
 import NewMovingWords from './sections/NewMovingWords';
 import Hola from './sections/Hola';
+import CategorySections from './sections/CategorySections';
 
 export default function Home() {
   return (
     // <Suspense fallback={<div>Loading...</div>}>
-   <>   <Nav />
-   <Hola />
+    <>
+      <Nav />
+      <Hola />
       <Waitlist />
-      </>
-       /* <Introducing />
-     
+      <Introducing />
+      
+      
+      {/* Dynamic Category Sections from Admin Panel */}
+      <CategorySections />
+      
+      {/* Static Header Section */}
       <NewHeader />
-      <NewMovingWords />
-      <Products />
-      <FAQs /> 
-      <MovingWords/>
-     <NewFooter />
-    </Suspense> */
-  
+      
+      <NewFooter />
+    </>
+    /* <Introducing />
+   
+   
+    <NewMovingWords />
+    <Products />
+    <FAQs /> 
+    <MovingWords/>
+   <NewFooter />
+  </Suspense> */
 ); 
 }

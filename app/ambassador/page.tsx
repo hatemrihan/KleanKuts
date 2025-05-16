@@ -830,11 +830,11 @@ const AmbassadorPage = () => {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-1">Negotiation</h3>
+                  <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-2">Negotiation</h3>
                   <p className="text-sm">Starting from 10% Commission</p>
                 </div>
                 <div>
-                  <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-1">Status</h3>
+                  <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-2">Status</h3>
                   <p className="text-sm">{ambassadorStatus === 'pending' ? 'Application Pending' : 'Open for Applications'}</p>
                 </div>
               </div>

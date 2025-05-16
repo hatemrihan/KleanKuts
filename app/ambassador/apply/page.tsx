@@ -36,7 +36,7 @@ interface FormData {
 const AmbassadorApplicationPage = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
-
+  
   // Form state management
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -125,7 +125,12 @@ const AmbassadorApplicationPage = () => {
     if (!formData.instagramHandle.trim()) newErrors.instagramHandle = 'Instagram handle is required';
     if (!formData.promotionPlan.trim()) newErrors.promotionPlan = 'Promotion plan is required';
     if (!formData.motivation.trim()) newErrors.motivation = 'Motivation is required';
-    if (formData.agreeToTerms !== 'Yes, I agree.') newErrors.agreeToTerms = 'You must agree to the terms';
+    
+    // Check if terms checkbox is checked
+    const termsCheckbox = document.getElementById('terms_checkbox') as HTMLInputElement;
+    if (!termsCheckbox?.checked) {
+      newErrors.agreeToTerms = 'You must agree to the terms and conditions';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -146,12 +151,12 @@ const AmbassadorApplicationPage = () => {
       }
       
       // Check if user is authenticated
-      if (!session) {
-        // Store current path before redirecting to sign in
-        localStorage.setItem('lastPath', '/ambassador/apply');
-        signIn('google', { callbackUrl: '/ambassador/apply' });
+    if (!session) {
+      // Store current path before redirecting to sign in
+      localStorage.setItem('lastPath', '/ambassador/apply');
+      signIn('google', { callbackUrl: '/ambassador/apply' });
         setIsSubmitting(false);
-        return;
+      return;
       }
       
       // Log form data before submission
@@ -185,10 +190,10 @@ const AmbassadorApplicationPage = () => {
       // Clone the response before parsing it (to avoid consuming the response body)
       const responseClone = response.clone();
       const data = await response.json();
-      console.log('API Response Data:', data);
+        console.log('API Response Data:', data);
       
       if (response.ok) {
-        // Show success message
+      // Show success message
         setSuccess(true);
         
         // Wait a moment before redirecting
@@ -233,7 +238,7 @@ const AmbassadorApplicationPage = () => {
             <div className="mb-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 rounded">
               <h3 className="font-medium mb-2">Application Submission Failed</h3>
               <p>{error}</p>
-            </div>
+        </div>
           )}
           
           {success && (
@@ -299,8 +304,8 @@ const AmbassadorApplicationPage = () => {
               {/* Social Media Information */}
               <div className="md:col-span-2">
                 <h2 className="text-xl font-medium mb-4">Social Media</h2>
-              </div>
-              
+            </div>
+
               <div className="space-y-4">
                 <div>
                   <label htmlFor="instagramHandle" className="block text-sm font-medium mb-1">Instagram Handle*</label>
@@ -355,7 +360,7 @@ const AmbassadorApplicationPage = () => {
                 </div>
               </div>
               
-              <div className="md:col-span-2">
+                <div className="md:col-span-2">
                 <div>
                   <label htmlFor="otherSocialMedia" className="block text-sm font-medium mb-1">Other Social Media Accounts</label>
                   <input
@@ -406,8 +411,8 @@ const AmbassadorApplicationPage = () => {
                     />
                   </div>
                 )}
-              </div>
-              
+            </div>
+
               <div className="space-y-4">
                 <div>
                   <label htmlFor="personalStyle" className="block text-sm font-medium mb-1">Your Personal Style</label>
@@ -462,9 +467,9 @@ const AmbassadorApplicationPage = () => {
                     <option value="Somewhat comfortable—I'm willing to learn">Somewhat comfortable—I'm willing to learn</option>
                     <option value="Not very comfortable—I need guidance">Not very comfortable—I need guidance</option>
                   </select>
-                </div>
               </div>
-              
+            </div>
+
               <div className="space-y-4">
                 <div>
                   <label htmlFor="hasCamera" className="block text-sm font-medium mb-1">Do you have access to photography equipment?</label>
@@ -553,27 +558,9 @@ const AmbassadorApplicationPage = () => {
                     <option value="Maybe, I need more details.">Maybe, I need more details.</option>
                     <option value="No, I'm looking for free products only">No, I'm looking for free products only</option>
                   </select>
-                </div>
               </div>
-              
-              <div className="md:col-span-2">
-                <div>
-                  <label htmlFor="agreeToTerms" className="block text-sm font-medium mb-1">Terms Agreement*</label>
-                  <select
-                    id="agreeToTerms"
-                    name="agreeToTerms"
-                    value={formData.agreeToTerms}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 border ${errors.agreeToTerms ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'} rounded-md transition-colors duration-300 bg-white dark:bg-black`}
-                    required
-                  >
-                    <option value="Yes, I agree.">Yes, I agree to the ambassador terms and conditions</option>
-                    <option value="No, I don't agree">No, I don't agree</option>
-                  </select>
-                  {errors.agreeToTerms && <p className="mt-1 text-sm text-red-500">{errors.agreeToTerms}</p>}
-                </div>
-              </div>
-              
+            </div>
+
               {/* Additional Information */}
               <div className="md:col-span-2">
                 <div>
@@ -604,8 +591,32 @@ const AmbassadorApplicationPage = () => {
                   ></textarea>
                 </div>
               </div>
+              
+              {/* Terms Agreement Checkbox - Last item before submit */}
+              <div className="md:col-span-2 mt-4">
+                <div className="flex items-start">
+                  <div className="flex items-center h-5">
+                    <input
+                      id="terms_checkbox"
+                      name="terms_checkbox"
+                      type="checkbox"
+                      className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
+                      required
+                    />
+                  </div>
+                  <div className="ml-3 text-sm">
+                    <label htmlFor="terms_checkbox" className={`font-medium ${errors.agreeToTerms ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                      I agree to the ambassador terms and conditions*
+                    </label>
+                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                      By checking this box, you agree to our ambassador program terms and conditions.
+                    </p>
+                    {errors.agreeToTerms && <p className="mt-1 text-sm text-red-500">{errors.agreeToTerms}</p>}
+                  </div>
+                </div>
+              </div>
             </div>
-            
+
             <div className="pt-4">
               <button
                 type="submit"
@@ -617,7 +628,7 @@ const AmbassadorApplicationPage = () => {
             </div>
           </form>
         </div>
-      </div>
+    </div>
       <NewFooter />
     </>
   );

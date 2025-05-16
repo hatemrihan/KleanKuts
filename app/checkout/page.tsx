@@ -11,6 +11,7 @@ import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/pro
 import { redirectToThankYou, prepareOrderItemsForStockReduction, completeOrderAndRedirect } from '../utils/orderRedirect'
 import { toast } from 'react-hot-toast'
 import { validateCoupon, reportSuccessfulOrder, calculateDiscountAmount } from '../utils/couponUtils'
+import pixelTracking from '@/utils/pixelTracking'
 
 interface FormData {
   firstName: string;
@@ -52,30 +53,30 @@ interface PromoDiscount {
 }
 
 const shippingCosts = {
-  'Cairo': 70,
-  'Giza': 70,
-  'Alexandria': 70,
-  'Qailyoubiya': 70,
-  'Buhirah': 75,
-  'Gharbia': 75,
-  'Munofiya': 75,
-  'Damietta': 75,
-  'Qalub': 75,
-  'Dakahliya': 75,
-  'Kafr-Elshiekh': 75,
-  'Sharkia': 75,
-  'Al-Ismailiyyah': 75,
-  'Port-Said': 75,
-  'Suez': 75,
-  'Fayoum': 100,
-  'Bani-Suwayf': 100,
-  'Minya': 111,
-  'Asyout': 111,
-  'Souhag': 111,
-  'Qena': 120,
-  'Aswan': 120,
-  'Luxor': 120,
-  'Marsa Matrouh': 130,
+  'Cairo': 0,
+  'Giza': 0,
+  'Alexandria': 0,
+  'Qailyoubiya': 0,
+  'Buhirah': 0,
+  'Gharbia': 0,
+  'Munofiya': 0,
+  'Damietta': 0,
+  'Qalub': 0,
+  'Dakahliya': 0,
+  'Kafr-Elshiekh': 0,
+  'Sharkia': 0,
+  'Al-Ismailiyyah': 0,
+  'Port-Said': 0,
+  'Suez': 0,
+  'Fayoum': 0,
+  'Bani-Suwayf': 0,
+  'Minya': 0,
+  'Asyout': 0,
+  'Souhag': 0,
+  'Qena': 0,
+  'Aswan': 0,
+  'Luxor': 0,
+  'Marsa Matrouh': 0,
 } as const;
 
 type City = keyof typeof shippingCosts;
@@ -138,8 +139,18 @@ const CheckoutPage = () => {
   useEffect(() => {  
     if (cart.length === 0) {
       router.push('/cart')
+    } else {
+      // Track InitiateCheckout event when the checkout page loads
+      const productIds = cart.map(item => item.id);
+      const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+      
+      pixelTracking.trackInitiateCheckout(
+        productIds,
+        cartTotal,
+        totalItems
+      );
     }
-  }, [cart, router])
+  }, [cart, router, cartTotal])
 
   if (typeof window === 'undefined' || cart.length === 0) {
     return null
@@ -310,6 +321,16 @@ const CheckoutPage = () => {
           // IMPORTANT: We need to prepare the stock reduction data BEFORE clearing the cart
           console.log('Preparing cart items for stock reduction before clearing cart');
           completeOrderAndRedirect(cart);
+          
+          // Track successful purchase with Facebook Pixel
+          const productIds = cart.map(item => item.id);
+          const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+          
+          pixelTracking.trackPurchase(
+            totalWithShipping,
+            productIds,
+            totalItems
+          );
           
           // Clear cart AFTER preparing the stock reduction data
           // This ensures the stock data is properly saved before clearing
@@ -601,9 +622,9 @@ const CheckoutPage = () => {
                     className={`w-full p-3 border ${errors.city ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} focus:outline-none focus:border-black dark:focus:border-white bg-white dark:bg-black text-black dark:text-white transition-colors duration-300`}
                   >
                     <option value="">Select a city</option>
-                    {Object.entries(shippingCosts).map(([city, cost]) => (
+                    {Object.entries(shippingCosts).map(([city]) => (
                       <option key={city} value={city}>
-                        {city} (Shipping: L.E {cost})
+                        {city}
                       </option>
                     ))}
                   </select>
@@ -675,7 +696,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>L.E {shippingCost}</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">Free</span>
                 </div>
                 {promoDiscount && (
                   <div className="flex justify-between text-green-600 dark:text-green-400">
