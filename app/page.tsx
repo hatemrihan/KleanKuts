@@ -18,18 +18,18 @@ export default function Home() {
       <Nav />
       <Hola />
       <Waitlist />
-      <Introducing />
+      {/* <Introducing /> */}
       
       
       {/* Dynamic Category Sections from Admin Panel */}
       <CategorySections />
       
       {/* Static Header Section */}
-      <NewHeader />
+      {/* <NewHeader /> */}
       <NewMovingWords />
-    <Products />
+    {/* <Products />
     <FAQs /> 
-    <MovingWords/>
+    <MovingWords/> */}
       
       <NewFooter />
     </>
