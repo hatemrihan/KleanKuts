@@ -20,7 +20,7 @@ const faqs: FaqItem[] = [
   },
   {
     question: "What is your shipping policy?",
-answer: "Shipping Coverage We currently ship only within the Arab Republic of Egypt. - Carrier  Deliveries are handled via Engez courier service. a Cost Free shipping anywhere in Egypt, with no minimum order value. Delivery Time Orders arrive within 3–5 business days from confirmation. Same‑day delivery is not available. Order Tracking & Support For updates or questions, contact us via: Phone/WhatsApp: 01024491885  Email:[eleve.egy.1@gmail.com](mailto:eleve.egy.1@gmail.com)* *Damaged in Transit* If your item arrives *damaged during shipping*, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment."
+answer: "Shipping Coverage We currently ship only within the Arab Republic of Egypt. - Carrier  Deliveries are handled via Engez courier service. a Cost Free shipping anywhere in Egypt, with no minimum order value. Delivery Time Orders arrive within 3–5 business days from confirmation. Same‑day delivery is not available. Order Tracking & Support For updates or questions, contact us via: Phone/WhatsApp: 01024491885  Email:[eleve.egy.1@gmail.com](mailto:eleve.egy.1@gmail.com)* *Damaged in Transit* If your item arrives *damaged during shipping*, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment."
   },
   {
     question: "How can i track my orders?",
@@ -43,6 +43,14 @@ const FAQs = () => {
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: false, amount: 0.2 });
 
+  // Initialize the refs array with the correct length
+  useEffect(() => {
+    answerRefs.current = answerRefs.current.slice(0, faqs.length);
+    while (answerRefs.current.length < faqs.length) {
+      answerRefs.current.push(null);
+    }
+  }, []);
+
   useEffect(() => {
     // Measure heights of all answer elements
     const heights = answerRefs.current.map((ref) => ref?.scrollHeight || 0);
@@ -50,7 +58,7 @@ const FAQs = () => {
   }, [faqs]); // Re-measure when faqs content changes
 
   const toggleFaq = (index: number) => {
-    setActiveIndex(activeIndex === index ? null : index);
+    setActiveIndex(prev => prev === index ? null : index);
   };
 
   return (
@@ -121,7 +129,7 @@ const FAQs = () => {
             <AnimatePresence>
               {faqs.map((faq, index) => (
                 <motion.div
-                  key={index}
+                  key={`faq-${index}`}
                   variants={{
                     hidden: { opacity: 0, y: 20 },
                     visible: { opacity: 1, y: 0 }
@@ -172,13 +180,11 @@ const FAQs = () => {
                         opacity: activeIndex === index ? 1 : 0
                       }}
                       transition={{ duration: 0.3 }}
-                      className="overflow-visible"
+                      className="overflow-hidden"
                     >
                       <div 
                         ref={(el) => {
-                          if (answerRefs.current) {
-                            answerRefs.current[index] = el;
-                          }
+                          answerRefs.current[index] = el;
                         }}
                         className="py-4 text-black/70 dark:text-white/70 whitespace-normal break-words"
                         dangerouslySetInnerHTML={{
