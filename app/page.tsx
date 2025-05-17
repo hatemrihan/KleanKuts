@@ -16,13 +16,14 @@ export default function Home() {
     // <Suspense fallback={<div>Loading...</div>}>
     <>
       <Nav />
-      <Hola />
+      {/* <Hola /> */}
       <Waitlist />
+      <NewFooter />
       {/* <Introducing /> */}
       
       
       {/* Dynamic Category Sections from Admin Panel */}
-      <CategorySections />
+      {/* <CategorySections /> */}
       
       {/* Static Header Section */}
       {/* <NewHeader /> */}
@@ -31,7 +32,7 @@ export default function Home() {
     <FAQs /> 
     <MovingWords/> */}
       
-      <NewFooter />
+     
     </>
     /* <Introducing />
    
