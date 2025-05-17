@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { toast } from 'react-hot-toast';
 
 const NewFooter = () => {
   const [email, setEmail] = useState('');
@@ -12,29 +13,53 @@ const NewFooter = () => {
     e.preventDefault();
     if (!email) return;
 
-    setIsSending(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      setIsSending(true);
+      
+      // Submit email to the newsletter API
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          source: 'website_footer'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Success
+        toast.success(data.message || 'Thanks for subscribing!');
+        setEmail('');
+      } else {
+        // Error
+        toast.error(data.error || 'Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      console.error('Newsletter subscription error:', error);
+      toast.error('Failed to subscribe. Please try again later.');
+    } finally {
       setIsSending(false);
-      setEmail('');
-      alert('Thank you for subscribing!');
-    }, 1000);
+    }
   };
 
   return (
-    <footer className="w-full bg-white dark:bg-black text-black dark:text-white py-12 px-4 md:px-8">
+    <footer id="contact" className="w-full bg-white dark:bg-black text-black dark:text-white py-12 px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Top Section - Email Subscription */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div className="max-w-md">
             <h3 className="text-xl font-light tracking-wider mb-4">ABOUT ELEVE</h3>
-            <p className="text-sm text-black/70 dark:text-white/70 mb-4">Élevé is about more than clothes—it’s about you.
+            <p className="text-sm text-black/70 dark:text-white/70 mb-4">Élevé is about more than clothes—it's about you.
 
-We started this brand to create pieces that feel effortless, look timeless, and let you shine. It’s not just fashion; it’s a way to express who you are without saying a word.
+We started this brand to create pieces that feel effortless, look timeless, and let you shine. It's not just fashion; it's a way to express who you are without saying a word.
 
 Élevé is for the dreamers, the creators, and those who choose to stand out while staying true to themselves.
 
-Welcome to the family. Welcome to Élevé.</p>
+Welcome to the family. Welcome to Élevé.</p>
           </div>
           <form onSubmit={handleSubmit} className="w-full md:w-auto max-w-md">
             <div className="relative border-b border-black/20 dark:border-white/20 flex items-center">
@@ -65,18 +90,19 @@ Welcome to the family. Welcome to Élevé.</p>
               <li><Link href="https://www.instagram.com/eleve__egy?igsh=b3NnYWw4eWgxcTcw" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">INSTAGRAM</Link></li>
               <li><Link href="https://www.tiktok.com/@eleve__egy/" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">TIKTOK</Link></li>
               <li><Link href="mailto:eleve.egy.1@gmail.com" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">GMAIL</Link></li>
+              <li><Link href="https://eleveadmin.netlify.app/" className="text-sm font-extralight text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">ad</Link></li>
             </ul>
           </div>
-          <div>
+          {/* <div>
             <h3 className="font-medium mb-4">KNOW MORE</h3>
             <ul className="space-y-3">
               <li><Link href="/ShippingPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">SHIPPING POLICY</Link></li>
               <li><Link href="/RefundPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Refund & Returns Policy</Link></li>
-              <li><Link href="TermsOfService" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Terms of Service</Link></li>
-              <li><Link href="PrivacyPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Privacy Policy</Link></li>
+              <li><Link href="/TermsOfService" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Terms of Service</Link></li>
+              <li><Link href="/PrivacyPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Privacy Policy</Link></li>
 
             </ul>
-          </div>
+          </div> */}
           
         </div>
 

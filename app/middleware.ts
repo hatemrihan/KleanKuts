@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { setCorsHeaders } from '@/lib/api-utils';
 
 // Custom assert polyfill
 const assert = (condition: boolean, message?: string) => {
@@ -10,8 +11,14 @@ const assert = (condition: boolean, message?: string) => {
 
 // Simple middleware that only handles essential functionality
 export function middleware(request: NextRequest) {
-  // Add basic security headers
+  // Add security headers and CORS headers
   const response = NextResponse.next();
+  
+  // Add CORS headers from our utility
+  const corsHeaders = setCorsHeaders(request);
+  corsHeaders.forEach((value, key) => {
+    response.headers.set(key, value);
+  });
   
   // Basic security headers
   response.headers.set('X-Frame-Options', 'DENY');

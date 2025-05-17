@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -68,6 +68,14 @@ const AmbassadorApplicationPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // Terms and conditions modal state
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [termsScrolledToBottom, setTermsScrolledToBottom] = useState(false);
+  
+  // Reference for terms modal content
+  const termsContentRef = useRef<HTMLDivElement>(null);
 
   // If user is not authenticated, redirect to sign in
   useEffect(() => {
@@ -114,6 +122,36 @@ const AmbassadorApplicationPage = () => {
     }
   };
 
+  // Handle scroll in terms modal
+  const handleTermsScroll = () => {
+    if (termsContentRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = termsContentRef.current;
+      // Check if user has scrolled to bottom (or close to bottom with a 20px buffer)
+      if (scrollHeight - scrollTop - clientHeight < 20) {
+        setTermsScrolledToBottom(true);
+      }
+    }
+  };
+  
+  // Handle closing terms modal
+  const handleCloseTermsModal = () => {
+    if (termsScrolledToBottom) {
+      setHasReadTerms(true);
+      setShowTermsModal(false);
+    } else {
+      alert('Please read the entire terms and conditions before accepting.');
+    }
+  };
+  
+  // Handle checkbox click
+  const handleCheckboxClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    // If user hasn't read terms yet, prevent checkbox from being checked and show modal
+    if (!hasReadTerms) {
+      e.preventDefault();
+      setShowTermsModal(true);
+    }
+  };
+
   // Form validation
   const validateForm = () => {
     const newErrors: Partial<FormData> = {};
@@ -126,10 +164,12 @@ const AmbassadorApplicationPage = () => {
     if (!formData.promotionPlan.trim()) newErrors.promotionPlan = 'Promotion plan is required';
     if (!formData.motivation.trim()) newErrors.motivation = 'Motivation is required';
     
-    // Check if terms checkbox is checked
+    // Check if terms checkbox is checked and terms have been read
     const termsCheckbox = document.getElementById('terms_checkbox') as HTMLInputElement;
     if (!termsCheckbox?.checked) {
       newErrors.agreeToTerms = 'You must agree to the terms and conditions';
+    } else if (!hasReadTerms) {
+      newErrors.agreeToTerms = 'You must read the terms and conditions before agreeing';
     }
     
     setErrors(newErrors);
@@ -505,8 +545,8 @@ const AmbassadorApplicationPage = () => {
               {/* Motivation & Plans */}
               <div className="md:col-span-2">
                 <h2 className="text-xl font-medium mb-4">Motivation & Promotion Plan</h2>
-              </div>
-              
+            </div>
+
               <div className="md:col-span-2">
                 <div>
                   <label htmlFor="motivation" className="block text-sm font-medium mb-1">Why do you want to be an ambassador for our brand?*</label>
@@ -514,14 +554,14 @@ const AmbassadorApplicationPage = () => {
                     id="motivation"
                     name="motivation"
                     value={formData.motivation}
-                    onChange={handleInputChange}
+                      onChange={handleInputChange}
                     rows={4}
                     className={`w-full px-4 py-2 border ${errors.motivation ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'} rounded-md transition-colors duration-300 bg-white dark:bg-black`}
-                    required
+                      required
                   ></textarea>
                   {errors.motivation && <p className="mt-1 text-sm text-red-500">{errors.motivation}</p>}
                 </div>
-              </div>
+                  </div>
               
               <div className="md:col-span-2">
                 <div>
@@ -600,8 +640,10 @@ const AmbassadorApplicationPage = () => {
                       id="terms_checkbox"
                       name="terms_checkbox"
                       type="checkbox"
-                      className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
+                      className={`h-4 w-4 text-black focus:ring-black border-gray-300 rounded ${!hasReadTerms ? 'cursor-not-allowed' : ''}`}
                       required
+                      onClick={handleCheckboxClick}
+                      disabled={!hasReadTerms}
                     />
                   </div>
                   <div className="ml-3 text-sm">
@@ -610,7 +652,19 @@ const AmbassadorApplicationPage = () => {
                     </label>
                     <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
                       By checking this box, you agree to our ambassador program terms and conditions.
+                      <button 
+                        type="button" 
+                        onClick={() => setShowTermsModal(true)}
+                        className="ml-1 text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none"
+                      >
+                        Read Terms
+                      </button>
                     </p>
+                    {!hasReadTerms && (
+                      <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                        You must read the terms and conditions before checking this box
+                      </p>
+                    )}
                     {errors.agreeToTerms && <p className="mt-1 text-sm text-red-500">{errors.agreeToTerms}</p>}
                   </div>
                 </div>
@@ -628,6 +682,133 @@ const AmbassadorApplicationPage = () => {
             </div>
           </form>
         </div>
+        
+        {/* Terms and Conditions Modal */}
+        {showTermsModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Ambassador Terms and Conditions
+                </h3>
+                <button
+                  onClick={() => setShowTermsModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              
+              <div 
+                ref={termsContentRef} 
+                onScroll={handleTermsScroll}
+                className="p-6 overflow-y-auto flex-1 text-gray-800 dark:text-gray-200"
+              >
+                <h4 className="text-lg font-semibold mb-4">1. Introduction</h4>
+                <p className="mb-4">
+                  Welcome to the Elevé Ambassador Program. These Terms and Conditions govern your participation in our Ambassador Program. By applying to be an Ambassador, you agree to be bound by these terms.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">2. Eligibility</h4>
+                <p className="mb-4">
+                  To be eligible for the Elevé Ambassador Program, you must:
+                </p>
+                <ul className="list-disc pl-5 mb-4 space-y-2">
+                  <li>Be at least 18 years of age</li>
+                  <li>Have an active social media presence</li>
+                  <li>Align with our brand values and aesthetic</li>
+                  <li>Comply with all applicable laws and regulations</li>
+                </ul>
+                
+                <h4 className="text-lg font-semibold mb-4">3. Ambassador Responsibilities</h4>
+                <p className="mb-4">
+                  As an Elevé Ambassador, you are responsible for:
+                </p>
+                <ul className="list-disc pl-5 mb-4 space-y-2">
+                  <li>Creating high-quality content featuring our products</li>
+                  <li>Promoting our products through your social media channels</li>
+                  <li>Using your unique referral code in promotions</li>
+                  <li>Maintaining a positive and professional image</li>
+                  <li>Adhering to our brand guidelines</li>
+                  <li>Disclosing your relationship with our brand in compliance with FTC guidelines</li>
+                </ul>
+                
+                <h4 className="text-lg font-semibold mb-4">4. Program Benefits</h4>
+                <p className="mb-4">
+                  Ambassadors may receive:
+                </p>
+                <ul className="list-disc pl-5 mb-4 space-y-2">
+                  <li>Special ambassador pricing on products</li>
+                  <li>Commission on sales made using your referral code</li>
+                  <li>Early access to new products and collections</li>
+                  <li>Exclusive ambassador-only promotions</li>
+                  <li>Opportunities to be featured on our official channels</li>
+                </ul>
+                
+                <h4 className="text-lg font-semibold mb-4">5. Term and Termination</h4>
+                <p className="mb-4">
+                  The Ambassador relationship is on a month-to-month basis. Either party may terminate the relationship at any time with written notice. Upon termination, you must cease using all Elevé materials and representing yourself as an Ambassador.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">6. Intellectual Property</h4>
+                <p className="mb-4">
+                  By participating in the program, you grant Elevé a non-exclusive, royalty-free license to use, reproduce, and display any content you create in connection with the Ambassador Program. This includes the right to use your name, likeness, and social media handles for promotional purposes.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">7. Confidentiality</h4>
+                <p className="mb-4">
+                  As an Ambassador, you may receive confidential information about our products, strategies, or business. You agree to maintain the confidentiality of this information and not disclose it to third parties.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">8. Compliance with Laws</h4>
+                <p className="mb-4">
+                  You agree to comply with all applicable laws and regulations, including those related to advertising, privacy, and data protection. You must disclose your relationship with Elevé in all promotional content in accordance with FTC guidelines.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">9. Limitation of Liability</h4>
+                <p className="mb-4">
+                  Elevé shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or in connection with your participation in the Ambassador Program.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">10. Modifications</h4>
+                <p className="mb-4">
+                  Elevé reserves the right to modify these Terms and Conditions at any time. Changes will be effective upon posting to our website or notification to Ambassadors.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">11. Governing Law</h4>
+                <p className="mb-4">
+                  These Terms and Conditions shall be governed by and construed in accordance with the laws of the jurisdiction in which Elevé operates, without regard to its conflict of law provisions.
+                </p>
+                
+                <h4 className="text-lg font-semibold mb-4">12. Acceptance</h4>
+                <p className="mb-12">
+                  By checking the "I agree to the ambassador terms and conditions" box, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.
+                </p>
+              </div>
+              
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <div className={`text-sm ${!termsScrolledToBottom ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                  {termsScrolledToBottom 
+                    ? '✓ You have read the terms to the end' 
+                    : 'Please scroll to the end to accept the terms'}
+                </div>
+                <button
+                  onClick={handleCloseTermsModal}
+                  disabled={!termsScrolledToBottom}
+                  className={`px-4 py-2 rounded font-medium ${
+                    termsScrolledToBottom 
+                      ? 'bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200' 
+                      : 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {termsScrolledToBottom ? 'Accept Terms' : 'Read to Accept'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
       <NewFooter />
     </>

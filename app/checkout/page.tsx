@@ -12,6 +12,7 @@ import { redirectToThankYou, prepareOrderItemsForStockReduction, completeOrderAn
 import { toast } from 'react-hot-toast'
 import { validateCoupon, reportSuccessfulOrder, calculateDiscountAmount } from '../utils/couponUtils'
 import pixelTracking from '@/utils/pixelTracking'
+import { updateInventory } from '../utils/inventoryUpdater'
 
 interface FormData {
   firstName: string;
@@ -23,6 +24,8 @@ interface FormData {
   city: string;
   notes: string;
   promoCode: string;
+  paymentMethod: 'cashOnDelivery' | 'instaPay';
+  transactionScreenshot: any; // Use any to avoid type issues with File
 }
 
 interface CartItem {
@@ -93,7 +96,9 @@ const CheckoutPage = () => {
     apartment: '',
     city: '',
     notes: '',
-    promoCode: ''
+    promoCode: '',
+    paymentMethod: 'cashOnDelivery',
+    transactionScreenshot: null
   })
   const [errors, setErrors] = useState<Partial<FormData>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -101,6 +106,7 @@ const CheckoutPage = () => {
   const [promoDiscount, setPromoDiscount] = useState<PromoDiscount | null>(null)
   const [isValidatingPromo, setIsValidatingPromo] = useState(false)
   const [promoError, setPromoError] = useState<string | null>(null)
+  const [screenShotPreview, setScreenShotPreview] = useState<string | null>(null)
 
   const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0
   
@@ -164,6 +170,9 @@ const CheckoutPage = () => {
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
     if (!formData.address.trim()) newErrors.address = 'Address is required'
     if (!formData.city) newErrors.city = 'Please select a city'
+    if (formData.paymentMethod === 'instaPay' && !formData.transactionScreenshot) {
+      newErrors.transactionScreenshot = 'Please upload a screenshot of your transaction'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -203,6 +212,73 @@ const CheckoutPage = () => {
         setIsSubmitting(false);
         return;
       }
+
+      // Handle screenshot upload if InstaPay is selected
+      let screenshotUrl = null;
+      if (formData.paymentMethod === 'instaPay' && formData.transactionScreenshot) {
+        try {
+          console.log('Starting transaction screenshot upload...', {
+            fileName: formData.transactionScreenshot.name,
+            fileSize: formData.transactionScreenshot.size,
+            fileType: formData.transactionScreenshot.type
+          });
+          
+          const formDataForImage = new FormData();
+          formDataForImage.append('file', formData.transactionScreenshot);
+          // Try using Cloudinary's default upload preset
+          const uploadPreset = 'kleankuts_upload';
+          console.log('Using upload preset:', uploadPreset);
+          formDataForImage.append('upload_preset', uploadPreset);
+          formDataForImage.append('folder', 'transaction_screenshots');
+          
+          try {
+            // Direct upload to Cloudinary
+            const response = await fetch('https://api.cloudinary.com/v1_1/dvcs7czio/image/upload', {
+              method: 'POST',
+              body: formDataForImage
+            });
+
+            // First check if the response is ok
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('Upload failed:', errorText);
+              console.error('Upload settings:', {
+                preset: uploadPreset,
+                apiUrl: 'https://api.cloudinary.com/v1_1/dvcs7czio/image/upload',
+                folder: 'transaction_screenshots'
+              });
+              throw new Error(`Upload failed with status: ${response.status}`);
+            }
+
+            // Parse the response as JSON
+            let data;
+            try {
+              data = await response.json();
+              console.log('Upload response:', data);
+            } catch (parseError) {
+              console.error('Failed to parse upload response:', parseError);
+              throw new Error('Invalid response from upload service');
+            }
+
+            if (data.secure_url) {
+              screenshotUrl = data.secure_url;
+              console.log('Screenshot uploaded successfully:', screenshotUrl);
+            } else {
+              console.error('No secure_url in response:', data);
+              throw new Error('Failed to upload screenshot: No secure URL returned');
+            }
+          } catch (uploadError) {
+            console.error('Full upload error:', uploadError);
+            throw uploadError;
+          }
+        } catch (uploadError) {
+          console.error('Error uploading screenshot:', uploadError);
+          setOrderError(`Failed to upload transaction screenshot: ${(uploadError as Error).message || 'Please try again.'}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // First, send to our main API
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -225,6 +301,8 @@ const CheckoutPage = () => {
             color: item.color,
             image: item.image
           })),
+          paymentMethod: formData.paymentMethod,
+          transactionScreenshot: screenshotUrl,
           totalAmount: totalWithShipping,
           status: 'pending',
           notes: formData.notes || '',
@@ -245,9 +323,33 @@ const CheckoutPage = () => {
 
       if (response.ok) {
         try {
+          // Get the order ID for inventory updates
+          const orderId = data.order?._id || data.orderId || data._id;
+          
+          // Update inventory immediately after successful order
+          let inventoryUpdateSuccess = false;
+          try {
+            console.log('Updating inventory for order:', orderId);
+            const inventoryResult = await updateInventory(orderId);
+            inventoryUpdateSuccess = inventoryResult && inventoryResult.success;
+            
+            if (inventoryUpdateSuccess) {
+              console.log('✅ Inventory update completed successfully');
+            } else {
+              console.warn('⚠️ Inventory update did not complete successfully, will retry on thank-you page');
+              
+              // Store the order ID for later processing
+              sessionStorage.setItem('pendingOrderId', orderId);
+            }
+          } catch (inventoryError) {
+            console.error('Error updating inventory:', inventoryError);
+            // Store the order ID for later processing
+            sessionStorage.setItem('pendingOrderId', orderId);
+          }
+          
           // Create order details object to reuse for both admin panel and ambassador reporting
           const orderDetails = {
-            orderId: data.orderId || data._id || Date.now().toString(),
+            orderId: orderId || Date.now().toString(),
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
             phone: formData.phone.trim(),
@@ -256,6 +358,9 @@ const CheckoutPage = () => {
             apartment: formData.apartment.trim(),
             city: formData.city,
             notes: formData.notes || '',
+            paymentMethod: formData.paymentMethod,
+            transactionScreenshot: screenshotUrl,
+            paymentVerified: false, // Add paymentVerified field for admin tracking
             products: cart.map(item => ({
               id: item.id,
               productId: item.id,
@@ -320,7 +425,7 @@ const CheckoutPage = () => {
           // Let the thank-you page handle stock reduction exclusively
           // IMPORTANT: We need to prepare the stock reduction data BEFORE clearing the cart
           console.log('Preparing cart items for stock reduction before clearing cart');
-          completeOrderAndRedirect(cart);
+          completeOrderAndRedirect(cart, orderId);
           
           // Track successful purchase with Facebook Pixel
           const productIds = cart.map(item => item.id);
@@ -339,10 +444,12 @@ const CheckoutPage = () => {
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           
+          // Also in the fallback path
           // Let the thank-you page handle stock reduction exclusively
           // IMPORTANT: We need to prepare the stock reduction data BEFORE clearing the cart
           console.log('Preparing cart items for stock reduction before clearing cart (fallback path)');
-          completeOrderAndRedirect(cart);
+          const fallbackOrderId = data.order?._id || data.orderId || data._id;
+          completeOrderAndRedirect(cart, fallbackOrderId);
           
           // Clear cart AFTER preparing the stock reduction data
           // This ensures the stock data is properly saved before clearing
@@ -455,6 +562,50 @@ const CheckoutPage = () => {
     }
   }
 
+  // Handle file upload for transaction screenshot
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Check file size (limit to 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        setErrors(prev => ({
+          ...prev,
+          transactionScreenshot: 'File size must be less than 5MB'
+        }));
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setErrors(prev => ({
+          ...prev,
+          transactionScreenshot: 'Only image files are allowed'
+        }));
+        return;
+      }
+      
+      setFormData(prev => ({ ...prev, transactionScreenshot: file }));
+      
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenShotPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      // Clear any error
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.transactionScreenshot;
+        return newErrors;
+      });
+      
+      console.log('File selected for upload:', file.name, 'Size:', (file.size / 1024).toFixed(2) + 'KB', 'Type:', file.type);
+    }
+  };
+
   return (
     <>
       <Nav />
@@ -544,6 +695,90 @@ const CheckoutPage = () => {
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
                   )}
                 </div>
+
+                {/* Payment Method Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Method *
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id="cashOnDelivery"
+                        name="paymentMethod"
+                        value="cashOnDelivery"
+                        checked={formData.paymentMethod === 'cashOnDelivery'}
+                        onChange={handleInputChange}
+                        className="mr-2 h-4 w-4"
+                      />
+                      <label htmlFor="cashOnDelivery" className="text-sm">Cash on Delivery</label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id="instaPay"
+                        name="paymentMethod"
+                        value="instaPay"
+                        checked={formData.paymentMethod === 'instaPay'}
+                        onChange={handleInputChange}
+                        className="mr-2 h-4 w-4"
+                      />
+                      <label htmlFor="instaPay" className="text-sm">Pay with InstaPay</label>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* InstaPay Instructions and Screenshot Upload */}
+                {formData.paymentMethod === 'instaPay' && (
+                  <div className="p-4 border border-gray-300 dark:border-gray-600 rounded-md">
+                    <div className="mb-4">
+                      <h3 className="font-medium mb-2">InstaPay Payment Instructions</h3>
+                      <p className="text-sm mb-2">Click the link to send money to:</p>
+                      <p className="font-medium mb-2">seifmahmoud1235@instapay</p>
+                      <p className="text-sm mb-2">Powered by InstaPay:</p>
+                      <a 
+                        href="https://ipn.eg/S/seifmahmoud1235/instapay/96HscL" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 underline text-sm"
+                      >
+                        https://ipn.eg/S/seifmahmoud1235/instapay/96HscL
+                      </a>
+                    </div>
+                    
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Upload Transaction Screenshot *
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800"
+                      />
+                      {errors.transactionScreenshot && (
+                        <p className="text-red-500 text-sm mt-1">{errors.transactionScreenshot}</p>
+                      )}
+                    </div>
+                    
+                    {/* Preview of the screenshot */}
+                    {screenShotPreview && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium mb-1">Preview:</p>
+                        <div className="relative w-40 h-40 border border-gray-300">
+                          <Image 
+                            src={screenShotPreview} 
+                            alt="Transaction screenshot" 
+                            fill 
+                            className="object-contain" 
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 flex justify-between">

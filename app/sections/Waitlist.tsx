@@ -6,6 +6,7 @@ import Nav from '@/app/sections/nav';
 import { toast } from 'react-hot-toast';
 import { useScroll, useTransform, motion } from 'framer-motion';
 import useTextRevealAnimation from '../hooks/UsingTextRevealAnimation';
+import { submitToWaitlist } from '../../lib/adminIntegration';
 
 const Waitlist = () => {
   const [email, setEmail] = useState('');
@@ -118,25 +119,14 @@ entranceAnimation();
     try {
       console.log('Submitting via Fetch API fallback...');
       
-      // Use exactly the fields requested by admin
-      const response = await fetch('https://eleveadmin.netlify.app/api/waitlist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          // ONLY the exact fields specified
-          email: emailAddress,
-          source: 'website'
-        })
-      });
+      // Use the centralized helper function to submit to waitlist
+      const success = await submitToWaitlist(emailAddress, 'website');
       
-      // Check for 201 status code as specified
-      if (response.status === 201) {
-        console.log('Successfully submitted via Fetch API with 201 status');
+      if (success) {
+        console.log('Successfully submitted via Fetch API with helper function');
         return true;
       } else {
-        console.error('Fetch API submission failed with status:', response.status);
+        console.error('Fetch API submission failed');
         return false;
       }
     } catch (error) {

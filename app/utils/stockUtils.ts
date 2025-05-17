@@ -64,11 +64,5 @@ export async function reduceStock(orderItems: any[]) {
  * @returns Formatted stock message
  */
 export function formatStockMessage(stock: number): string {
-  if (stock <= 0) {
-    return 'Out of stock';
-  } else if (stock <= 5) {
-    return `Only ${stock} left!`;
-  } else {
-    return `${stock} in stock`;
-  }
+  return 'Available';
 }

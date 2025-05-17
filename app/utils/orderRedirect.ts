@@ -3,6 +3,7 @@
  * This ensures that after an order is placed, the user is redirected to the thank-you page
  * and stock levels are properly reduced
  */
+import { reduceInventory } from './inventoryUtils';
 
 // Function to redirect to thank-you page after order completion
 export const redirectToThankYou = () => {
@@ -39,7 +40,8 @@ export const prepareOrderItemsForStockReduction = (cart: any[]) => {
     productId: item.id,
     size: item.size,
     color: item.color || 'Default',
-    quantity: item.quantity || 1
+    quantity: item.quantity || 1,
+    inventoryUpdated: false // Add flag for inventory tracking
   }));
   
   // Log the processed items
@@ -59,19 +61,71 @@ export const prepareOrderItemsForStockReduction = (cart: any[]) => {
   }
   
   return orderItems; // Return the prepared items for additional use if needed
-  console.log('Order items saved to localStorage for stock reduction');
-  
-  return orderItems;
+};
+
+// Function to process inventory reduction for an order
+export const processInventoryReduction = async (orderId: string) => {
+  try {
+    console.log('Processing inventory reduction for order:', orderId);
+    
+    // Fetch the order details
+    const response = await fetch(`/api/orders/${orderId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch order: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!data.order) {
+      throw new Error('Invalid order data received');
+    }
+    
+    // Skip if inventory was already processed
+    if (data.order.inventoryProcessed) {
+      console.log('Inventory already processed for this order');
+      return { success: true, message: 'Inventory already processed' };
+    }
+    
+    // Process inventory reduction using the new inventory system
+    const result = await reduceInventory(data.order);
+    
+    // Mark the order as inventory processed
+    if (result.success) {
+      await fetch(`/api/orders/${orderId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventoryProcessed: true })
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error processing inventory reduction:', error);
+    return { success: false, error: 'Failed to process inventory reduction' };
+  }
 };
 
 // Combined function to handle both stock reduction and redirection
-export const completeOrderAndRedirect = (cart: any[]) => {
+export const completeOrderAndRedirect = async (cart: any[], orderId?: string) => {
   try {
     // Prepare order items for stock reduction
     prepareOrderItemsForStockReduction(cart);
     
     // Set order completion flag in session storage
     sessionStorage.setItem('orderCompleted', 'true');
+    
+    // If we have an order ID, process inventory immediately
+    if (orderId) {
+      try {
+        console.log('Processing inventory reduction for order:', orderId);
+        // Store the order ID for inventory processing after redirect
+        sessionStorage.setItem('pendingOrderId', orderId);
+        // We'll let the thank-you page handle the actual inventory reduction
+      } catch (invError) {
+        console.error('Error in inventory reduction:', invError);
+        // Continue with redirect even if inventory reduction fails
+      }
+    }
+    
     console.log('Order completed successfully');
     
     // Redirect to thank-you page

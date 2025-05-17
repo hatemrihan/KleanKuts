@@ -27,6 +27,9 @@ interface OrderData {
   notes?: string;
   orderDate?: string;
   couponCode?: string;
+  paymentMethod?: 'cashOnDelivery' | 'instaPay';
+  transactionScreenshot?: string;
+  paymentVerified?: boolean;
   ambassador?: {
     ambassadorId?: string;
     referralCode?: string;
@@ -60,6 +63,17 @@ export async function POST(req: Request) {
         { 
           success: false,
           error: 'No products in order'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate paymentMethod and transactionScreenshot
+    if (body.paymentMethod === 'instaPay' && !body.transactionScreenshot) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Transaction screenshot is required for InstaPay orders'
         },
         { status: 400 }
       );
@@ -115,6 +129,9 @@ export async function POST(req: Request) {
       status: body.status || 'pending',
       notes: body.notes || '',
       orderDate: body.orderDate ? new Date(body.orderDate) : new Date(),
+      paymentMethod: body.paymentMethod || 'cashOnDelivery',
+      transactionScreenshot: body.transactionScreenshot || null,
+      paymentVerified: body.paymentMethod === 'instaPay' ? false : null,
       ambassador: ambassadorData // Add ambassador data if a valid coupon was used
     });
 

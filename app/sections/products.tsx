@@ -1,8 +1,10 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { useInView } from 'framer-motion'
 
 interface SizeStock {
   size: string;
@@ -29,7 +31,7 @@ interface Product {
 }
 
 // ProductCard component to display individual products
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, index }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Get all product variants
@@ -64,37 +66,58 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       ? product.selectedImages
       : ['/images/try-image.jpg']; // Fallback image
 
+  // Animation variants for the product card
+  const cardVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.5,
+        ease: [0.22, 1, 0.36, 1]
+      }
+    })
+  };
+
   return (
-    <Link 
-      href={`/product/${product._id}`}
-      className="group block bg-white dark:bg-gray-800 transition-shadow hover:shadow-lg cursor-pointer"
-      style={{ borderRadius: 0 }}
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
     >
-      {/* Product Images */}
-      <div className="aspect-[3/4] relative overflow-hidden" style={{ borderRadius: 0 }}>
-        <Image
-          src={(productImages && productImages[currentImageIndex]) || '/images/try-image.jpg'}
-          alt={`${product.name} - Image ${currentImageIndex + 1}`}
-          fill
-          className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
-          priority={true}
-          unoptimized={true}
-        />
-        {/* Status Badge */}
-        {stockStatus && (
-          <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-semibold" style={{ borderRadius: 0 }}>
-            {stockStatus.text}
-          </div>
-        )}
-      </div>
-      {/* Product Info */}
-      <div className="p-4" style={{ borderRadius: 0 }}>
-        <h3 className="text-lg font-light text-black dark:text-white mb-2">{product.name || product.title}</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-black dark:text-white">L.E {product.price}</span>
+      <Link 
+        href={`/product/${product._id}`}
+        className="group block bg-white dark:bg-gray-800 transition-shadow hover:shadow-lg cursor-pointer"
+        style={{ borderRadius: 0 }}
+      >
+        {/* Product Images */}
+        <div className="aspect-[3/4] relative overflow-hidden" style={{ borderRadius: 0 }}>
+          <Image
+            src={(productImages && productImages[currentImageIndex]) || '/images/try-image.jpg'}
+            alt={`${product.name} - Image ${currentImageIndex + 1}`}
+            fill
+            className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+            priority={true}
+            unoptimized={true}
+          />
+          {/* Status Badge */}
+          {stockStatus && (
+            <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-semibold" style={{ borderRadius: 0 }}>
+              {stockStatus.text}
+            </div>
+          )}
         </div>
-      </div>
-    </Link>
+        {/* Product Info */}
+        <div className="p-4" style={{ borderRadius: 0 }}>
+          <h3 className="text-lg font-light text-black dark:text-white mb-2">{product.name || product.title}</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-black dark:text-white">L.E {product.price}</span>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
   );
 };
 
@@ -102,6 +125,33 @@ const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { once: true, amount: 0.2 });
+
+  // Animation variants for the heading
+  const headingVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: [0.22, 1, 0.36, 1]
+      }
+    }
+  };
+
+  // Animation variants for the products container
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.1,
+        delayChildren: 0.3
+      }
+    }
+  };
 
   useEffect(() => {
     // Fetch products from the API
@@ -173,10 +223,20 @@ const Products = () => {
   }, []);
 
   return (
-    <section className="w-full bg-white dark:bg-black py-16 px-4 md:px-8">
+    <section 
+      ref={sectionRef}
+      className="w-full bg-white dark:bg-black py-16 px-4 md:px-8"
+    >
       {/* Section Header */}
       <div className="max-w-7xl mx-auto mb-12">
-        <h2 className="text-3xl md:text-4xl font-light mb-2 text-center tracking-widest text-black dark:text-white">EXPLORE OUR PRODUCTS</h2>
+        <motion.h2 
+          className="text-3xl md:text-4xl font-light mb-2 text-center tracking-widest text-black dark:text-white"
+          variants={headingVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+        >
+          EXPLORE OUR PRODUCTS
+        </motion.h2>
       </div>
 
       {/* Loading State */}
@@ -195,36 +255,19 @@ const Products = () => {
 
       {/* Horizontal Scrollable Products Row */}
       {!loading && !error && (
-        <div className="max-w-7xl mx-auto">
+        <motion.div 
+          className="max-w-7xl mx-auto"
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+        >
           <div className="flex overflow-x-auto gap-12 pb-4 scrollable-x items-stretch">
             {products.map((product, index) => (
-              <Link
-                key={product.extractedId || `product-${index}`}
-                href={product.extractedId ? `/product/${product.extractedId}` : `/collection`}
-                className="flex flex-col items-center min-w-[260px] max-w-[320px] mx-auto group cursor-pointer"
-                style={{ flex: '0 0 auto' }}
-              >
-                <div className="relative w-full aspect-[3/4] flex items-center justify-center">
-                  <Image
-                    src={(product.images?.[0] || product.selectedImages?.[0] || '/images/try-image.jpg')}
-                    alt={product.name || product.title || 'Product'}
-                    fill
-                    className="object-contain"
-                    unoptimized={true}
-                  />
-                </div>
-                <div className="w-full mt-6">
-                  <div className="text-xs md:text-sm tracking-widest mb-1 text-black/80 dark:text-white/80 group-hover:underline">
-                    {(product.name || product.title || 'Product').toUpperCase()}
-                  </div>
-                  <div className="flex items-center gap-2 text-black/80 dark:text-white/80">
-                    <span className="text-base md:text-lg">{product.price} L.E</span>
-                    {(product.variants || product.sizes || []).every(variant => variant.isPreOrder) && (
-                      <span className="text-xs font-semibold text-black dark:text-white border border-black dark:border-white px-2 py-1 ml-2">PRE-ORDER</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
+              <ProductCard 
+                key={product.extractedId || `product-${index}`} 
+                product={product} 
+                index={index}
+              />
             ))}
           </div>
           {/* Scroll indicator */}
@@ -233,7 +276,7 @@ const Products = () => {
               scroll <span style={{fontSize: '1.2em', lineHeight: 1}}>→</span>
             </span>
           </div>
-        </div>
+        </motion.div>
       )}
     </section>
   )

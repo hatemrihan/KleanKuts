@@ -3,6 +3,7 @@ import dbConnect from '../../../../lib/mongodb';
 import Product from '../../../../models/Product';
 import { handleDatabaseError, handleApiError } from '../../../utils/errorHandling';
 import { addToBlacklist, removeFromBlacklist } from '../../../utils/productBlacklist';
+import { normalizeProductFields, ensureCloudinaryImages } from '../../../../lib/adminIntegration';
 
 // Define interfaces for product data
 interface ColorVariant {
@@ -50,9 +51,12 @@ export async function GET(
     // 3. Try a case-insensitive title search as a fallback
     if (!product) {
       product = await Product.findOne({ 
-        title: { $regex: new RegExp(params.id, 'i') } 
+        $or: [
+          { title: { $regex: new RegExp(params.id, 'i') } },
+          { name: { $regex: new RegExp(params.id, 'i') } }
+        ]
       }).catch(() => null);
-      console.log('Title search result:', product ? 'Found' : 'Not found');
+      console.log('Title/name search result:', product ? 'Found' : 'Not found');
     }
 
     if (!product) {
@@ -65,14 +69,23 @@ export async function GET(
 
     console.log('Found product:', product.title || product.name);
     
+    // Convert to object to make it mutable
+    const productObj = product.toObject();
+    
+    // Normalize the product fields for admin panel compatibility
+    const normalizedProduct = normalizeProductFields(productObj);
+    
+    // Ensure images are using Cloudinary URLs
+    const finalProduct = ensureCloudinaryImages(normalizedProduct);
+    
     // Ensure the product has sizeVariants properly structured
-    if (!product.sizeVariants || !Array.isArray(product.sizeVariants) || product.sizeVariants.length === 0) {
+    if (!finalProduct.sizeVariants || !Array.isArray(finalProduct.sizeVariants) || finalProduct.sizeVariants.length === 0) {
       console.log('Product has no size variants, checking if we can create them from sizes');
       
       // Try to create sizeVariants from sizes if available
-      if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+      if (finalProduct.sizes && Array.isArray(finalProduct.sizes) && finalProduct.sizes.length > 0) {
         console.log('Creating size variants from sizes array');
-        product.sizeVariants = product.sizes.map((size: string | SizeStock) => {
+        finalProduct.sizeVariants = finalProduct.sizes.map((size: string | SizeStock) => {
           // If size is a string, convert to object
           const sizeObj: SizeStock = typeof size === 'string' 
             ? { size, stock: 10, isPreOrder: false }
@@ -90,7 +103,7 @@ export async function GET(
       } else {
         // Create a default size variant
         console.log('Creating default size variant');
-        product.sizeVariants = [{
+        finalProduct.sizeVariants = [{
           size: 'One Size',
           stock: 10,
           colorVariants: [{
@@ -101,7 +114,7 @@ export async function GET(
       }
     } else {
       // Ensure each size variant has colorVariants
-      product.sizeVariants = product.sizeVariants.map((sv: any) => {
+      finalProduct.sizeVariants = finalProduct.sizeVariants.map((sv: any) => {
         if (!sv.colorVariants || !Array.isArray(sv.colorVariants) || sv.colorVariants.length === 0) {
           return {
             ...sv,
@@ -115,9 +128,9 @@ export async function GET(
       });
     }
     
-    console.log('Returning product with size variants:', product.sizeVariants.length);
+    console.log('Returning product with size variants:', finalProduct.sizeVariants.length);
     return NextResponse.json({
-      product,
+      product: finalProduct,
       success: true
     });
   } catch (error: any) {

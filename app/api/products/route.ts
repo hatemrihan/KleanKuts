@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Product from '../../../models/Product';
 import { handleDatabaseError, handleApiError } from '../../utils/errorHandling';
+import { normalizeProductFields, ensureCloudinaryImages } from '../../../lib/adminIntegration';
 
 // Get all products
 export async function GET(req: Request) {
@@ -41,7 +42,13 @@ export async function GET(req: Request) {
     
     const products = await productsQuery.exec();
     
-    return NextResponse.json(products);
+    // Normalize product fields to ensure compatibility with admin panel
+    const normalizedProducts = products.map(product => {
+      const normalizedProduct = normalizeProductFields(product.toObject());
+      return ensureCloudinaryImages(normalizedProduct);
+    });
+    
+    return NextResponse.json(normalizedProducts);
   } catch (error: any) {
     console.error('Error fetching products:', error);
     
@@ -63,14 +70,20 @@ export async function POST(req: Request) {
     const body = await req.json();
     
     // Validate required fields
-    if (!body.title) {
+    if (!body.title && !body.name) {
       return NextResponse.json(
-        { error: 'Product title is required' },
+        { error: 'Product title or name is required' },
         { status: 400 }
       );
     }
     
-    const product = await Product.create(body);
+    // Normalize the product fields
+    const normalizedBody = normalizeProductFields(body);
+    
+    // Ensure Cloudinary URLs for images
+    const finalBody = ensureCloudinaryImages(normalizedBody);
+    
+    const product = await Product.create(finalBody);
     return NextResponse.json(product, { status: 201 });
   } catch (error: any) {
     console.error('Error creating product:', error);

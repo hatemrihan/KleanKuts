@@ -1,9 +1,49 @@
 import mongoose from 'mongoose';
 
+// Define the inventory variant schema
+const inventoryVariantSchema = new mongoose.Schema({
+  size: {
+    type: String,
+    required: true
+  },
+  color: {
+    type: String,
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: [0, 'Quantity cannot be negative']
+  }
+}, { _id: false });
+
+// Define the inventory schema
+const inventorySchema = new mongoose.Schema({
+  total: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: [0, 'Total inventory cannot be negative']
+  },
+  variants: {
+    type: [inventoryVariantSchema],
+    default: []
+  }
+}, { _id: false });
+
 const productSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true,
+    required: function(this: any) {
+      return !this.name; // Only required if name is not provided
+    },
+  },
+  name: {
+    type: String,
+    required: function(this: any) {
+      return !this.title; // Only required if title is not provided
+    },
   },
   description: {
     type: String,
@@ -70,6 +110,11 @@ const productSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: [0, 'Stock cannot be negative']
+  },
+  // New inventory field for variant-level tracking
+  inventory: {
+    type: inventorySchema,
+    default: () => ({ total: 0, variants: [] })
   },
   color: {
     type: String,

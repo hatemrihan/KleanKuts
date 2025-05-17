@@ -26,16 +26,17 @@ export default function Home() {
       
       {/* Static Header Section */}
       <NewHeader />
+      <NewMovingWords />
+    <Products />
+    <FAQs /> 
+    <MovingWords/>
       
       <NewFooter />
     </>
     /* <Introducing />
    
    
-    <NewMovingWords />
-    <Products />
-    <FAQs /> 
-    <MovingWords/>
+  
    <NewFooter />
   </Suspense> */
 ); 

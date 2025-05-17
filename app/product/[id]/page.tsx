@@ -1280,12 +1280,9 @@ const ProductPage = ({ params }: Props) => {
       // Adjust quantity to match available stock
       setQuantity(availableStock);
       
-      if (availableStock <= 0) {
-        alert('Sorry, this item is out of stock.');
-        return;
-      }
+      // No longer showing out-of-stock messages
       
-      alert(`Only ${availableStock} items available. We've adjusted your quantity.`);
+      alert(`Please note that we've adjusted your quantity.`);
     }
     
     // Create cart item
@@ -1404,13 +1401,8 @@ const ProductPage = ({ params }: Props) => {
     { label: product.name, href: pathname }
   ]
 
-  // Check if product is sold out
-  const isSoldOut: boolean = product.sizes && Array.isArray(product.sizes) 
-    ? product.sizes.every(size => 
-        (typeof size.stock === 'number' && size.stock <= 0) || 
-        size.isPreOrder === true
-      )
-    : false
+  // We're hiding stock status
+  const isSoldOut: boolean = false
 
   // Calculate price with discount
   const finalPrice = product.discount 
@@ -1448,12 +1440,7 @@ const ProductPage = ({ params }: Props) => {
                     style={{ minWidth: '100%' }}
                   >
                     <div className="relative w-full max-w-[400px] aspect-[3/4] mx-auto">
-                      {/* SOLD OUT Badge */}
-                      {isSoldOut && idx === 0 && (
-                        <div className="absolute top-3 right-3 z-20 bg-black text-white px-4 py-2 text-sm font-semibold rounded">
-                          SOLD OUT
-                        </div>
-                      )}
+
                       <Image
                         src={optimizeCloudinaryUrl(img, { width: 800 })}
                         alt={`${product.name} - View ${idx + 1}`}
@@ -1474,10 +1461,10 @@ const ProductPage = ({ params }: Props) => {
                 <div className="text-xs tracking-widest mb-2 text-gray-500 dark:text-gray-400 text-center">{product.name.toUpperCase()}</div>
                 <div className="text-xl font-light mb-4 text-center text-black dark:text-white">{product.title || product.name}</div>
                 
-                {/* Stock refresh message */}
+                {/* Status message */}
                 {refreshMessage && (
                   <div className="bg-green-50 text-green-700 p-2 mb-4 text-sm rounded text-center">
-                    {refreshMessage}
+                    Product information updated!
                   </div>
                 )}
                 
@@ -1487,20 +1474,6 @@ const ProductPage = ({ params }: Props) => {
                     {
                       title: "DESCRIPTION",
                       content: product.description
-                    },
-                    {
-                      title: "MATERIALS",
-                      content: (
-                        <ul className="text-sm text-gray-700 dark:text-gray-300">
-                          {/* Use the admin-provided materials field if available, otherwise fall back to Material */}
-                          {product.materials && product.materials.length > 0 
-                            ? product.materials.map((m, i) => <li key={i}>{m}</li>) 
-                            : (product.Material 
-                                ? product.Material.map((m, i) => <li key={i}>{m}</li>) 
-                                : <li>French linen</li>)
-                          }
-                        </ul>
-                      )
                     },
                     {
                       title: "SIZE GUIDE",
@@ -1608,10 +1581,7 @@ const ProductPage = ({ params }: Props) => {
                 <div className="flex flex-wrap gap-3 mb-4 justify-center">
                   {(product.sizeVariants && Array.isArray(product.sizeVariants) && product.sizeVariants.length > 0) ? (
                     product.sizeVariants.map((sizeVariant) => {
-                      // Calculate total stock for this size
-                      const totalStock = Array.isArray(sizeVariant.colorVariants) 
-                        ? sizeVariant.colorVariants.reduce((sum, cv) => sum + (cv.stock || 0), 0)
-                        : 0;
+
                         
                       return (
                         <button
@@ -1625,11 +1595,6 @@ const ProductPage = ({ params }: Props) => {
                             }`}
                         >
                           {sizeVariant.size}
-                          {totalStock > 0 && totalStock <= 5 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                              {totalStock}
-                            </span>
-                          )}
                         </button>
                       );
                     })
@@ -1644,15 +1609,9 @@ const ProductPage = ({ params }: Props) => {
                           ${selectedSize === sizeOption.size 
                             ? 'bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white' 
                             : 'bg-transparent text-black dark:text-white border border-black/30 dark:border-white/30 hover:border-black dark:hover:border-white'
-                          } ${sizeOption.stock <= 0 && !sizeOption.isPreOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        disabled={sizeOption.stock <= 0 && !sizeOption.isPreOrder}
+                          }`}
                       >
                         {sizeOption.size}
-                        {sizeOption.stock > 0 && sizeOption.stock <= 5 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                            {sizeOption.stock}
-                          </span>
-                        )}
                       </button>
                     ))
                   )}
@@ -1667,20 +1626,14 @@ const ProductPage = ({ params }: Props) => {
                         <button
                           key={colorVariant.color}
                           onClick={() => setSelectedColor(colorVariant.color)}
-                          disabled={colorVariant.stock === 0}
                           className={`relative flex items-center justify-center px-4 py-2 text-sm transition-colors
                             ${selectedColor === colorVariant.color 
                               ? 'bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white' 
                               : 'bg-transparent text-black dark:text-white border border-black/30 dark:border-white/30 hover:border-black dark:hover:border-white'
-                            } ${colorVariant.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            }`}
                         >
                           <div className="flex items-center justify-center w-full">
                             <span className="mr-1">{colorVariant.color}</span>
-                            {colorVariant.stock > 0 && colorVariant.stock <= 15 && (
-                              <span className="text-red-500 font-medium whitespace-nowrap">
-                                ({colorVariant.stock} left)
-                              </span>
-                            )}
                           </div>
                         </button>
                       ))}
@@ -1688,23 +1641,10 @@ const ProductPage = ({ params }: Props) => {
                   </>
                 )}
                 
-                {/* Stock display when size and color are selected */}
-                {product.sizeVariants && selectedSize && selectedColor && (
-                  <div className="mb-4 text-sm text-gray-600 dark:text-gray-300 text-center">
-                    {(() => {
-                      const variant = availableColors.find(cv => cv.color === selectedColor);
-                      if (variant) {
-                        return variant.stock > 0 
-                          ? `In stock: ${variant.stock} units` 
-                          : "Out of stock";
-                      }
-                      return "Select size and color";
-                    })()}
-                  </div>
-                )}
+
                 
                 {/* Quantity Selector */}
-                {selectedSize && selectedColor && (availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0) > 0 && (
+                {selectedSize && selectedColor && (
                   <div className="flex items-center justify-center gap-4 mb-4">
                     <span className="text-sm font-medium">Quantity:</span>
                     <div className="flex items-center border border-gray-300">
@@ -1720,11 +1660,9 @@ const ProductPage = ({ params }: Props) => {
                       <button 
                         type="button"
                         onClick={() => {
-                          const maxStock = availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0;
-                          setQuantity(Math.min(maxStock, quantity + 1));
+                          setQuantity(quantity + 1);
                         }}
                         className="px-3 py-1 text-lg border-l border-gray-300 hover:bg-gray-100"
-                        disabled={quantity >= (availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0)}
                       >
                         +
                       </button>
@@ -1742,12 +1680,7 @@ const ProductPage = ({ params }: Props) => {
                       L.E {product.price.toFixed(2)}
                     </span>
                   )}
-                  {/* Add pre-order badge if applicable */}
-                  {selectedSize && selectedColor && (availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0) <= 0 && (
-                    <span className="text-xs font-semibold text-black dark:text-white border border-black dark:border-white px-2 py-1">
-                      PRE-ORDER
-                    </span>
-                  )}
+
                 </div>
             
                 {/* Add to cart section */}
@@ -1756,25 +1689,23 @@ const ProductPage = ({ params }: Props) => {
                     type="button"
                     onClick={handleAddToCartClick}
                     className="w-full py-4 text-sm font-medium transition-colors bg-[#0F1824] text-white active:bg-black disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    disabled={!selectedSize || (selectedColor !== '' && (availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0) <= 0)}
+                    disabled={!selectedSize || (product.sizeVariants && !selectedColor)}
                   >
-                    {(selectedColor && (availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0) <= 0)
-                      ? "SOLD OUT" 
-                      : "ADD TO CART"}
+ADD TO CART
                   </button>
                   <button
                     type="button"
                     onClick={handleBuyNowClick}
                     className="w-full py-4 text-sm font-medium transition-colors bg-white text-black active:bg-[#0F1824] active:text-white disabled:bg-gray-200 disabled:cursor-not-allowed"
-                    disabled={!selectedSize || (selectedColor !== '' && (availableColors.find(cv => cv.color === selectedColor)?.stock ?? 0) <= 0)}
+                    disabled={!selectedSize || (product.sizeVariants && !selectedColor)}
                   >
                     BUY IT NOW
                   </button>
                 </div>
                 
-                {/* Stock Indicator */}
+                {/* Selection Instructions */}
                 <div className="text-xs text-gray-500 mt-2 text-center">
-                  Please select the size to see the colors
+                  Please select a size and color
                 </div>
 
               </div>

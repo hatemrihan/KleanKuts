@@ -41,7 +41,12 @@ const orderSchema = new mongoose.Schema({
       type: String,
       required: true
     },
-    image: String
+    color: String,
+    image: String,
+    inventoryUpdated: {
+      type: Boolean,
+      default: false
+    }
   }],
   totalAmount: {
     type: Number,
@@ -56,6 +61,19 @@ const orderSchema = new mongoose.Schema({
   orderDate: {
     type: Date,
     default: Date.now
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cashOnDelivery', 'instaPay'],
+    default: 'cashOnDelivery'
+  },
+  transactionScreenshot: {
+    type: String,
+    default: null
+  },
+  paymentVerified: {
+    type: Boolean,
+    default: null
   },
   ambassador: {
     ambassadorId: String,
@@ -75,6 +93,10 @@ const orderSchema = new mongoose.Schema({
       default: 'pending'
     },
     paymentDate: Date
+  },
+  inventoryProcessed: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

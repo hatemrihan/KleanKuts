@@ -1,25 +1,15 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Category from '@/models/category';
+import { setCorsHeaders, corsOptions } from '@/lib/api-utils';
 
 export async function GET(request: Request) {
   try {
-    // Configure CORS
-    const origin = request.headers.get('origin');
-    const allowedOrigins = [
-      'https://elevee.netlify.app',
-      'http://localhost:3000',
-      'http://localhost:3001'
-    ];
+    // Get CORS headers from our utility
+    const headers = setCorsHeaders(request);
     
-    const headers = new Headers();
-    
-    // Add CORS headers if the origin is allowed
-    if (origin && allowedOrigins.includes(origin)) {
-      headers.set('Access-Control-Allow-Origin', origin);
-      headers.set('Access-Control-Allow-Methods', 'GET');
-      headers.set('Access-Control-Allow-Headers', 'Content-Type');
-    }
+    // Add caching headers
+    headers.set('Cache-Control', 'public, max-age=60, s-maxage=300');
     
     await dbConnect();
     
@@ -28,32 +18,30 @@ export async function GET(request: Request) {
       .sort({ displayOrder: 1, createdAt: -1 })
       .lean();
     
+    // Log the categories for debugging
+    console.log(`API: Returning ${categories.length} categories`);
+    if (categories.length > 0) {
+      console.log('First category data:', JSON.stringify({
+        name: categories[0].name,
+        images: categories[0].images
+      }));
+    }
+    
     return NextResponse.json(categories, { headers });
   } catch (error) {
     console.error('Error fetching storefront categories:', error);
+    
+    // Get CORS headers for error response
+    const headers = setCorsHeaders(request);
+    
     return NextResponse.json(
       { error: 'Failed to fetch storefront categories' },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }
 
 export async function OPTIONS(request: Request) {
-  // Handle OPTIONS request for CORS preflight
-  const origin = request.headers.get('origin');
-  const allowedOrigins = [
-    'https://elevee.netlify.app',
-    'http://localhost:3000',
-    'http://localhost:3001'
-  ];
-  
-  const headers = new Headers();
-  
-  if (origin && allowedOrigins.includes(origin)) {
-    headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Allow-Methods', 'GET');
-    headers.set('Access-Control-Allow-Headers', 'Content-Type');
-  }
-  
-  return new NextResponse(null, { status: 204, headers });
+  // Use the utility function for CORS preflight
+  return corsOptions(request);
 } 

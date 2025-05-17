@@ -7,6 +7,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**',
       },
+      {
+        protocol: 'https',
+        hostname: 'eleveadmin.netlify.app',
+      },
     ],
   },
   async headers() {

@@ -98,13 +98,22 @@ const Nav = () => {
       const targetId = href.replace('/#', '');
       const targetElement = document.getElementById(targetId);
       if (targetElement) {
+        // Improved smooth scrolling with offset for the fixed header
+        const headerHeight = 64; // Height of the fixed header in pixels
+        const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - headerHeight;
+        
         window.scrollTo({
-          top: targetElement.offsetTop,
+          top: targetPosition,
           behavior: 'smooth'
         });
       }
-      router.push(href); 
-      setIsOpen(false); 
+      
+      // Update URL without reloading the page
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', href);
+      }
+      
+      setIsOpen(false);
     }
   };
 
