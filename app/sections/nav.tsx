@@ -10,29 +10,29 @@ import { useTheme } from '../context/ThemeContext'
 import ThemeToggle from '../components/ThemeToggle'
 
 const navItems = [
-  // {
-  //   label: 'HOME',
-  //   href: '/',
-  // },
-  // {
-  //   label: 'SHOP COLLECTION',
-  //   href: '/collection',
-  // },
-  // {
-  //   label: 'ABOUT',
-  //   href: '/#about',
-  //   isScroll: true
-  // },
-  // {
-  //   label: 'MEN COLLECTION',
-  //   href: '/collection/men',
-  //   isScroll: true
-  // },
-  // {
-  //   label: 'FAQS',
-  //   href: '/#faqs',
-  //   isScroll: true
-  // },
+  {
+    label: 'HOME',
+    href: '/',
+  },
+  {
+    label: 'SHOP COLLECTION',
+    href: '/collection',
+  },
+  {
+    label: 'ABOUT',
+    href: '/#about',
+    isScroll: true
+  },
+  {
+    label: 'MEN COLLECTION',
+    href: '/collection/men',
+    isScroll: true
+  },
+  {
+    label: 'FAQS',
+    href: '/#faqs',
+    isScroll: true
+  },
   {
     label: 'SAY HI',
     href: '/#contact',
@@ -281,7 +281,7 @@ const Nav = () => {
                 </div>
               </div>
               
-              {/* <Link 
+              <Link 
                 href="/cart" 
                 className="relative text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
                 onClick={handleCartClick}
@@ -310,7 +310,7 @@ const Nav = () => {
                   Cart
                   <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
                 </span>
-              </Link> */}
+              </Link>
             </div>
           </div> 
 
@@ -362,7 +362,7 @@ const Nav = () => {
                 </button>
               )}
 
-              {/* <Link 
+              <Link 
                 href="/cart" 
                 className="flex items-center justify-center text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 onClick={handleCartClick}
@@ -387,7 +387,7 @@ const Nav = () => {
                     </span>
                   )}
                 </div>
-              </Link> */}
+              </Link>
             </div>
           </div>
         </div>
@@ -460,7 +460,7 @@ const Nav = () => {
                 </div>
               </button>
             </div>
-            {/* <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsMenuOpen(false)} className='flex flex-col items-center justify-center w-16 h-auto'>
+            <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsOpen(false)} className='flex flex-col items-center justify-center w-16 h-auto'>
               <div className="relative">
                 <svg 
                   xmlns="http://www.w3.org/2000/svg"
@@ -483,7 +483,7 @@ const Nav = () => {
                 )}
               </div>
               <span>Cart</span>
-            </Link> */}
+            </Link>
           </div>
         </div>
       </div>

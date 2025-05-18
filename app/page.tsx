@@ -13,32 +13,28 @@ import CategorySections from './sections/CategorySections';
 
 export default function Home() {
   return (
-    // <Suspense fallback={<div>Loading...</div>}>
+    
     <>
       <Nav />
       {/* <Hola /> */}
-      <Waitlist />
+     
       <NewFooter />
-      {/* <Introducing /> */}
+      <Introducing />
       
       
       {/* Dynamic Category Sections from Admin Panel */}
       {/* <CategorySections /> */}
       
-      {/* Static Header Section */}
-      {/* <NewHeader /> */}
+     
+      <NewHeader />
       <NewMovingWords />
-    {/* <Products />
+    <Products />
     <FAQs /> 
-    <MovingWords/> */}
+    <MovingWords/>
+    <NewFooter />
       
      
     </>
-    /* <Introducing />
-   
-   
   
-   <NewFooter />
-  </Suspense> */
 ); 
 }
