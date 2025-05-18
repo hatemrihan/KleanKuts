@@ -18,38 +18,44 @@ export function usePixelConfig(): PixelConfig {
       try {
         setIsLoading(true);
         
-        // Fetch the pixel configuration from the admin API
-        const response = await fetch('https://eleveadmin.netlify.app/api/settings/pixel', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Origin': 'https://elevee.netlify.app'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch pixel configuration');
-        }
-
-        const data = await response.json();
+        // Try to get cached pixel ID first to avoid unnecessary API calls
+        const cachedPixelId = localStorage.getItem('fb_pixel_id');
+        const cachedTimestamp = localStorage.getItem('fb_pixel_timestamp');
         
-        // Check if we have a valid pixel ID and it's enabled
-        if (data.pixelId && data.isEnabled) {
-          setPixelId(data.pixelId);
-          console.log('Facebook Pixel configured with ID:', data.pixelId);
-        } else {
-          console.log('Facebook Pixel is disabled or missing ID');
-          setPixelId(null);
+        // Use cache if it's less than 1 hour old
+        if (cachedPixelId && cachedTimestamp) {
+          const timestamp = parseInt(cachedTimestamp);
+          if (Date.now() - timestamp < 3600000) { // 1 hour in milliseconds
+            console.log('Using cached pixel ID');
+            setPixelId(cachedPixelId);
+            setIsLoading(false);
+            return;
+          }
         }
+        
+        // Use environment variable if available
+        const envPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
+        if (envPixelId) {
+          console.log('Using pixel ID from environment variable');
+          setPixelId(envPixelId);
+          localStorage.setItem('fb_pixel_id', envPixelId);
+          localStorage.setItem('fb_pixel_timestamp', Date.now().toString());
+          setIsLoading(false);
+          return;
+        }
+        
+        // Skip the direct API call to avoid CORS error
+        // The admin should provide pixel ID through environment variables instead
+        console.log('Skipping API call to avoid CORS issues, using fallbacks only');
+        setPixelId(null);
       } catch (err) {
-        console.error('Error fetching pixel configuration:', err);
+        console.error('Error configuring pixel:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
         
-        // Fallback to local storage or environment variable if available
-        const fallbackId = localStorage.getItem('fb_pixel_id') || process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
+        // Fallback to environment variable as last resort
+        const fallbackId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
         if (fallbackId) {
-          console.log('Using fallback pixel ID from local storage or env var');
+          console.log('Using fallback pixel ID from env var');
           setPixelId(fallbackId);
         }
       } finally {
