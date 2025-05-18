@@ -4,6 +4,7 @@ import React, { ReactNode, useEffect, useState } from 'react';
 import { useSiteStatus } from '../context/SiteStatusContext';
 import { useRouter } from 'next/navigation';
 import { hasMaintenanceOverride } from '@/utils/maintenanceOverride';
+import { usePathname } from 'next/navigation';
 
 interface SiteStatusCheckProps {
   children: ReactNode;
@@ -13,6 +14,8 @@ const SiteStatusCheck: React.FC<SiteStatusCheckProps> = ({ children }) => {
   const { isActive, message, isLoading } = useSiteStatus();
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const isWaitlistPage = pathname === '/waitlist';
   
   useEffect(() => {
     // Check for admin override on client side
@@ -27,14 +30,13 @@ const SiteStatusCheck: React.FC<SiteStatusCheckProps> = ({ children }) => {
   // Redirect to waitlist if site is inactive and not an admin
   useEffect(() => {
     if (!isLoading && !isActive && !isAdmin && typeof window !== 'undefined') {
-      const isWaitlistPage = window.location.pathname === '/waitlist';
-      
+      // Only redirect if we're not already on the waitlist page
       if (!isWaitlistPage) {
         console.log('Site is inactive, redirecting to waitlist from SiteStatusCheck...');
         router.push('/waitlist');
       }
     }
-  }, [isActive, isLoading, isAdmin, router]);
+  }, [isActive, isLoading, isAdmin, router, isWaitlistPage]);
 
   // Show loading indicator while checking status
   if (isLoading) {
@@ -59,8 +61,12 @@ const SiteStatusCheck: React.FC<SiteStatusCheckProps> = ({ children }) => {
     );
   }
 
-  // No longer show maintenance page - instead redirect to waitlist
-  // The useEffect above will handle the redirect
+  // If we're already on the waitlist page, show children (the waitlist content)
+  if (isWaitlistPage) {
+    return <>{children}</>;
+  }
+
+  // If neither of the above, show a minimal loading screen while redirecting
   return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black transition-colors duration-300">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 dark:border-gray-200"></div>
