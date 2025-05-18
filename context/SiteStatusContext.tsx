@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface SiteStatus {
   isActive: boolean;
@@ -20,6 +21,7 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
     message: '',
     isLoading: true,
   });
+  const router = useRouter();
 
   useEffect(() => {
     const checkSiteStatus = async () => {
@@ -36,11 +38,31 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
           // Cache for 5 minutes (300000 ms)
           if (timeDiff < 300000) {
             console.log('Using cached site status');
+
+            // Check for any property that indicates the site is inactive
+            const siteInactive = 
+              parsedStatus.inactive === true || 
+              parsedStatus.status === 'INACTIVE' || 
+              parsedStatus.maintenance === true ||
+              parsedStatus.active === false;
+
             setStatus({
-              isActive: parsedStatus.active,
+              isActive: !siteInactive,
               message: parsedStatus.message || '',
               isLoading: false,
             });
+
+            // If site is inactive and we're not on the waitlist page, redirect
+            if (siteInactive && typeof window !== 'undefined') {
+              const isWaitlistPage = window.location.pathname === '/waitlist';
+              const isAdmin = sessionStorage.getItem('adminOverride') === 'true';
+              
+              if (!isWaitlistPage && !isAdmin) {
+                console.log('Site is inactive, redirecting to waitlist...');
+                router.push('/waitlist');
+              }
+            }
+            
             return;
           }
         }
@@ -51,7 +73,8 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
           headers: {
             'Accept': 'application/json',
             'Origin': 'https://elevee.netlify.app'
-          }
+          },
+          cache: 'no-store'
         });
         
         if (!response.ok) {
@@ -59,18 +82,37 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
         }
         
         const data = await response.json();
+        console.log('Site status response:', data);
         
         // Save to session storage
         sessionStorage.setItem('siteStatus', JSON.stringify(data));
         sessionStorage.setItem('siteStatusTime', Date.now().toString());
         
+        // Check for any property that indicates the site is inactive
+        const siteInactive = 
+          data.inactive === true || 
+          data.status === 'INACTIVE' || 
+          data.maintenance === true ||
+          data.active === false;
+        
         setStatus({
-          isActive: data.active,
+          isActive: !siteInactive,
           message: data.message || '',
           isLoading: false,
         });
         
-        console.log('Site status:', data.active ? 'ACTIVE' : 'MAINTENANCE');
+        console.log('Site status:', !siteInactive ? 'ACTIVE' : 'INACTIVE');
+        
+        // If site is inactive and we're not on the waitlist page, redirect
+        if (siteInactive && typeof window !== 'undefined') {
+          const isWaitlistPage = window.location.pathname === '/waitlist';
+          const isAdmin = sessionStorage.getItem('adminOverride') === 'true';
+          
+          if (!isWaitlistPage && !isAdmin) {
+            console.log('Site is inactive, redirecting to waitlist...');
+            router.push('/waitlist');
+          }
+        }
       } catch (error) {
         console.error('Error checking site status:', error);
         // Default to active if there's an error fetching status
@@ -88,7 +130,7 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
     const intervalId = setInterval(checkSiteStatus, 300000);
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [router]);
 
   return (
     <SiteStatusContext.Provider value={status}>
