@@ -93,7 +93,7 @@ Welcome to the family. Welcome to Élevé.</p>
               <li><Link href="https://eleveadmin.netlify.app/" className="text-sm font-extralight text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">ad</Link></li>
             </ul>
           </div>
-          {/* <div>
+          <div>
             <h3 className="font-medium mb-4">KNOW MORE</h3>
             <ul className="space-y-3">
               <li><Link href="/ShippingPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">SHIPPING POLICY</Link></li>
@@ -102,7 +102,7 @@ Welcome to the family. Welcome to Élevé.</p>
               <li><Link href="/PrivacyPolicy" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors uppercase">Privacy Policy</Link></li>
 
             </ul>
-          </div> */}
+          </div>
           
         </div>
 
