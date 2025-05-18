@@ -23,11 +23,11 @@ const navItems = [
     href: '/#about',
     isScroll: true
   },
-  {
-    label: 'MEN COLLECTION',
-    href: '/collection/men',
-    isScroll: true
-  },
+  // {
+  //   label: 'MEN COLLECTION',
+  //   href: '/collection/men',
+  //   isScroll: true
+  // },
   {
     label: 'FAQS',
     href: '/#faqs',
