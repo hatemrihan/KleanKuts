@@ -133,4 +133,37 @@ export const submitToWaitlist = async (
     console.error('Error submitting to waitlist:', error);
     return false;
   }
+};
+
+/**
+ * Checks if the site is in maintenance mode (inactive)
+ * @returns Object with site status information
+ */
+export const checkSiteStatus = async (): Promise<{ 
+  inactive: boolean; 
+  maintenanceMessage?: string;
+}> => {
+  try {
+    const response = await fetch('https://eleveadmin.netlify.app/api/site-status', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=5'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to fetch site status:', response.status);
+      return { inactive: false };
+    }
+    
+    const data = await response.json();
+    return { 
+      inactive: !!data.inactive || !!data.maintenance, 
+      maintenanceMessage: data.message || 'Site is currently under maintenance'
+    };
+  } catch (error) {
+    console.error('Error checking site status:', error);
+    return { inactive: false };
+  }
 }; 

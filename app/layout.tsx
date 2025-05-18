@@ -18,6 +18,12 @@ const SiteStatusCheckWithNoSSR = dynamic(
   { ssr: false }
 );
 
+// Dynamically import the StoreCurrentPath component with SSR disabled
+const StoreCurrentPathWithNoSSR = dynamic(
+  () => import('../components/StoreCurrentPath'),
+  { ssr: false }
+);
+
 const openSans = Open_Sans({ subsets: ['latin'] });
 const abrilFatface = Abril_Fatface({ 
   weight: '400',
@@ -72,6 +78,8 @@ export default function RootLayout({
       <body className={openSans.className}>
         <Providers>
           <ThemeInitializer />
+          {/* Store current path in localStorage */}
+          <StoreCurrentPathWithNoSSR />
           <SiteStatusCheckWithNoSSR>
             {children}
           </SiteStatusCheckWithNoSSR>

@@ -80,9 +80,8 @@ const AmbassadorApplicationPage = () => {
   // If user is not authenticated, redirect to sign in
   useEffect(() => {
     if (status === 'unauthenticated') {
-      // Store current path in localStorage to redirect back after authentication
-      localStorage.setItem('lastPath', '/ambassador/apply');
-      signIn('google', { callbackUrl: '/ambassador/apply' });
+      // Current path is already saved by StoreCurrentPath component
+      signIn('google');
     }
   }, [status]);
   
@@ -176,6 +175,45 @@ const AmbassadorApplicationPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Utility function to check ambassador status and redirect if needed
+  const checkAmbassadorStatusAndRedirect = async (email: string) => {
+    try {
+      const response = await fetch(`/api/ambassador/status?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+      
+      if (response.ok && data.application) {
+        if (data.application.status === 'approved') {
+          // Already approved, redirect to dashboard
+          setError("You're already an approved ambassador. Redirecting to your dashboard...");
+          setTimeout(() => {
+            router.push('/ambassador/dashboard');
+          }, 1500);
+          return true;
+        } else if (data.application.status === 'pending') {
+          // Pending approval, redirect to pending
+          setError('You already have a pending ambassador application. Redirecting to status page...');
+          setTimeout(() => {
+            router.push(`/ambassador/pending?email=${encodeURIComponent(email)}`);
+          }, 1500);
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking ambassador status:', error);
+      return false;
+    }
+  };
+
+  // Modify email field change handler to check status when focus is lost
+  const handleEmailBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const email = e.target.value.trim();
+    if (email && email.includes('@')) {
+      await checkAmbassadorStatusAndRedirect(email);
+    }
+  };
+
   // Form submission handler
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -191,12 +229,18 @@ const AmbassadorApplicationPage = () => {
       }
       
       // Check if user is authenticated
-    if (!session) {
-      // Store current path before redirecting to sign in
-      localStorage.setItem('lastPath', '/ambassador/apply');
-      signIn('google', { callbackUrl: '/ambassador/apply' });
+      if (!session) {
+        // Current path is already saved by StoreCurrentPath component
+        signIn('google');
         setIsSubmitting(false);
-      return;
+        return;
+      }
+      
+      // Check if email is already registered as ambassador
+      const isRegistered = await checkAmbassadorStatusAndRedirect(formData.email);
+      if (isRegistered) {
+        setIsSubmitting(false);
+        return;
       }
       
       // Log form data before submission
@@ -230,10 +274,10 @@ const AmbassadorApplicationPage = () => {
       // Clone the response before parsing it (to avoid consuming the response body)
       const responseClone = response.clone();
       const data = await response.json();
-        console.log('API Response Data:', data);
+      console.log('API Response Data:', data);
       
       if (response.ok) {
-      // Show success message
+        // Show success message
         setSuccess(true);
         
         // Wait a moment before redirecting
@@ -243,6 +287,10 @@ const AmbassadorApplicationPage = () => {
       } else {
         // Handle specific error cases
         if (response.status === 409) {
+          // Check if the user is already an approved ambassador using our utility function
+          await checkAmbassadorStatusAndRedirect(formData.email);
+          
+          // Default conflict message if status check fails
           throw new Error('You already have a pending ambassador application. Please wait for admin approval.');
         } else if (response.status === 401) {
           throw new Error('Authentication error. Please sign in again to continue.');
@@ -258,9 +306,6 @@ const AmbassadorApplicationPage = () => {
       if (error.message.includes('Authentication error')) {
         // Clear session and redirect to sign in after a moment
         setTimeout(() => signIn('google', { callbackUrl: '/ambassador/apply' }), 1500);
-      } else if (error.message.includes('pending ambassador application')) {
-        // Redirect to the pending page
-        setTimeout(() => router.push(`/ambassador/pending?email=${encodeURIComponent(formData.email)}`), 2000);
       }
     } finally {
       setIsSubmitting(false);
@@ -318,6 +363,7 @@ const AmbassadorApplicationPage = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
+                    onBlur={handleEmailBlur}
                     className={`w-full px-4 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'} rounded-md transition-colors duration-300 bg-white dark:bg-black`}
                     required
                   />

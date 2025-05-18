@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "ts-node scripts/seed-products.ts"
+    "seed": "ts-node scripts/seed-products.ts",
+    "test:maintenance": "node scripts/test-maintenance-mode.js"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
@@ -62,6 +63,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^8",
     "eslint-config-next": "14.0.3",
+    "node-fetch": "^2.7.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.1",

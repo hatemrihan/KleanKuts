@@ -64,6 +64,25 @@ const AmbassadorPage = () => {
     return () => clearTimeout(timer);
   }, [session])
 
+  // Check if user is already an ambassador and redirect appropriately
+  useEffect(() => {
+    if (status === 'loading') return;
+    
+    if (session?.user) {
+      if (session.user.isAmbassador === true) {
+        // User is already an ambassador, check status
+        if (session.user.ambassadorStatus === 'approved') {
+          // Redirect to dashboard if approved
+          router.push('/ambassador/dashboard');
+        } else if (session.user.ambassadorStatus === 'pending') {
+          // Redirect to pending page if pending
+          router.push(`/ambassador/pending?email=${encodeURIComponent(session.user.email || '')}`);
+        }
+        // If rejected, they stay on this page to re-apply
+      }
+    }
+  }, [session, status, router]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
@@ -79,9 +98,8 @@ const AmbassadorPage = () => {
 
   const handleShowApplicationForm = () => {
     if (!session) {
-      // Store current path before redirecting to sign in
-      localStorage.setItem('lastPath', '/ambassador');
-      signIn('google', { callbackUrl: '/ambassador' });
+      // Current path is already saved by StoreCurrentPath component
+      signIn('google');
       return;
     }
     
@@ -101,9 +119,8 @@ const AmbassadorPage = () => {
     if (e) e.preventDefault();
     
     if (!session) {
-      // Store current path before redirecting to sign in
-      localStorage.setItem('lastPath', '/ambassador');
-      signIn('google', { callbackUrl: '/ambassador' });
+      // Current path is already saved by StoreCurrentPath component
+      signIn('google');
       return;
     }
 
@@ -209,29 +226,7 @@ const AmbassadorPage = () => {
     }
   };
 
-  // Store current URL before authentication for returning the user to the same page
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      // Store current path in localStorage to redirect back after authentication
-      localStorage.setItem('lastPath', window.location.pathname);
-    }
-  }, [status]);
-
-  // Handle redirect after authentication
-  useEffect(() => {
-    if (status === 'authenticated' && !isLoaded) {
-      // Check if we need to redirect back to a previous page
-      const lastPath = localStorage.getItem('lastPath');
-      if (lastPath && lastPath !== window.location.pathname) {
-        // Clear the stored path and redirect
-        localStorage.removeItem('lastPath');
-        // Only redirect if not already on the correct path
-        if (window.location.pathname !== lastPath) {
-          router.push(lastPath);
-        }
-      }
-    }
-  }, [status, isLoaded, router]);
+  // These redirect handlers are now handled by the StoreCurrentPath component and NextAuth callback
 
   // Show welcome message for approved ambassadors
   if (ambassadorStatus === 'approved' && status === 'authenticated') {
