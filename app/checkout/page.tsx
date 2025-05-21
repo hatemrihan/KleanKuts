@@ -171,7 +171,7 @@ const CheckoutPage = () => {
     if (!formData.address.trim()) newErrors.address = 'Address is required'
     if (!formData.city) newErrors.city = 'Please select a city'
     if (formData.paymentMethod === 'instaPay' && !formData.transactionScreenshot) {
-      newErrors.transactionScreenshot = 'Please upload a screenshot of your transaction'
+      newErrors.transactionScreenshot = 'Transaction screenshot is required'
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -325,6 +325,16 @@ const CheckoutPage = () => {
         try {
           // Get the order ID for inventory updates
           const orderId = data.order?._id || data.orderId || data._id;
+          
+          // Store the order ID for thank-you page
+          if (orderId) {
+            console.log('Order ID for thank-you page:', orderId);
+            sessionStorage.setItem('pendingOrderId', orderId);
+            localStorage.setItem('lastOrderDetails', JSON.stringify({
+              orderId: orderId,
+              timestamp: Date.now()
+            }));
+          }
           
           // Update inventory immediately after successful order
           let inventoryUpdateSuccess = false;

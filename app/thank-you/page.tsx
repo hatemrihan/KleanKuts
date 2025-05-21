@@ -12,6 +12,7 @@ const ThankYouPage = () => {
   const { cart } = useCart()
   const [orderCompleted, setOrderCompleted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [orderId, setOrderId] = useState<string | null>(null)
   
   useEffect(() => {
     // Check if order was just completed
@@ -29,6 +30,7 @@ const ThankYouPage = () => {
         const pendingOrderId = sessionStorage.getItem('pendingOrderId');
         if (pendingOrderId) {
           console.log('🔄 Processing inventory reduction for order:', pendingOrderId);
+          setOrderId(pendingOrderId);
           
           try {
             // Process inventory reduction using the new system
@@ -49,246 +51,18 @@ const ThankYouPage = () => {
             console.error('Error processing inventory reduction:', error);
           }
         } else {
-          // Check for any pending stock reductions in localStorage (legacy method)
+          // Try to get the order ID from localStorage (fallback)
           try {
-            const pendingItemsJson = localStorage.getItem('pendingStockReduction');
-            console.log('🔍 Raw pending items from localStorage:', pendingItemsJson);
-            
-            let pendingItems = [];
-            try {
-              // Parse the JSON data, with error handling
-              pendingItems = pendingItemsJson ? JSON.parse(pendingItemsJson) : [];
-            } catch (parseError) {
-              console.error('❌ Error parsing pendingStockReduction JSON:', parseError);
-              // Try to recover the data if possible
-              if (pendingItemsJson) {
-                console.log('Attempting to fix JSON data...');
-                try {
-                  // Try to clean up the JSON data
-                  const cleanedJson = pendingItemsJson.replace(/\\\"([^"]+)\\\"/g, '"$1"');
-                  pendingItems = JSON.parse(cleanedJson);
-                  console.log('Successfully recovered data after cleaning');  
-                } catch (e) {
-                  console.error('Failed to recover data after cleaning attempt');
-                }
-              }
-            }
-            
-            console.log('📦 Parsed pending items:', pendingItems);
-            
-            if (pendingItems && Array.isArray(pendingItems) && pendingItems.length > 0) {
-              console.log('🔄 Processing pending stock reductions on thank-you page:', pendingItems);
-              
-              // Make multiple attempts to ensure stock reduction succeeds
-              let attempts = 0;
-              const maxAttempts = 3;
-              let success = false;
-              const orderId = `order_${Date.now()}`;
-              
-              // Show a loading state or message while processing stock reduction
-              const processingElement = document.getElementById('processing-message');
-              if (processingElement) {
-                processingElement.style.display = 'block';
-              }
-              
-              // PERFORMANCE OPTIMIZATION: Make parallel API calls for faster processing
-              console.log('⚡ Using parallel API calls for faster stock reduction');
-              
-              // Start multiple API calls in parallel for faster processing
-              const apiPromises = [];
-              
-              // 1. Direct admin panel call - try multiple endpoints to ensure success
-              const adminEndpoints = [
-                'https://eleveadmin.netlify.app/api/stock/reduce',
-                'https://eleveadmin.netlify.app/api/inventory/reduce',
-                'https://eleveadmin.netlify.app/api/products/reduce-stock'
-              ];
-              
-              // Try each admin endpoint for maximum reliability
-              const adminPromises = adminEndpoints.map(endpoint => {
-                return fetch(endpoint, {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'X-Order-ID': orderId,
-                    'X-Timestamp': Date.now().toString(),
-                    'X-Source': 'thank-you-page',
-                    'Origin': 'https://elevee.netlify.app'
-                  },
-                  body: JSON.stringify({
-                    items: pendingItems,
-                    orderId: orderId,
-                    afterOrder: true,
-                    timestamp: Date.now(),
-                    source: 'checkout-flow'
-                  })
-                }).then(async res => {
-                  console.log(`📡 Admin API call to ${endpoint} response status:`, res.status);
-                  if (res.ok) {
-                    try {
-                      const data = await res.json();
-                      console.log(`✅ Admin API call to ${endpoint} returned:`, data);
-                      return true;
-                    } catch (e) {
-                      console.log(`⚠️ Admin API call to ${endpoint} returned invalid JSON`);
-                      // Still return true if status was ok
-                      return true;
-                    }
-                  }
-                  return false;
-                }).catch(err => {
-                  console.error(`❌ Admin API call to ${endpoint} failed:`, err);
-                  return false;
-                });
-              });
-              
-              // Add all admin promises to the main promises array
-              apiPromises.push(...adminPromises);
-              
-              // 2. Local proxy API call - backup option
-              const proxyApiPromise = fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Cache-Control': 'no-cache, no-store, must-revalidate',
-                  'Pragma': 'no-cache'
-                },
-                body: JSON.stringify({ 
-                  items: pendingItems
-                })
-              }).then(res => {
-                console.log('🔄 Proxy API response status:', res.status); 
-                return res.json().then(data => {
-                  console.log('✅ Proxy API result:', data);
-                  return res.status >= 200 && res.status < 300;
-                });
-              }).catch(err => {
-                console.error('❌ Proxy API call failed:', err);
-                return false;
-              });
-              apiPromises.push(proxyApiPromise);
-              
-              // Wait for any of the API calls to succeed
-              try {
-                const results = await Promise.allSettled(apiPromises);
-                
-                // Check if any API call succeeded
-                success = results.some(result => 
-                  result.status === 'fulfilled' && result.value === true
-                );
-                
-                // Only show success if at least one API call truly succeeded
-                const genuineSuccess = results.some(result => 
-                  result.status === 'fulfilled' && result.value === true
-                );
-                
-                if (genuineSuccess) {
-                  console.log('🚀 Stock reduction GENUINELY successful via parallel API calls!');
-                  
-                  // Double-check if we actually have a positive response from an admin API
-                  const adminSuccess = adminPromises.some((_, index) => 
-                    results[index]?.status === 'fulfilled' && results[index]?.value === true
-                  );
-                  
-                  console.log('🔍 Admin API success status:', adminSuccess);
-                  
-                  // Store updated product IDs in sessionStorage to refresh them later
-                  try {
-                    // Get the list of unique product IDs that were affected
-                    const productIds = pendingItems.map(item => item.productId);
-                    const uniqueProductIds = Array.from(new Set(productIds));
-                    console.log('🔄 Products to update on next view:', uniqueProductIds);
-                    
-                    // Store these IDs in sessionStorage along with success information
-                    sessionStorage.setItem('productsToUpdate', JSON.stringify({
-                      ids: uniqueProductIds,
-                      timestamp: Date.now(),
-                      adminSuccess: adminSuccess
-                    }));
-                    
-                    // Also store the raw order information for debugging/retrying
-                    localStorage.setItem('lastOrderDetails', JSON.stringify({
-                      items: pendingItems,
-                      orderId: orderId,
-                      timestamp: Date.now()
-                    }));
-                    
-                  } catch (updateError) {
-                    console.error('Error storing products to update:', updateError);
-                  }
-                } else {
-                  // All parallel attempts failed, use sequential backup approach
-                  console.warn('⚠️ Parallel API calls failed, falling back to sequential retry approach');
-                  
-                  // Now use our proxy approach for reliability with sequential retries
-                  while (attempts < maxAttempts && !success) {
-                    attempts++;
-                    console.log(`Sequential stock reduction attempt ${attempts} of ${maxAttempts}`);
-                    
-                    try {
-                      // Use our own backend as a proxy to avoid CORS issues
-                      const response = await fetch(`/api/stock/reduce?afterOrder=true&orderId=${orderId}`, {
-                        method: 'POST',
-                        headers: { 
-                          'Content-Type': 'application/json',
-                          'Cache-Control': 'no-cache, no-store, must-revalidate',
-                          'Pragma': 'no-cache'
-                        },
-                        body: JSON.stringify({ 
-                          items: pendingItems
-                        })
-                      });
-                      
-                      if (response.ok) {
-                        const result = await response.json();
-                        console.log('✅ Sequential retry succeeded:', result);
-                        success = true;
-                        
-                        // Update UI to show success
-                        const successElement = document.getElementById('success-message');
-                        if (successElement) {
-                          successElement.style.display = 'block';
-                        }
-                        
-                        break;
-                      } else {
-                        console.error(`Sequential attempt ${attempts} failed with status ${response.status}`);
-                        // Wait a shorter time before retrying (200ms instead of 1000ms)
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                      }
-                    } catch (attemptError) {
-                      console.error(`Error in sequential attempt ${attempts}:`, attemptError);
-                      // Wait a shorter time before retrying (200ms instead of 1000ms)
-                      await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                  }
-                }
-              } catch (parallelError) {
-                console.error('Error during parallel API processing:', parallelError);
-                success = false;
-              }
-              
-              // Hide processing message
-              if (processingElement) {
-                processingElement.style.display = 'none';
-              }
-              
-              // Clear pending stock reductions
-              localStorage.removeItem('pendingStockReduction');
-              
-              // If all attempts failed, show an error message but don't block the user
-              if (!success) {
-                console.error('All stock reduction attempts failed');
-                const errorElement = document.getElementById('error-message');
-                if (errorElement) {
-                  errorElement.style.display = 'block';
-                }
+            const lastOrderDetails = localStorage.getItem('lastOrderDetails');
+            if (lastOrderDetails) {
+              const orderDetails = JSON.parse(lastOrderDetails);
+              if (orderDetails?.orderId) {
+                console.log('Found order ID from last order details:', orderDetails.orderId);
+                setOrderId(orderDetails.orderId);
               }
             }
           } catch (error) {
-            console.error('Error processing stock reduction on thank-you page:', error);
+            console.error('Error getting order ID from localStorage:', error);
           }
         }
       } else {
@@ -411,6 +185,13 @@ const ThankYouPage = () => {
             <p>
               Your order has been successfully placed. We will contact you shortly to confirm your order and delivery details.
             </p>
+            
+            {orderId && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                <p className="font-medium text-black dark:text-white">Order ID: <span className="select-all">{orderId}</span></p>
+                <p className="text-sm mt-1">Please save this ID for reference.</p>
+              </div>
+            )}
             
             {/* Stock reduction processing message - hidden by default */}
             <div id="processing-message" className="bg-blue-50 p-4 rounded-md text-blue-700 hidden">

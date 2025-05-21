@@ -113,17 +113,25 @@ export const completeOrderAndRedirect = async (cart: any[], orderId?: string) =>
     // Set order completion flag in session storage
     sessionStorage.setItem('orderCompleted', 'true');
     
-    // If we have an order ID, process inventory immediately
+    // Store order ID for display on thank-you page
     if (orderId) {
+      console.log('Storing order ID for thank-you page:', orderId);
+      // Store the order ID for thank-you page to display
+      sessionStorage.setItem('pendingOrderId', orderId);
+      
+      // Also store it in localStorage as backup
       try {
-        console.log('Processing inventory reduction for order:', orderId);
-        // Store the order ID for inventory processing after redirect
-        sessionStorage.setItem('pendingOrderId', orderId);
-        // We'll let the thank-you page handle the actual inventory reduction
-      } catch (invError) {
-        console.error('Error in inventory reduction:', invError);
-        // Continue with redirect even if inventory reduction fails
+        localStorage.setItem('lastOrderDetails', JSON.stringify({
+          orderId: orderId,
+          timestamp: Date.now()
+        }));
+      } catch (err) {
+        console.error('Failed to store order details in localStorage:', err);
       }
+      
+      // Process inventory reduction after redirect
+    } else {
+      console.warn('No order ID provided to completeOrderAndRedirect');
     }
     
     console.log('Order completed successfully');
