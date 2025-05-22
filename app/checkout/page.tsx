@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useCart } from '../context/CartContext'
+import { useCart, CART_STORAGE_KEY } from '../context/CartContext'
 import Nav from '../sections/nav'
 import { validateStock, reduceStock } from '../utils/stockUtils'
 import { removeBlacklistedProducts, BLACKLISTED_PRODUCT_IDS } from '../utils/productBlacklist'
@@ -451,6 +451,16 @@ const CheckoutPage = () => {
           // This ensures the stock data is properly saved before clearing
           console.log('Now clearing cart after stock data is prepared');
           clearCart();
+          
+          // Ensure localStorage is cleared in case the clearCart function in CartContext fails
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem(CART_STORAGE_KEY);
+              console.log('Successfully cleared cart from localStorage directly');
+            } catch (localStorageError) {
+              console.error('Error clearing cart from localStorage:', localStorageError);
+            }
+          }
         } catch (adminError: any) {
           console.error('Admin panel error:', adminError);
           
@@ -465,6 +475,16 @@ const CheckoutPage = () => {
           // This ensures the stock data is properly saved before clearing
           console.log('Now clearing cart after stock data is prepared (fallback path)');
           clearCart();
+          
+          // Ensure localStorage is cleared in case the clearCart function in CartContext fails
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem(CART_STORAGE_KEY);
+              console.log('Successfully cleared cart from localStorage directly (fallback path)');
+            } catch (localStorageError) {
+              console.error('Error clearing cart from localStorage:', localStorageError);
+            }
+          }
         }
       } else {
         // Main API order failed

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { updateInventoryAfterPurchase, checkProductStock } from '../utils/inventory';
 
 interface CartItem {
@@ -31,10 +31,49 @@ interface CartContextType {
   setCart: (items: CartItem[]) => void;
 }
 
+export const CART_STORAGE_KEY = 'eleve_cart';
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCartState] = useState<CartItem[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  // Load cart from localStorage on initialization
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        if (Array.isArray(parsedCart) && parsedCart.length > 0) {
+          console.log('Loaded cart from localStorage:', parsedCart.length, 'items');
+          setCartState(parsedCart);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
+    }
+  }, []);
+
+  // Custom setCart function that updates both state and localStorage
+  const setCart = (items: CartItem[] | ((prev: CartItem[]) => CartItem[])) => {
+    setCartState(prevCart => {
+      // Handle both direct value and function updates
+      const newCart = typeof items === 'function' ? items(prevCart) : items;
+      
+      // Save to localStorage (only on the client side)
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newCart));
+        } catch (error) {
+          console.error('Error saving cart to localStorage:', error);
+        }
+      }
+      
+      return newCart;
+    });
+  };
 
   const cartTotal = cart.reduce((total, item) => {
     const price = item.discount 
@@ -161,6 +200,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   };
+
+  // Prevent hydration issues by rendering only when mounted
+  if (!mounted) {
+    return (
+      <CartContext.Provider value={{ 
+        cart: [], 
+        cartTotal: 0, 
+        itemCount: 0,
+        addToCart, 
+        removeFromCart, 
+        updateQuantity, 
+        clearCart,
+        checkoutCart,
+        setCart: () => {} // Empty function for SSR
+      }}>
+        {children}
+      </CartContext.Provider>
+    );
+  }
 
   return (
     <CartContext.Provider value={{ 

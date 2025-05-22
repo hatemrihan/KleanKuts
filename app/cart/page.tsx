@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCart } from '../context/CartContext'
+import { useCart, CART_STORAGE_KEY } from '../context/CartContext'
 import Nav from '../sections/nav'
 import Link from 'next/link'
 import Image from 'next/image'
