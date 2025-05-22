@@ -443,7 +443,7 @@ const Nav = () => {
                     handleNavClick(e, href, isScroll);
                     setIsOpen(false);
                   }}
-                  className="relative inline-block text-black dark:text-white text-3xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group"
+                  className="relative inline-block text-black dark:text-white text-2xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group"
                 >
                   {label}
                   <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
