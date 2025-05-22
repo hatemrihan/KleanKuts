@@ -3,13 +3,9 @@
 // ONLY use the admin API in production - both sites are already deployed
 const ADMIN_API_URL = 'https://eleveadmin.netlify.app/api';
 
-// IMPORTANT: HARDCODED DISCOUNT VALUE - this matches what was set in the admin panel
-// This ensures the discount works even if API communication fails
-const AMBASSADOR_DISCOUNT_PERCENT = 30;
-
 /**
  * Direct validation for ambassador coupon codes
- * Immediately returns the configured discount for known ambassador codes
+ * Fetches and applies discount based on data from admin panel
  */
 export async function validateCoupon(code: string) {
   console.log(`Validating coupon code: ${code}`);
@@ -17,28 +13,6 @@ export async function validateCoupon(code: string) {
   // Normalized code for case-insensitive comparison
   const normalizedCode = code.toLowerCase().trim();
   
-  // Check if this is an ambassador coupon code we know about
-  // For this example, we're hardcoding the ambassador codes we know
-  const knownAmbassadorCodes = ['hatemm', 'hatem12', 'hatemrihan', 'hatemm00', 'hola'];
-  
-  if (knownAmbassadorCodes.includes(normalizedCode)) {
-    console.log(`✅ Recognized ambassador code: ${code}. Applying ${AMBASSADOR_DISCOUNT_PERCENT}% discount`);
-    return {
-      valid: true,
-      discount: {
-        type: 'percentage',
-        value: AMBASSADOR_DISCOUNT_PERCENT, // Use our fixed value from admin panel
-        code: code,
-        minPurchase: 0,
-        referralCode: null,
-        isAmbassador: true,
-        ambassadorId: "hardcoded_ambassador_id" // Include ambassadorId for commission tracking
-      },
-      message: `Ambassador coupon applied (${AMBASSADOR_DISCOUNT_PERCENT}% discount)`
-    };
-  }
-  
-  // Try admin API for non-ambassador coupon codes
   try {
     console.log(`Using admin API for coupon: ${code}`);
     const response = await fetch(`${ADMIN_API_URL}/coupon/validate`, {
@@ -52,24 +26,8 @@ export async function validateCoupon(code: string) {
     
     if (!response.ok) {
       console.warn(`Admin API returned status ${response.status}`);      
-      if (knownAmbassadorCodes.includes(normalizedCode)) {
-        // Fallback for ambassador codes if API failed
-        return {
-          valid: true,
-          discount: {
-            type: 'percentage',
-            value: AMBASSADOR_DISCOUNT_PERCENT,
-            code: code,
-            minPurchase: 0,
-            referralCode: null,
-            isAmbassador: true,
-            ambassadorId: "hardcoded_ambassador_id" // Include ambassadorId for commission tracking
-          },
-          message: `Ambassador coupon applied (${AMBASSADOR_DISCOUNT_PERCENT}% discount)`
-        };
-      }
       
-      // For other admin validation failure, try the API endpoint from the frontend site
+      // Try the API endpoint from the frontend site as a fallback
       try {
         const frontendResponse = await fetch(`https://elevee.netlify.app/api/promocodes/validate`, {
           method: 'POST',
@@ -109,23 +67,6 @@ export async function validateCoupon(code: string) {
     }
   } catch (error) {
     console.error('Error validating coupon:', error);
-    
-    // Final fallback - for ambassador codes, use hardcoded value
-    if (knownAmbassadorCodes.includes(normalizedCode)) {
-      return {
-        valid: true,
-        discount: {
-          type: 'percentage',
-          value: AMBASSADOR_DISCOUNT_PERCENT,
-          code: code,
-          minPurchase: 0,
-          referralCode: null,
-          isAmbassador: true,
-          ambassadorId: "hardcoded_ambassador_id" // Include ambassadorId for commission tracking
-        },
-        message: `Ambassador coupon applied (${AMBASSADOR_DISCOUNT_PERCENT}% discount)`
-      };
-    }
     
     // Try the API endpoint from the frontend site as a final fallback
     try {
