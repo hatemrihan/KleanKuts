@@ -89,7 +89,7 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
     >
       <Link 
         href={`/product/${product._id}`}
-        className="group block bg-white dark:bg-gray-800 transition-shadow hover:shadow-lg cursor-pointer"
+        className="group block bg-white dark:bg-black transition-shadow hover:shadow-lg cursor-pointer"
         style={{ borderRadius: 0 }}
       >
         {/* Product Images */}
