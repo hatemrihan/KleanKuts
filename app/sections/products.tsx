@@ -28,6 +28,7 @@ interface Product {
   description?: string;
   totalStock?: number;
   extractedId?: string; // Added for processed IDs
+  gender?: string; // Added gender property
 }
 
 // ProductCard component to display individual products
@@ -86,6 +87,7 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
       variants={cardVariants}
       initial="hidden"
       animate="visible"
+      className="flex-none"
     >
       <Link 
         href={`/product/${product._id}`}
@@ -93,7 +95,7 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
         style={{ borderRadius: 0 }}
       >
         {/* Product Images */}
-        <div className="aspect-[3/4] relative overflow-hidden" style={{ borderRadius: 0 }}>
+        <div className="aspect-[3/4] relative overflow-hidden" style={{ borderRadius: 0, width: '220px' }}>
           <Image
             src={(productImages && productImages[currentImageIndex]) || '/images/try-image.jpg'}
             alt={`${product.name} - Image ${currentImageIndex + 1}`}
@@ -108,12 +110,32 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
               {stockStatus.text}
             </div>
           )}
+          
+          {/* Tags container - positioned at top left */}
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+            {/* Discount tag - smaller and enhanced design */}
+            {product.discount && product.discount > 0 && (
+              <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                {product.discount}% OFF
+              </div>
+            )}
+            
+            {/* Gender tag when available */}
+            {product.gender && (
+              <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                {product.gender}
+              </div>
+            )}
+          </div>
         </div>
         {/* Product Info */}
-        <div className="p-4" style={{ borderRadius: 0 }}>
+        <div className="p-4" style={{ borderRadius: 0, width: '220px' }}>
           <h3 className="text-lg font-light text-black dark:text-white mb-2">{product.name || product.title}</h3>
           <div className="flex items-center gap-2">
-            <span className="text-black dark:text-white">L.E {product.price}</span>
+            <span className="text-black dark:text-white">L.E {typeof product.price === 'number' ? product.price : ''}</span>
+            {product.discount && product.discount > 0 && (
+              <span className="text-gray-500 line-through text-sm">L.E {typeof product.price === 'number' ? product.price : ''}</span>
+            )}
           </div>
         </div>
       </Link>
@@ -198,10 +220,11 @@ const Products = () => {
               price: product.price
             });
             
-            // Add the extracted ID back to the product
+            // Add the extracted ID back to the product and handle discount
             return {
               ...product,
-              extractedId: productId
+              extractedId: productId,
+              discount: product.discount && product.discount > 0 ? product.discount : undefined
             };
           }).filter(Boolean); // Remove any null values
           
@@ -253,7 +276,7 @@ const Products = () => {
         </div>
       )}
 
-      {/* Horizontal Scrollable Products Row */}
+      {/* Horizontal Scrollable Products Row - Better Centered */}
       {!loading && !error && (
         <motion.div 
           className="max-w-7xl mx-auto"
@@ -261,14 +284,17 @@ const Products = () => {
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
         >
-          <div className="flex overflow-x-auto gap-12 pb-4 scrollable-x items-stretch">
-            {products.map((product, index) => (
-              <ProductCard 
-                key={product.extractedId || `product-${index}`} 
-                product={product} 
-                index={index}
-              />
-            ))}
+          {/* Wrapper with padding for better centering */}
+          <div className="px-[10%] md:px-[15%] lg:px-[20%]">
+            <div className="flex overflow-x-auto gap-8 pb-4 scrollable-x items-stretch">
+              {products.map((product, index) => (
+                <ProductCard 
+                  key={product.extractedId || `product-${index}`} 
+                  product={product} 
+                  index={index}
+                />
+              ))}
+            </div>
           </div>
           {/* Scroll indicator */}
           <div className="w-full flex justify-end">

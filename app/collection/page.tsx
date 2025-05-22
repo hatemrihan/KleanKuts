@@ -156,9 +156,9 @@ export default function Collection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(5000);
+  const [maxPrice, setMaxPrice] = useState(10000);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -197,7 +197,7 @@ export default function Collection() {
             category: product.categories?.[0] || 'other',
             categories: product.categories || [],
             price: product.price || 0,
-            discount: product.discount || 0,
+            discount: product.discount && product.discount > 0 ? product.discount : undefined,
             description: product.description || '',
             sizes: product.selectedSizes || [],
             gender: product.gender || ''
@@ -207,18 +207,34 @@ export default function Collection() {
         }).filter((product): product is Product => product !== null);
         
         // Only use MongoDB products if we have them, don't mix with local products
+        let productsToUse: Product[] = [];
         if (processedMongoProducts.length > 0) {
           console.log('Using real products from MongoDB:', processedMongoProducts.length);
-          setProducts(processedMongoProducts);
+          productsToUse = processedMongoProducts;
         } else {
           // Fall back to local products only if no MongoDB products are available
           const localProductsArray = Object.values(localProducts);
           console.log('Falling back to local products:', localProductsArray.length);
-          setProducts(localProductsArray);
+          productsToUse = localProductsArray;
         }
         
-        console.log('Final products count:', processedMongoProducts.length > 0 ? 
-          processedMongoProducts.length : Object.values(localProducts).length);
+        // Calculate dynamic max price based on actual product data
+        const highestPrice = productsToUse.reduce((max, product) => {
+          const price = product.price || 0;
+          return price > max ? price : max;
+        }, 0);
+        
+        // Set max price with some buffer (20% more than the highest price)
+        const bufferedMaxPrice = Math.ceil(highestPrice * 1.2);
+        const roundedMaxPrice = Math.ceil(bufferedMaxPrice / 1000) * 1000; // Round up to nearest thousand
+        
+        console.log(`Highest product price: ${highestPrice}, setting max range to: ${roundedMaxPrice}`);
+        setMaxPrice(roundedMaxPrice);
+        setPriceRange([0, roundedMaxPrice]);
+        
+        setProducts(productsToUse);
+        
+        console.log('Final products count:', productsToUse.length);
       } catch (err: any) {
         console.error('Error fetching products:', err);
         setProducts(Object.values(localProducts));

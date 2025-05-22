@@ -174,16 +174,16 @@ export default function AmbassadorPendingPage() {
           <div className="text-center">
             <p className="text-sm text-black/70 dark:text-white/70 mb-4">
               Have questions about your application? Contact us at<br />
-              <a href="mailto:ambassadors@elevestyle.com" className="underline">
-                ambassadors@elevestyle.com
+              <a href="mailto:eleve.egy.1@gmail.com" className="underline">
+                eleve.egy.1@gmail.com
               </a>
             </p>
             
             <Link 
-              href="/ambassador" 
+              href="/" 
               className="inline-block px-6 py-3 border border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
             >
-              Return to Ambassador Program
+              Return to Home Page
             </Link>
           </div>
         </div>

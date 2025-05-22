@@ -104,6 +104,7 @@ const ProductPage = ({ params }: Props) => {
   const [loadingNewArrivals, setLoadingNewArrivals] = useState(false)
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [orderStatus, setOrderStatus] = useState('')
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Handler functions for the buttons
   const handleAddToCartClick = () => {
@@ -1364,6 +1365,24 @@ const ProductPage = ({ params }: Props) => {
     }
   }
 
+  // Add a function to handle image navigation
+  const nextImage = () => {
+    if (product && product.images && product.images.length > 1) {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % product.images.length);
+      
+      // Scroll to the next image in the scrollable container
+      const scrollableContainer = document.querySelector('.scrollable-x');
+      if (scrollableContainer) {
+        const nextIndex = (currentImageIndex + 1) % product.images.length;
+        const nextImageWidth = scrollableContainer.clientWidth;
+        scrollableContainer.scrollTo({
+          left: nextIndex * nextImageWidth,
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -1455,13 +1474,17 @@ const ProductPage = ({ params }: Props) => {
               </div>
             </div>
             
-            {/* Right arrow indicator for multiple images */}
+            {/* Right arrow indicator for multiple images - now clickable */}
             {product.images.length > 1 && (
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-full p-2 animate-pulse">
+              <button 
+                onClick={nextImage}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-full p-2 hover:bg-black/20 dark:hover:bg-white/20 transition-all cursor-pointer z-10"
+                aria-label="Next image"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-black dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </div>
+              </button>
             )}
           </div>
 

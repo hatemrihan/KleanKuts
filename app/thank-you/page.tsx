@@ -235,10 +235,10 @@ const ThankYouPage = () => {
           </div>
 
           <Link 
-            href="/collection"
+            href="/"
             className="inline-block mt-12 px-8 py-4 bg-black text-white dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-colors duration-300"
           >
-            CONTINUE SHOPPING
+            Back to Home
           </Link>
         </div>
       </main>
