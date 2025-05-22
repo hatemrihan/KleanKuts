@@ -1,25 +1,51 @@
 // Coupon validation and redemption utilities for the deployed environment
 
-// ONLY use the admin API in production - both sites are already deployed
+// API URLs for validation and redemption
 const ADMIN_API_URL = 'https://eleveadmin.netlify.app/api';
-
-// Fallback ambassador discount from MongoDB (only used if API fails)
-const AMBASSADOR_DISCOUNT_PERCENT = 10;
+const FRONTEND_API_URL = 'https://elevee.netlify.app/api';
 
 /**
- * Direct validation for ambassador coupon codes
- * Prioritizes data from admin panel but falls back to local validation if needed
+ * Validate coupon code against multiple APIs to ensure successful validation
  */
 export async function validateCoupon(code: string) {
+  if (!code || !code.trim()) {
+    return { valid: false, message: 'Please enter a valid coupon code' };
+  }
+  
   console.log(`Validating coupon code: ${code}`);
   
-  // Normalized code for case-insensitive comparison
-  const normalizedCode = code.toLowerCase().trim();
+  // Try all validation methods in parallel for faster response
+  const results = await Promise.allSettled([
+    validateWithAdminAPI(code),
+    validateWithFrontendAPI(code)
+  ]);
   
-  // Known ambassador codes from MongoDB (fallback if API fails)
-  const knownAmbassadorCodes = ['wala', 'hola'];
+  // Find first successful validation
+  for (const result of results) {
+    if (result.status === 'fulfilled' && result.value && result.value.valid) {
+      console.log('Successfully validated coupon:', result.value);
+      return result.value;
+    }
+  }
   
-  // Try admin API first
+  // If no successful validation, return the first error message
+  for (const result of results) {
+    if (result.status === 'fulfilled' && result.value) {
+      return result.value; // Return the first validation result (which will be invalid)
+    }
+  }
+  
+  // Fallback error if all promises rejected
+  return { 
+    valid: false, 
+    message: 'Unable to validate coupon code. Please try again later.' 
+  };
+}
+
+/**
+ * Validate using Admin API
+ */
+async function validateWithAdminAPI(code: string) {
   try {
     console.log(`Using admin API for coupon: ${code}`);
     const response = await fetch(`${ADMIN_API_URL}/coupon/validate`, {
@@ -28,51 +54,11 @@ export async function validateCoupon(code: string) {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code: code.trim() })
     });
     
     if (!response.ok) {
-      console.warn(`Admin API returned status ${response.status}`);      
-      
-      // Fallback: Check if this is a known ambassador code
-      if (knownAmbassadorCodes.includes(normalizedCode)) {
-        console.log(`✅ Recognized ambassador code: ${code}. Applying ${AMBASSADOR_DISCOUNT_PERCENT}% discount as fallback`);
-        return {
-          valid: true,
-          discount: {
-            type: 'percentage',
-            value: AMBASSADOR_DISCOUNT_PERCENT,
-            code: code,
-            minPurchase: 0,
-            referralCode: 'elv_d481659c', // Ambassador referral code from MongoDB
-            isAmbassador: true,
-            ambassadorId: normalizedCode === 'wala' ? 'hatemrihan100@gmail.com' : undefined
-          },
-          message: `Ambassador coupon applied (${AMBASSADOR_DISCOUNT_PERCENT}% discount)`
-        };
-      }
-      
-      // Try the frontend API as a fallback
-      try {
-        const frontendResponse = await fetch(`https://elevee.netlify.app/api/promocodes/validate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ code })
-        });
-        
-        if (frontendResponse.ok) {
-          const frontendData = await frontendResponse.json();
-          if (frontendData.valid && frontendData.discount) {
-            return frontendData;
-          }
-        }
-      } catch (frontendError) {
-        console.error('Frontend API fallback error:', frontendError);
-      }
-      
-      return { valid: false, message: 'Invalid coupon code' };
+      throw new Error(`Admin API returned status ${response.status}`);
     }
     
     const data = await response.json();
@@ -84,75 +70,54 @@ export async function validateCoupon(code: string) {
         discount: data.discount,
         message: data.message || 'Coupon applied successfully'
       };
-    } else {
-      // Double-check if it's a known ambassador code before rejecting
-      if (knownAmbassadorCodes.includes(normalizedCode)) {
-        console.log(`✅ Admin API didn't validate but this is a known code: ${code}. Using fallback.`);
-        return {
-          valid: true,
-          discount: {
-            type: 'percentage',
-            value: AMBASSADOR_DISCOUNT_PERCENT,
-            code: code,
-            minPurchase: 0,
-            referralCode: 'elv_d481659c', // Ambassador referral code from MongoDB
-            isAmbassador: true,
-            ambassadorId: normalizedCode === 'wala' ? 'hatemrihan100@gmail.com' : undefined
-          },
-          message: `Ambassador coupon applied (${AMBASSADOR_DISCOUNT_PERCENT}% discount)`
-        };
-      }
-      
-      return {
-        valid: false,
-        message: data.message || 'Invalid coupon code'
-      };
-    }
-  } catch (error) {
-    console.error('Error validating coupon:', error);
-    
-    // Fallback to local validation for known ambassador codes
-    if (knownAmbassadorCodes.includes(normalizedCode)) {
-      console.log(`✅ API error but recognized ambassador code: ${code}. Using fallback.`);
-      return {
-        valid: true,
-        discount: {
-          type: 'percentage',
-          value: AMBASSADOR_DISCOUNT_PERCENT,
-          code: code,
-          minPurchase: 0,
-          referralCode: 'elv_d481659c', // Ambassador referral code from MongoDB
-          isAmbassador: true,
-          ambassadorId: normalizedCode === 'wala' ? 'hatemrihan100@gmail.com' : undefined
-        },
-        message: `Ambassador coupon applied (${AMBASSADOR_DISCOUNT_PERCENT}% discount)`
-      };
-    }
-    
-    // Try the frontend API as a final fallback
-    try {
-      const frontendResponse = await fetch(`https://elevee.netlify.app/api/promocodes/validate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ code })
-      });
-      
-      if (frontendResponse.ok) {
-        const frontendData = await frontendResponse.json();
-        if (frontendData.valid && frontendData.discount) {
-          return frontendData;
-        }
-      }
-    } catch (frontendError) {
-      console.error('Frontend API fallback error:', frontendError);
     }
     
     return {
       valid: false,
-      message: 'Unable to validate coupon. Please try again later.'
+      message: data.message || 'Invalid coupon code'
     };
+  } catch (error) {
+    console.error('Error validating with Admin API:', error);
+    throw error;
+  }
+}
+
+/**
+ * Validate using Frontend API
+ */
+async function validateWithFrontendAPI(code: string) {
+  try {
+    console.log(`Using frontend API for coupon: ${code}`);
+    const response = await fetch(`${FRONTEND_API_URL}/promocodes/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code: code.trim() })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Frontend API returned status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Frontend API response:', data);
+    
+    if (data && data.valid && data.discount) {
+      return {
+        valid: true,
+        discount: data.discount,
+        message: data.message || 'Coupon applied successfully'
+      };
+    }
+    
+    return {
+      valid: false,
+      message: data.message || 'Invalid coupon code'
+    };
+  } catch (error) {
+    console.error('Error validating with Frontend API:', error);
+    throw error;
   }
 }
 
@@ -166,79 +131,87 @@ export async function reportSuccessfulOrder(orderDetails: any, couponCode: strin
     console.log(`Reporting order with coupon ${couponCode} to ambassador system`);
     
     // Try Admin API first
-    const response = await fetch(`${ADMIN_API_URL}/coupon/redeem`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        code: couponCode,
-        orderId: orderDetails.orderId,
-        orderAmount: orderDetails.total,
-        customerEmail: orderDetails.email,
-        products: orderDetails.products ? orderDetails.products.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        })) : []
-      })
-    });
+    const adminResult = await reportToAdminAPI(orderDetails, couponCode)
+      .catch(error => {
+        console.error('Admin API reporting error:', error);
+        return false;
+      });
     
-    const data = await response.json();
-    console.log('Order reported to ambassador system:', data);
-    
-    // If admin API fails, try the frontend API as a fallback
-    if (!response.ok || !data.success) {
-      try {
-        const frontendResponse = await fetch(`https://elevee.netlify.app/api/ambassador/orders`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            code: couponCode,
-            orderAmount: orderDetails.total,
-            orderId: orderDetails.orderId
-          })
-        });
-        
-        const frontendData = await frontendResponse.json();
-        console.log('Order reported to frontend ambassador system:', frontendData);
-        return frontendData.success;
-      } catch (frontendError) {
-        console.error('Frontend API fallback error:', frontendError);
-      }
+    if (adminResult) {
+      console.log('Successfully reported to admin API');
+      return true;
     }
     
-    return data.success;
+    // Try Frontend API as fallback
+    const frontendResult = await reportToFrontendAPI(orderDetails, couponCode)
+      .catch(error => {
+        console.error('Frontend API reporting error:', error);
+        return false;
+      });
+    
+    return frontendResult;
   } catch (error) {
     console.error('Error reporting order to ambassador system:', error);
-    
-    // Try the frontend API as a fallback
-    try {
-      const frontendResponse = await fetch(`https://elevee.netlify.app/api/ambassador/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          code: couponCode,
-          orderAmount: orderDetails.total,
-          orderId: orderDetails.orderId
-        })
-      });
-      
-      const frontendData = await frontendResponse.json();
-      console.log('Order reported to frontend ambassador system:', frontendData);
-      return frontendData.success;
-    } catch (frontendError) {
-      console.error('Frontend API fallback error:', frontendError);
-    }
-    
     return false; // Return false, but don't block the order completion
   }
+}
+
+/**
+ * Report to Admin API
+ */
+async function reportToAdminAPI(orderDetails: any, couponCode: string) {
+  const response = await fetch(`${ADMIN_API_URL}/coupon/redeem`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      code: couponCode,
+      orderId: orderDetails.orderId,
+      orderAmount: orderDetails.total,
+      customerEmail: orderDetails.email,
+      products: orderDetails.products ? orderDetails.products.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      })) : []
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Admin API returned status ${response.status}`);
+  }
+  
+  const data = await response.json();
+  console.log('Order reported to ambassador system:', data);
+  return data.success;
+}
+
+/**
+ * Report to Frontend API
+ */
+async function reportToFrontendAPI(orderDetails: any, couponCode: string) {
+  const response = await fetch(`${FRONTEND_API_URL}/ambassador/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      code: couponCode,
+      orderAmount: orderDetails.total,
+      orderId: orderDetails.orderId
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Frontend API returned status ${response.status}`);
+  }
+  
+  const data = await response.json();
+  console.log('Order reported to frontend ambassador system:', data);
+  return data.success;
 }
 
 /**
