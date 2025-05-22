@@ -25,6 +25,7 @@ interface Product {
   description: string;
   Material?: string[];
   sizes: SizeStock[];
+  gender?: string;
 }
 
 interface MongoDBProduct {
@@ -37,6 +38,7 @@ interface MongoDBProduct {
   discount?: number;
   description?: string;
   selectedSizes?: SizeStock[];
+  gender?: string;
 }
 
 // Your actual product IDs
@@ -154,6 +156,9 @@ export default function Collection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(5000);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -194,7 +199,8 @@ export default function Collection() {
             price: product.price || 0,
             discount: product.discount || 0,
             description: product.description || '',
-            sizes: product.selectedSizes || []
+            sizes: product.selectedSizes || [],
+            gender: product.gender || ''
           };
 
           return processedProduct;
@@ -237,8 +243,17 @@ export default function Collection() {
   // Get unique categories from all products
   const categories = ['All'];
 
-  // Filter products based on the admin categories
+  // Filter products based on the admin categories and price range
   const filteredProducts = products.filter(product => {
+    // Price range filter
+    const productPrice = product.discount 
+      ? product.price - (product.price * product.discount / 100) 
+      : product.price;
+    
+    if (productPrice < priceRange[0] || productPrice > priceRange[1]) {
+      return false;
+    }
+    
     if (selectedCategory === 'All') return true;
     
     // Check if product has the selected category in its categories array
@@ -297,8 +312,9 @@ export default function Collection() {
           </div>
 
           {/* Filters */}
-          <div className="flex justify-center mb-12">
-            <div className="flex gap-6 overflow-x-auto pb-2">
+          <div className="flex flex-col items-center mb-12">
+            {/* Categories */}
+            <div className="flex gap-6 overflow-x-auto pb-2 mb-6">
               {categories.map((category) => (
                 <button
                   key={category}
@@ -308,6 +324,32 @@ export default function Collection() {
                   {category}
                 </button>
               ))}
+            </div>
+            
+            {/* Price Range Slider */}
+            <div className="w-full max-w-md mx-auto mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm text-gray-500">Price Range:</span>
+                <span className="text-sm font-medium">{priceRange[0]} - {priceRange[1]} EGP</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <input 
+                  type="range" 
+                  min={minPrice} 
+                  max={maxPrice} 
+                  value={priceRange[0]} 
+                  onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <input 
+                  type="range" 
+                  min={minPrice} 
+                  max={maxPrice} 
+                  value={priceRange[1]} 
+                  onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 
@@ -343,7 +385,11 @@ export default function Collection() {
 
 // Separate ProductCard component for cleaner code
 const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile?: boolean }) => {
-  const displayPrice = `${product.price} EGP`;
+  // Calculate final price if there's a discount
+  const finalPrice = product.discount ? product.price - (product.price * product.discount / 100) : product.price;
+  const displayPrice = product.discount 
+    ? `${finalPrice} EGP` 
+    : `${product.price} EGP`;
 
   const getStockStatus = () => {
     // Only show SOLD OUT if we explicitly know the product is out of stock
@@ -390,6 +436,23 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
                 {stockStatus.text}
               </div>
             )}
+            
+            {/* Tags container - positioned at top left */}
+            <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+              {/* Discount tag - smaller and enhanced design */}
+              {product.discount && product.discount > 0 && (
+                <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                  {product.discount}% OFF
+                </div>
+              )}
+              
+              {/* Gender tag when available */}
+              {product.gender && (
+                <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                  {product.gender}
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="h-full w-full flex items-center justify-center bg-gray-100 dark:bg-black transition-colors duration-300">
@@ -404,6 +467,9 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
         </h3>
         <div className={`font-light ${isMobile ? 'text-xs' : 'text-sm'}`}>
           <span className="text-black dark:text-white transition-colors duration-300">{displayPrice}</span>
+          {product.discount && product.discount > 0 && (
+            <span className="ml-2 text-gray-500 line-through text-xs">{product.price} EGP</span>
+          )}
         </div>
       </div>
     </Link>

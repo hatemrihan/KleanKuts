@@ -86,7 +86,7 @@ export async function POST(req: Request) {
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'}/api/coupon/validate?code=${encodeURIComponent(body.couponCode)}`);
         const couponValidation = await response.json();
         
-        if (couponValidation.success && couponValidation.valid) {
+        if (couponValidation.valid) {
           // Calculate ambassador commission
           const commissionRate = couponValidation.commissionRate || 50;
           const commission = (body.totalAmount * (commissionRate / 100)).toFixed(2);

@@ -51,7 +51,7 @@ const NewFooter = () => {
       <div className="max-w-7xl mx-auto">
         {/* Top Section - Email Subscription */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-          <div className="max-w-md">
+          <div className="max-w-md" id="about">
             <h3 className="text-xl font-light tracking-wider mb-4">ABOUT ELEVE</h3>
             <p className="text-sm text-black/70 dark:text-white/70 mb-4">Élevé is about more than clothes—it's about you.
 

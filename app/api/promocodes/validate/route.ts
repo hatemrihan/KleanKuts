@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const { code } = body;
 
     if (!code) {
-      return NextResponse.json({ success: false, valid: false, error: 'Promo code is required' }, { status: 400 })
+      return NextResponse.json({ valid: false, error: 'Promo code is required' }, { status: 400 })
     }
 
     await dbConnect();
@@ -48,8 +48,7 @@ export async function POST(request: NextRequest) {
         referralCode: String,
         couponCode: String,
         discountValue: Number,
-        discountType: String,
-        commissionRate: Number
+        discountType: String
       }, { collection: 'ambassadors' }));
 
       ambassador = await Ambassador.findOne({
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!promoCode && !ambassador) {
-      return NextResponse.json({ success: false, valid: false, error: 'Invalid or expired promo code' }, { status: 404 })
+      return NextResponse.json({ valid: false, error: 'Invalid or expired promo code' }, { status: 404 })
     }
 
     let discountInfo;
@@ -69,16 +68,16 @@ export async function POST(request: NextRequest) {
       // Check if promo code is still valid based on dates
       const now = new Date();
       if (promoCode.startDate && new Date(promoCode.startDate) > now) {
-        return NextResponse.json({ success: false, valid: false, error: 'This promo code is not active yet' }, { status: 400 })
+        return NextResponse.json({ valid: false, error: 'This promo code is not active yet' }, { status: 400 })
       }
       
       if (promoCode.endDate && new Date(promoCode.endDate) < now) {
-        return NextResponse.json({ success: false, valid: false, error: 'This promo code has expired' }, { status: 400 })
+        return NextResponse.json({ valid: false, error: 'This promo code has expired' }, { status: 400 })
       }
       
       // Check if promo code has reached max uses
       if (promoCode.maxUses && promoCode.usedCount >= promoCode.maxUses) {
-        return NextResponse.json({ success: false, valid: false, error: 'This promo code has reached its usage limit' }, { status: 400 })
+        return NextResponse.json({ valid: false, error: 'This promo code has reached its usage limit' }, { status: 400 })
       }
 
       // Return valid promo code with discount info
@@ -142,16 +141,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ 
-      success: true,
       valid: true, 
-      discount: discountInfo,
-      ambassadorId: discountInfo.ambassadorId,
-      referralCode: discountInfo.referralCode,
-      commissionRate: ambassador?.commissionRate || 50
+      discount: discountInfo
     })
 
   } catch (error) {
     console.error('Error validating promo code:', error)
-    return NextResponse.json({ success: false, valid: false, error: 'Failed to validate promo code' }, { status: 500 })
+    return NextResponse.json({ valid: false, error: 'Failed to validate promo code' }, { status: 500 })
   }
 }

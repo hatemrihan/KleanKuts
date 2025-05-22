@@ -68,6 +68,7 @@ interface Product {
   sizeGuide?: string;
   packaging?: string;
   shippingReturns?: string;
+  gender?: string;
   variants?: Array<{
     size: string;
     color: string;
@@ -1015,7 +1016,8 @@ const ProductPage = ({ params }: Props) => {
         materials: Array.isArray(data.materials) ? data.materials : [],
         sizeGuide: data.sizeGuide || '',
         packaging: data.packaging || '',
-        shippingReturns: data.shippingReturns || ''
+        shippingReturns: data.shippingReturns || '',
+        gender: data.gender || '',
       }
 
       console.log('Transformed product:', transformedProduct)
@@ -1430,7 +1432,7 @@ const ProductPage = ({ params }: Props) => {
       <div className="min-h-screen bg-white dark:bg-black pt-20 flex items-center justify-center">
         <div className="max-w-7xl mx-auto px-4 w-full flex flex-col lg:flex-row gap-8 items-center justify-center">
           {/* Mobile: Images First */}
-          <div className="w-full order-first lg:order-2 lg:w-1/3 flex flex-col items-center justify-center mb-8 lg:mb-0">
+          <div className="w-full order-first lg:order-2 lg:w-1/3 flex flex-col items-center justify-center mb-8 lg:mb-0 relative">
             <div className="w-full overflow-x-auto scrollable-x snap-x snap-mandatory">
               <div className="flex">
                 {product.images.map((img, idx) => (
@@ -1440,7 +1442,6 @@ const ProductPage = ({ params }: Props) => {
                     style={{ minWidth: '100%' }}
                   >
                     <div className="relative w-full max-w-[400px] aspect-[3/4] mx-auto">
-
                       <Image
                         src={optimizeCloudinaryUrl(img, { width: 800 })}
                         alt={`${product.name} - View ${idx + 1}`}
@@ -1453,6 +1454,15 @@ const ProductPage = ({ params }: Props) => {
                 ))}
               </div>
             </div>
+            
+            {/* Right arrow indicator for multiple images */}
+            {product.images.length > 1 && (
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-full p-2 animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-black dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            )}
           </div>
 
             {/* Left: Info Card with Accordion */}
@@ -1465,6 +1475,15 @@ const ProductPage = ({ params }: Props) => {
                 {refreshMessage && (
                   <div className="bg-green-50 text-green-700 p-2 mb-4 text-sm rounded text-center">
                     Product information updated!
+                  </div>
+                )}
+
+                {/* Gender information if available */}
+                {product.gender && (
+                  <div className="mb-4 flex justify-center">
+                    <div className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full">
+                      {product.gender}
+                    </div>
                   </div>
                 )}
                 

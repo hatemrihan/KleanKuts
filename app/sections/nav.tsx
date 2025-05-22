@@ -96,7 +96,15 @@ const Nav = () => {
     if (isScroll && href.startsWith('/#')) {
       e.preventDefault();
       const targetId = href.replace('/#', '');
+      
+      // If we're not on the homepage, navigate to the homepage first
+      if (window.location.pathname !== '/') {
+        router.push(`/${href}`);
+        return;
+      }
+      
       const targetElement = document.getElementById(targetId);
+      
       if (targetElement) {
         // Improved smooth scrolling with offset for the fixed header
         const headerHeight = 64; // Height of the fixed header in pixels
@@ -106,11 +114,14 @@ const Nav = () => {
           top: targetPosition,
           behavior: 'smooth'
         });
-      }
-      
-      // Update URL without reloading the page
-      if (window.history && window.history.pushState) {
-        window.history.pushState(null, '', href);
+        
+        // Update URL without reloading the page
+        if (window.history && window.history.pushState) {
+          window.history.pushState(null, '', href);
+        }
+      } else {
+        // If element not found, navigate to home with the hash
+        router.push(href);
       }
       
       setIsOpen(false);
@@ -460,30 +471,34 @@ const Nav = () => {
                 </div>
               </button>
             </div>
-            <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsOpen(false)} className='flex flex-col items-center justify-center w-16 h-auto'>
-              <div className="relative">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="1.5" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <circle cx="8" cy="21" r="1" />
-                  <circle cx="19" cy="21" r="1" />
-                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-                </svg>
-                {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                    {itemCount}
-                  </span>
-                )}
-              </div>
-              <span>Cart</span>
-            </Link>
+            
+            {/* Cart centered in mobile menu */}
+            <div className="flex justify-center w-full">
+              <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsOpen(false)} className='flex flex-col items-center justify-center'>
+                <div className="relative">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-8 h-8" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="8" cy="21" r="1" />
+                    <circle cx="19" cy="21" r="1" />
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                  </svg>
+                  {itemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                      {itemCount}
+                    </span>
+                  )}
+                </div>
+                <span className="mt-1 text-lg">Cart</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
