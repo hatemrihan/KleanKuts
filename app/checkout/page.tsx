@@ -79,7 +79,7 @@ const shippingCosts = {
   'Qena': 132,
   'Aswan': 132,
   'Luxor': 132,
-  'Marsa Matrouh': 132,
+  'Marsa Matrouh': 133,
 } as const;
 
 type City = keyof typeof shippingCosts;
