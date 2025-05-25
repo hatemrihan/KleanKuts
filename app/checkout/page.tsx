@@ -307,6 +307,11 @@ const CheckoutPage = () => {
           status: 'pending',
           notes: formData.notes || '',
           orderDate: new Date().toISOString(),
+          // Add coupon fields at the top level as required by admin panel
+          couponCode: promoDiscount ? promoDiscount.code : null,
+          couponDiscount: promoDiscount ? (promoDiscount.type === 'percentage' ? promoDiscount.value : null) : null,
+          ambassadorId: promoDiscount && promoDiscount.isAmbassador ? promoDiscount.ambassadorId : null,
+          // Keep the existing nested structure for backward compatibility
           promoCode: promoDiscount ? {
             code: promoDiscount.code,
             type: promoDiscount.type,
@@ -385,6 +390,11 @@ const CheckoutPage = () => {
             subtotal: cartTotal,
             shippingCost: shippingCost,
             discountAmount: discountAmount,
+            // Add coupon fields at the top level as required by admin panel
+            couponCode: promoDiscount ? promoDiscount.code : null,
+            couponDiscount: promoDiscount ? (promoDiscount.type === 'percentage' ? promoDiscount.value : null) : null,
+            ambassadorId: promoDiscount && promoDiscount.isAmbassador ? promoDiscount.ambassadorId : null,
+            // Keep the existing nested structure for backward compatibility
             promoCode: promoDiscount ? {
               code: promoDiscount.code,
               type: promoDiscount.type,
