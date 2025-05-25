@@ -307,10 +307,16 @@ const CheckoutPage = () => {
           status: 'pending',
           notes: formData.notes || '',
           orderDate: new Date().toISOString(),
-          // Add coupon fields at the top level as required by admin panel
+          // Add coupon fields in both formats for compatibility
           couponCode: promoDiscount ? promoDiscount.code : null,
           couponDiscount: promoDiscount ? (promoDiscount.type === 'percentage' ? promoDiscount.value : null) : null,
           ambassadorId: promoDiscount && promoDiscount.isAmbassador ? promoDiscount.ambassadorId : null,
+          // Add the ambassador object structure expected by the Order model
+          ambassador: promoDiscount ? {
+            ambassadorId: promoDiscount.isAmbassador ? promoDiscount.ambassadorId : null,
+            referralCode: promoDiscount.referralCode || null,
+            couponCode: promoDiscount.code
+          } : null,
           // Keep the existing nested structure for backward compatibility
           promoCode: promoDiscount ? {
             code: promoDiscount.code,
@@ -390,10 +396,16 @@ const CheckoutPage = () => {
             subtotal: cartTotal,
             shippingCost: shippingCost,
             discountAmount: discountAmount,
-            // Add coupon fields at the top level as required by admin panel
+            // Add coupon fields in both formats for compatibility
             couponCode: promoDiscount ? promoDiscount.code : null,
             couponDiscount: promoDiscount ? (promoDiscount.type === 'percentage' ? promoDiscount.value : null) : null,
             ambassadorId: promoDiscount && promoDiscount.isAmbassador ? promoDiscount.ambassadorId : null,
+            // Add the ambassador object structure expected by the Order model
+            ambassador: promoDiscount ? {
+              ambassadorId: promoDiscount.isAmbassador ? promoDiscount.ambassadorId : null,
+              referralCode: promoDiscount.referralCode || null,
+              couponCode: promoDiscount.code
+            } : null,
             // Keep the existing nested structure for backward compatibility
             promoCode: promoDiscount ? {
               code: promoDiscount.code,
