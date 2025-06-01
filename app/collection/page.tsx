@@ -156,6 +156,7 @@ export default function Collection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedGender, setSelectedGender] = useState('All');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(10000);
@@ -259,7 +260,7 @@ export default function Collection() {
   // Get unique categories from all products
   const categories = ['All'];
 
-  // Filter products based on the admin categories and price range
+  // Filter products based on the admin categories, gender, and price range
   const filteredProducts = products.filter(product => {
     // Price range filter
     const productPrice = product.discount 
@@ -270,6 +271,23 @@ export default function Collection() {
       return false;
     }
     
+    // Gender filter
+    if (selectedGender !== 'All') {
+      if (!product.gender) return false;
+      
+      const productGender = product.gender.toLowerCase();
+      const filterGender = selectedGender.toLowerCase();
+      
+      if (filterGender === 'men' && productGender !== 'men') {
+        return false;
+      }
+      
+      if (filterGender === 'women' && productGender !== 'woman' && productGender !== 'women') {
+        return false;
+      }
+    }
+    
+    // Category filter - skip if 'All' is selected
     if (selectedCategory === 'All') return true;
     
     // Check if product has the selected category in its categories array
@@ -329,42 +347,53 @@ export default function Collection() {
 
           {/* Filters */}
           <div className="flex flex-col items-center mb-12">
-            {/* Categories */}
+            {/* Gender Filter */}
             <div className="flex gap-6 overflow-x-auto pb-2 mb-6">
-              {categories.map((category) => (
+              {['All', 'Men', 'Women'].map((gender) => (
                 <button
-                  key={category}
-                  className={`px-4 py-2 text-sm whitespace-nowrap ${selectedCategory === category ? 'border-b-2 border-black font-medium' : 'text-gray-500 hover:text-black'}`}
-                  onClick={() => setSelectedCategory(category)}
+                  key={gender}
+                  className={`px-4 py-2 text-sm whitespace-nowrap ${selectedGender === gender ? 'border-b-2 border-black font-medium' : 'text-gray-500 hover:text-black'}`}
+                  onClick={() => setSelectedGender(gender)}
                 >
-                  {category}
+                  {gender}
                 </button>
               ))}
             </div>
             
-            {/* Price Range Slider */}
+            {/* Only show Categories if we have more than just 'All' */}
+            {categories.length > 1 && (
+              <div className="flex gap-6 overflow-x-auto pb-2 mb-6">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    className={`px-4 py-2 text-sm whitespace-nowrap ${selectedCategory === category ? 'border-b-2 border-black font-medium' : 'text-gray-500 hover:text-black'}`}
+                    onClick={() => setSelectedCategory(category)}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* Price Range Slider - Enhanced single slider */}
             <div className="w-full max-w-md mx-auto mb-6">
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-500">Price Range:</span>
-                <span className="text-sm font-medium">{priceRange[0]} - {priceRange[1]} EGP</span>
+                <span className="text-sm text-gray-500">Max Price:</span>
+                <span className="text-sm font-medium">{priceRange[1]} L.E</span>
               </div>
-              <div className="flex items-center gap-4">
-                <input 
-                  type="range" 
-                  min={minPrice} 
-                  max={maxPrice} 
-                  value={priceRange[0]} 
-                  onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
+              <div className="relative">
                 <input 
                   type="range" 
                   min={minPrice} 
                   max={maxPrice} 
                   value={priceRange[1]} 
-                  onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                 />
+                <div className="mt-2 flex justify-between">
+                  <span className="text-xs text-gray-500">{minPrice} L.E</span>
+                  <span className="text-xs text-gray-500">{maxPrice} L.E</span>
+                </div>
               </div>
             </div>
           </div>
@@ -404,8 +433,8 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
   // Calculate final price if there's a discount
   const finalPrice = product.discount ? product.price - (product.price * product.discount / 100) : product.price;
   const displayPrice = product.discount 
-    ? `${finalPrice} EGP` 
-    : `${product.price} EGP`;
+    ? `${finalPrice} L.E` 
+    : `${product.price} L.E`;
 
   const getStockStatus = () => {
     // Only show SOLD OUT if we explicitly know the product is out of stock
@@ -484,7 +513,7 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
         <div className={`font-light ${isMobile ? 'text-xs' : 'text-sm'}`}>
           <span className="text-black dark:text-white transition-colors duration-300">{displayPrice}</span>
           {product.discount && product.discount > 0 && (
-            <span className="ml-2 text-gray-500 line-through text-xs">{product.price} EGP</span>
+            <span className="ml-2 text-gray-500 line-through text-xs">{product.price} L.E</span>
           )}
         </div>
       </div>

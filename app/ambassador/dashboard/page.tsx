@@ -16,6 +16,7 @@ interface AmbassadorData {
   orders: number;
   paymentsPending: number;
   paymentsPaid: number;
+  productVideoLink?: string;
 }
 
 const AmbassadorDashboard = () => {
@@ -23,6 +24,8 @@ const AmbassadorDashboard = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [ambassadorData, setAmbassadorData] = useState<AmbassadorData | null>(null)
+  const [videoLink, setVideoLink] = useState('')
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   
   useEffect(() => {
     if (status === 'loading') return;
@@ -39,6 +42,10 @@ const AmbassadorDashboard = () => {
         
         if (response.ok) {
           setAmbassadorData(data);
+          // Set the video link from saved data if available
+          if (data.productVideoLink) {
+            setVideoLink(data.productVideoLink);
+          }
         } else {
           // If user is not an ambassador, redirect to ambassador page
           router.push('/ambassador');
@@ -52,6 +59,47 @@ const AmbassadorDashboard = () => {
 
     fetchAmbassadorData();
   }, [session, status, router]);
+  
+  // Function to submit video link to admin
+  const submitVideoLink = async () => {
+    if (!videoLink || !session?.user?.email) return;
+    
+    setSubmitStatus('loading');
+    
+    try {
+      const response = await fetch('/api/ambassador/update-video-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: session.user.email,
+          productVideoLink: videoLink
+        }),
+      });
+      
+      if (response.ok) {
+        setSubmitStatus('success');
+        // Update local state
+        if (ambassadorData) {
+          setAmbassadorData({
+            ...ambassadorData,
+            productVideoLink: videoLink
+          });
+        }
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      console.error('Error updating video link:', error);
+      setSubmitStatus('error');
+    }
+    
+    // Reset status after 3 seconds
+    setTimeout(() => {
+      setSubmitStatus('idle');
+    }, 3000);
+  };
 
   if (status === 'loading' || loading) {
     return (
@@ -120,6 +168,54 @@ const AmbassadorDashboard = () => {
           <p className="mt-2 text-amber-700 dark:text-amber-300">
             Thank you for being part of our ambassador program. You can use this dashboard to track your referrals and earnings.
           </p>
+        </div>
+        
+        {/* Video Link Input Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-medium mb-4">Product Video Link</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Share a link to your video showcasing our products. This helps us promote your content and track your influence.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="videoLink" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Video link for the product
+              </label>
+              <input
+                id="videoLink"
+                type="url"
+                value={videoLink}
+                onChange={(e) => setVideoLink(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+              />
+            </div>
+            <button
+              onClick={submitVideoLink}
+              disabled={submitStatus === 'loading'}
+              className={`w-full py-3 px-4 flex justify-center items-center gap-2 ${submitStatus === 'loading' ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-md text-sm font-medium transition-colors duration-300`}
+            >
+              {submitStatus === 'loading' ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </>
+              ) : 'Submit Video Link'}
+            </button>
+            {submitStatus === 'success' && (
+              <div className="mt-2 text-sm text-green-600 dark:text-green-400">
+                Video link submitted successfully!
+              </div>
+            )}
+            {submitStatus === 'error' && (
+              <div className="mt-2 text-sm text-red-600 dark:text-red-400">
+                Failed to submit video link. Please try again.
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -237,11 +333,11 @@ const AmbassadorDashboard = () => {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col">
             <span className="text-gray-500 text-sm mb-1">Sales</span>
-            <span className="text-3xl font-semibold">${ambassadorData.sales}</span>
+            <span className="text-3xl font-semibold">{ambassadorData.sales} L.E</span>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col">
             <span className="text-gray-500 text-sm mb-1">Earnings</span>
-            <span className="text-3xl font-semibold">${ambassadorData.earnings}</span>
+            <span className="text-3xl font-semibold">{ambassadorData.earnings} L.E</span>
           </div>
         </div>
 
@@ -249,11 +345,11 @@ const AmbassadorDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col">
             <span className="text-gray-500 text-sm mb-1">Amount Paid</span>
-            <span className="text-3xl font-semibold">${ambassadorData.paymentsPaid}</span>
+            <span className="text-3xl font-semibold">{ambassadorData.paymentsPaid} L.E</span>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col">
             <span className="text-gray-500 text-sm mb-1">Amount Pending</span>
-            <span className="text-3xl font-semibold">${ambassadorData.paymentsPending}</span>
+            <span className="text-3xl font-semibold">{ambassadorData.paymentsPending} L.E</span>
           </div>
         </div>
 
@@ -297,10 +393,10 @@ const AmbassadorDashboard = () => {
                       Anonymous
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      $120.00
+                      120.00 L.E
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      $60.00
+                      60.00 L.E
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">

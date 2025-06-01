@@ -16,11 +16,11 @@ const faqs: FaqItem[] = [
   },
   {
     question: "Shipping Time",
-    answer: "3-5 days || Dilevery is free.",
+    answer: "3-7 days || Dilevery is free.",
   },
   {
     question: "What is your shipping policy?",
-answer: "Shipping Coverage We currently ship only within the Arab Republic of Egypt. - Carrier  Deliveries are handled via Engez courier service. a Cost Free shipping anywhere in Egypt, with no minimum order value. Delivery Time Orders arrive within 3–5 business days from confirmation. Same‑day delivery is not available. Order Tracking & Support For updates or questions, contact us via: Phone/WhatsApp: 01024491885  Email:[eleve.egy.1@gmail.com](mailto:eleve.egy.1@gmail.com)* *Damaged in Transit* If your item arrives *damaged during shipping*, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment."
+answer: "Shipping Coverage We currently ship only within the Arab Republic of Egypt. - Carrier  Deliveries are handled via hashtag courier service.  Delivery Time Orders arrive within 3-7 business days from confirmation. Same‑day delivery is not available. Order Tracking & Support For updates or questions, contact us via: Phone/WhatsApp: 01024491885  Email:[eleve.egy.1@gmail.com](mailto:eleve.egy.1@gmail.com) Damaged in Transit  If your item arrives damaged during shipping, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment."
   },
   {
     question: "How can i track my orders?",
@@ -30,7 +30,7 @@ answer: "Shipping Coverage We currently ship only within the Arab Republic of Eg
   {
     question: "How to join our Ambassadors program?",
     answer:
-      "By applying in our website and following the instructions.",
+      "By [applying](/ambassador) in our website and following the instructions.",
   },
   
  

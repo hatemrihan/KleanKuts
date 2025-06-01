@@ -663,7 +663,7 @@ const CheckoutPage = () => {
       <Nav />
       <div className="min-h-screen bg-gray-50 dark:bg-black pt-20 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-black dark:text-white transition-colors duration-300">
-          <Link href="/cart" className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-8">
+          <Link href="/cart" className="inline-flex items-center gap-2 text-gray-300 hover:text-black mb-8">
             <span>←</span>
             <span>Back to cart</span>
           </Link>
@@ -684,7 +684,7 @@ const CheckoutPage = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-black dark:text-white">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-black dark:text-white mb-1">
                       First Name *
                     </label>
                     <input
@@ -700,7 +700,7 @@ const CheckoutPage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-black dark:text-white mb-1">
                       Last Name *
                     </label>
                     <input
@@ -717,7 +717,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-1">
                     Phone Number *
                   </label>
                   <input
@@ -733,7 +733,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-1">
                     Email *
                   </label>
                   <input
@@ -750,7 +750,7 @@ const CheckoutPage = () => {
 
                 {/* Payment Method Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-2">
                     Payment Method *
                   </label>
                   <div className="space-y-3">
@@ -801,7 +801,7 @@ const CheckoutPage = () => {
                     </div>
                     
                     <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-500 mb-1">
                         Upload Transaction Screenshot *
                       </label>
                       <input
@@ -833,7 +833,7 @@ const CheckoutPage = () => {
                 )}
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                  <label className="text-sm font-medium text-black dark:text-white mb-1 flex justify-between">
                     <span>Promo Code</span>
                     {promoDiscount && (
                       <span className="text-green-600 dark:text-green-400">Applied!</span>
@@ -867,7 +867,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-1">
                     Address *
                   </label>
                   <input
@@ -883,7 +883,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-1">
                     Apartment
                   </label>
                   <input
@@ -899,7 +899,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-1">
                     City *
                   </label>
                   <select
@@ -921,7 +921,7 @@ const CheckoutPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black dark:text-white mb-1">
                     Notes
                   </label>
                   <textarea
@@ -983,7 +983,11 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">Free</span>
+                  <span>
+                    {formData.city && Object.prototype.hasOwnProperty.call(shippingCosts, formData.city) ? 
+                      `L.E ${shippingCosts[formData.city as keyof typeof shippingCosts]}` : 
+                      'Select a city'}
+                  </span>
                 </div>
                 {promoDiscount && (
                   <div className="flex justify-between text-green-600 dark:text-green-400">

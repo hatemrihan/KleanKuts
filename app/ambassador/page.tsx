@@ -953,7 +953,21 @@ const AmbassadorPage = () => {
                 )}
               </div>
                 
-              <div className="flex items-center justify-end mt-10 pt-8 border-t border-black/10 dark:border-white/10">
+              <div className="mt-10 mb-8">
+                <a
+                  href="https://wa.me/+201024491885"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 inline-flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium transition-all text-sm rounded-md"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fillRule="evenodd" d="M17.415 14.382c-.298-.149-1.759-.867-2.031-.967-.272-.099-.47-.148-.669.15-.198.296-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.019-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.064 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zm-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884zm0-18.271A10.58 10.58 0 006.1 6.362 10.573 10.573 0 003.413 12a10.565 10.565 0 001.588 5.586l-1.51 5.507 5.649-1.482A10.578 10.578 0 0012 22.957c5.838 0 10.586-4.747 10.586-10.586 0-2.827-1.112-5.486-3.129-7.485a10.576 10.576 0 00-7.463-3.113z" clipRule="evenodd" />
+                  </svg>
+                  CONTACT US
+                </a>
+              </div>
+
+              <div className="flex items-center justify-end mt-6 pt-8 border-t border-black/10 dark:border-white/10">
                 <span className="text-xs text-black/60 dark:text-white/60">Designed with love</span>
                 <span className="ml-3 w-10 h-[1px] bg-black/20 dark:bg-white/20"></span>
                 <span className="ml-3 text-xs">2025</span>

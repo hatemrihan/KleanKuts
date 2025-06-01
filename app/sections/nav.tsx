@@ -28,16 +28,16 @@ const navItems = [
   //   href: '/collection/men',
   //   isScroll: true
   // },
-  {
-    label: 'FAQS',
-    href: '/#faqs',
-    isScroll: true
-  },
-  {
-    label: 'SAY HI',
-    href: '/#contact',
-    isScroll: true
-  },
+  // {
+  //   label: 'FAQS',
+  //   href: '/#faqs',
+  //   isScroll: true
+  // },
+  // {
+  //   label: 'SAY HI',
+  //   href: '/#contact',
+  //   isScroll: true
+  // },
   {
     label: 'BE OUR AMBASSADOR',
     href: '/ambassador',

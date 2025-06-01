@@ -1474,6 +1474,29 @@ const ProductPage = ({ params }: Props) => {
               </div>
             </div>
             
+            {/* Image indicators - small circles */}
+            {product.images.length > 1 && (
+              <div className="flex justify-center mt-4 gap-2">
+                {product.images.map((_, index) => (
+                  <div 
+                    key={`indicator-${index}`}
+                    className={`w-2 h-2 rounded-full cursor-pointer transition-all ${currentImageIndex === index ? 'bg-black dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'}`}
+                    onClick={() => {
+                      setCurrentImageIndex(index);
+                      const scrollableContainer = document.querySelector('.scrollable-x');
+                      if (scrollableContainer) {
+                        const imageWidth = scrollableContainer.clientWidth;
+                        scrollableContainer.scrollTo({
+                          left: index * imageWidth,
+                          behavior: 'smooth'
+                        });
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            
             {/* Right arrow indicator for multiple images - now clickable */}
             {product.images.length > 1 && (
               <button 

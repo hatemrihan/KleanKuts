@@ -14,9 +14,9 @@
 
 // In-memory blacklist (initial values)
 export const BLACKLISTED_PRODUCT_IDS = [
-  '6819b110064b2eeffa2c1941',  // Original problematic ID
-  '6819a258828e01d7e7d17e95',  // Second problematic ID
-  '681a4def311e3be5855f56aa',  // Third problematic ID from user's screenshot
+  '6819b110064b2eeffa2c1941hhh',  // Original problematic ID
+  '6819a258828e01d7e7d17e95hhhh',  // Second problematic ID
+  '681a4def311e3be5855f56aahhh',  // Third problematic ID from user's screenshot
   // Add any other problematic IDs here
 ];
 
