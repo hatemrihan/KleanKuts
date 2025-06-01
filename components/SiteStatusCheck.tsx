@@ -29,6 +29,33 @@ const SiteStatusCheck: React.FC<SiteStatusCheckProps> = ({ children }) => {
   
   // Redirect to waitlist if site is inactive and not an admin
   useEffect(() => {
+    // Force check site status in localStorage/sessionStorage on mount
+    const checkAdminStatus = () => {
+      const hasOverride = hasMaintenanceOverride();
+      setIsAdmin(hasOverride);
+      if (hasOverride) {
+        sessionStorage.setItem('adminOverride', 'true');
+      } else {
+        // Ensure we clear any stale admin override
+        sessionStorage.removeItem('adminOverride');
+      }
+    };
+    
+    checkAdminStatus();
+    
+    // Also clear the site status cache to force a fresh check
+    sessionStorage.removeItem('siteStatus');
+    sessionStorage.removeItem('siteStatusTime');
+    
+    // Add event listener to check admin status when storage changes
+    const handleStorageChange = () => checkAdminStatus();
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+  
+  // Handle redirects in a separate effect
+  useEffect(() => {
     if (!isLoading && !isActive && !isAdmin && typeof window !== 'undefined') {
       // Only redirect if we're not already on the waitlist page
       if (!isWaitlistPage) {

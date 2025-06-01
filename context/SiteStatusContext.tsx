@@ -78,16 +78,20 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
           }
         }
         
-        // Fetch fresh site status from the API with timeout
+        // Fetch fresh site status from the API with timeout and bypass cache
         console.log('Fetching site status from API');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
         try {
-          const response = await fetch('https://eleveadmin.netlify.app/api/site-status', {
+          // Add timestamp to URL to prevent caching
+          const cacheBuster = Date.now();
+          const response = await fetch(`https://eleveadmin.netlify.app/api/site-status?t=${cacheBuster}`, {
             headers: {
               'Accept': 'application/json',
-              'Origin': 'https://elevee.netlify.app'
+              'Origin': 'https://elevee.netlify.app',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
             },
             cache: 'no-store',
             signal: controller.signal
@@ -107,11 +111,16 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
           sessionStorage.setItem('siteStatusTime', Date.now().toString());
           
           // Check for any property that indicates the site is inactive
+          // Log the raw status data for debugging
+          console.log('Raw site status data:', JSON.stringify(data));
+          
           const siteInactive = 
             data.inactive === true || 
             data.status === 'INACTIVE' || 
             data.maintenance === true ||
-            data.active === false;
+            data.active === false ||
+            data.status?.toLowerCase() === 'inactive' ||
+            data.status?.toLowerCase() === 'maintenance';
           
           setStatus({
             isActive: !siteInactive,
