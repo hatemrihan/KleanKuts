@@ -98,8 +98,17 @@ const AmbassadorDashboard = () => {
     if (!videoLink || !session?.user?.email) return;
     
     setSubmitStatus('loading');
+    console.log('Submitting video link:', videoLink);
     
     try {
+      // Validate YouTube URL format before submission
+      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+/;
+      if (!youtubeRegex.test(videoLink)) {
+        console.error('Invalid YouTube URL format');
+        setSubmitStatus('error');
+        return;
+      }
+      
       // Add retries for better reliability
       let retries = 0;
       const maxRetries = 3;
@@ -107,6 +116,14 @@ const AmbassadorDashboard = () => {
       
       while (retries < maxRetries && !success) {
         try {
+          // Add direct logging of request details
+          console.log('Sending request:', {
+            url: '/api/ambassador/update-video-link',
+            method: 'POST',
+            email: session.user.email,
+            videoLink: videoLink
+          });
+          
           const response = await fetch('/api/ambassador/update-video-link', {
             method: 'POST',
             headers: {
@@ -120,21 +137,35 @@ const AmbassadorDashboard = () => {
             cache: 'no-store'
           });
           
+          // Log raw response
+          const responseText = await response.text();
+          console.log(`Response status: ${response.status}`, responseText);
+          
+          let responseData;
+          try {
+            // Try to parse response as JSON
+            responseData = JSON.parse(responseText);
+          } catch (parseError) {
+            console.warn('Response is not valid JSON:', responseText);
+          }
+          
           if (response.ok) {
-            const data = await response.json();
-            console.log('Video link submission successful:', data);
+            console.log('Video link submission successful:', responseData || responseText);
             success = true;
             setSubmitStatus('success');
             // Update local state
             if (ambassadorData) {
-              setAmbassadorData({
-                ...ambassadorData,
-                productVideoLink: videoLink
+              setAmbassadorData(prevData => {
+                if (!prevData) return null;
+                return {
+                  ...prevData,
+                  productVideoLink: videoLink
+                };
               });
             }
             break;
           } else {
-            console.warn(`Submission attempt ${retries + 1} failed:`, await response.text());
+            console.warn(`Submission attempt ${retries + 1} failed:`, responseText);
             retries++;
           }
         } catch (fetchError) {
@@ -175,22 +206,25 @@ const AmbassadorDashboard = () => {
 
   if (!ambassadorData) {
     return (
-      <div className="min-h-screen pt-24 px-4 flex flex-col items-center">
-        <h1 className="text-3xl font-semibold mb-8">Ambassador Dashboard</h1>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 max-w-md">
-          <div className="flex">
+      <div className="min-h-screen pt-16 px-4 flex flex-col items-center bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <h1 className="text-4xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Ambassador Dashboard</h1>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 max-w-md shadow-xl">
+          <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-8 w-8 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Not an Ambassador</h3>
-              <div className="mt-2 text-sm text-red-700">
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Not an Ambassador</h3>
+              <div className="mt-2 text-gray-600 dark:text-gray-300">
                 <p>You are not registered as an ambassador. Please apply to become an ambassador first.</p>
-                <div className="mt-4">
-                  <Link href="/ambassador" className="text-sm font-medium text-red-800 hover:text-red-600">
-                    Go to Ambassador Application
+                <div className="mt-6">
+                  <Link 
+                    href="/ambassador" 
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  >
+                    Apply to be an Ambassador
                   </Link>
                 </div>
               </div>
@@ -293,24 +327,24 @@ const AmbassadorDashboard = () => {
                   onClick={() => {
                     navigator.clipboard.writeText(ambassadorData.couponCode);
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md text-sm font-medium"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-md text-sm font-medium transition-colors duration-200"
                 >
                   Copy
                 </button>
               </div>
             ) : (
-              <div className="bg-pink-50 border border-pink-200 rounded-md p-4">
+              <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-pink-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-pink-800">No coupon code found!</h3>
-                    <div className="mt-2 text-sm text-pink-700">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">No coupon code found</h3>
+                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                       <p>You can request us for a coupon code to share with your followers.</p>
-                      <Link href="#" className="mt-2 inline-block text-pink-800 hover:text-pink-600 font-medium">
+                      <Link href="#" className="mt-2 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
                         Contact us
                       </Link>
                     </div>
@@ -319,7 +353,6 @@ const AmbassadorDashboard = () => {
               </div>
             )}
           </div>
-        </div>
 
         <h2 className="text-2xl font-semibold mb-6">Summary</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -358,7 +391,7 @@ const AmbassadorDashboard = () => {
           </div>
         </div>
       </div>
-   
+    </div>
   )
 }
 
