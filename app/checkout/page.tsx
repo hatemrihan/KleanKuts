@@ -443,6 +443,29 @@ const CheckoutPage = () => {
                 console.log('Reporting order with promo code to ambassador system...');
                 const reportResult = await reportSuccessfulOrder(orderDetails, promoDiscount.code);
                 console.log('Ambassador system report result:', reportResult);
+                
+                // ALSO track the coupon redemption for ambassador stats
+                console.log('Tracking coupon redemption for ambassador stats...');
+                const couponRedeemResult = await fetch('/api/coupon/redeem', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    code: promoDiscount.code,
+                    orderId: orderId || Date.now().toString(),
+                    orderAmount: totalWithShipping,
+                    customerEmail: formData.email.trim()
+                  })
+                });
+                
+                if (couponRedeemResult.ok) {
+                  const couponData = await couponRedeemResult.json();
+                  console.log('✅ Coupon redemption tracked successfully:', couponData);
+                } else {
+                  const couponError = await couponRedeemResult.text();
+                  console.error('⚠️ Failed to track coupon redemption:', couponError);
+                }
               } catch (ambassadorError) {
                 console.error('Error reporting to ambassador system:', ambassadorError);
                 // Don't block checkout flow if ambassador reporting fails
