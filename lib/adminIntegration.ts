@@ -86,81 +86,31 @@ export const ensureCloudinaryImages = (product: any): any => {
 };
 
 /**
- * Submits an email to the waitlist and ensures the count is updated
+ * Submits an email to the waitlist using the admin-specified format
  * @param email - The email to submit
- * @param source - The source of the submission (default: 'website')
  * @returns Whether the submission was successful
  */
-export const submitToWaitlist = async (
-  email: string, 
-  source: string = 'website'
-): Promise<boolean> => {
+export const submitToWaitlist = async (email: string): Promise<boolean> => {
   try {
-    // Determine environment and set URLs accordingly
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const ADMIN_URL = isDevelopment ? 'http://localhost:3001' : 'https://eleveadmin.netlify.app';
-    const WEBSITE_URL = isDevelopment ? 'http://localhost:3000' : 'https://elevee.netlify.app';
-    
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('Using admin URL:', ADMIN_URL);
-    console.log('Submitting to waitlist:', { email, source });
-    
-    const mainResponse = await fetch(`${ADMIN_URL}/api/waitlist`, {
+    const response = await fetch('https://eleveadmin.netlify.app/api/waitlist', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Origin': WEBSITE_URL,
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache'
+        'Origin': 'https://elevee.netlify.app'
       },
-      mode: 'cors',
-      body: JSON.stringify({ 
-        email,
-        source,
-        timestamp: new Date().toISOString()
+      body: JSON.stringify({
+        email: email,
+        source: 'e-commerce',
+        notes: 'Submitted from e-commerce site'
       })
     });
 
-    // Log the full response for debugging
-    console.log('Waitlist submission response:', {
-      status: mainResponse.status,
-      statusText: mainResponse.statusText
-    });
-    
-    // Check if the main submission was successful
-    if (mainResponse.status !== 201) {
-      const responseText = await mainResponse.text();
-      console.error('Failed to submit to waitlist:', mainResponse.status, responseText);
+    if (response.ok) {
+      return true;
+    } else {
+      console.error('Failed to submit to waitlist:', response.status);
       return false;
     }
-    
-    // Also submit to the count endpoint
-    try {
-      const countResponse = await fetch('https://eleveadmin.netlify.app/api/waitlist/count', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Origin': 'https://elevee.netlify.app',
-          'Cache-Control': 'no-cache'
-        },
-        credentials: 'omit',
-        body: JSON.stringify({
-          email,
-          source, 
-          timestamp: new Date().toISOString()
-        })
-      });
-      
-      if (!countResponse.ok) {
-        console.warn('Failed to update waitlist count, but main submission succeeded');
-      }
-    } catch (countError) {
-      console.warn('Error updating waitlist count:', countError);
-    }
-    
-    return true;
   } catch (error) {
     console.error('Error submitting to waitlist:', error);
     return false;

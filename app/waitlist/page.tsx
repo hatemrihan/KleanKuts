@@ -156,7 +156,7 @@ entranceAnimation();
       console.log('Submitting via Fetch API fallback...');
       
       // Use the centralized helper function to submit to waitlist
-      const success = await submitToWaitlist(emailAddress, 'website');
+      const success = await submitToWaitlist(emailAddress);
       
       if (success) {
         console.log('Successfully submitted via Fetch API with helper function');
@@ -211,42 +211,12 @@ entranceAnimation();
     setIsSubmitting(true);
     
     try {
-      // Save to localStorage as backup in case of network issues
-      try {
-        const storageData = {
-          email,
-          date: new Date().toISOString(),
-          status: 'pending'
-        };
-        localStorage.setItem('waitlist_pending', JSON.stringify(storageData));
-        console.log('Email saved to localStorage as pending');
-      } catch (storageError) {
-        console.error('Failed to save to localStorage:', storageError);
-      }
-      
-      // Submit with verification - only consider success if server confirms
-      console.log('Submitting waitlist with verification...');
-      const submissionSuccess = await submitWithVerification(email);
+      // Submit to waitlist with the admin-specified format
+      const submissionSuccess = await submitToWaitlist(email);
       
       if (submissionSuccess) {
-        // Only show success if we got server confirmation
-        console.log('Server confirmed submission success');
         setIsSubmitted(true);
         toast.success('Thanks for joining our waitlist!');
-        
-        // Update the localStorage status from pending to success
-        try {
-          const storageData = {
-            email,
-            date: new Date().toISOString(),
-            status: 'success'
-          };
-          localStorage.setItem('waitlist_last_submission', JSON.stringify(storageData));
-          // Remove from pending
-          localStorage.removeItem('waitlist_pending');
-        } catch (storageError) {
-          console.error('Failed to update localStorage:', storageError);
-        }
         
         // Track analytics event if available
         if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
@@ -256,8 +226,6 @@ entranceAnimation();
           });
         }
       } else {
-        // If server did not confirm success, show error to user
-        console.error('Server could not confirm submission success');
         toast.error('Unable to join waitlist. Please try again later.');
         
         // Track failure event
@@ -378,10 +346,10 @@ entranceAnimation();
               }}
               preload="metadata"
               className="absolute inset-0 w-full h-full object-cover"
-              poster="/images/brand-image.jpg"
+              poster="/videos/waitlist.mp4"
             >
               <source src="/videos/waitlist.mp4" type="video/mp4" />
-              <source src="/videos/waitlist.webm" type="video/webm" />
+            
               Your browser does not support the video tag.
             </video>
           </div>
