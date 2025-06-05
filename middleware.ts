@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  // Add this console.log at the START as requested by admin
+  console.log('[MIDDLEWARE] Running on path:', request.nextUrl.pathname);
+  
   const { pathname } = request.nextUrl;
 
   // Skip middleware for API routes, static files, and waitlist page
@@ -12,11 +15,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/images') ||
     pathname === '/waitlist'
   ) {
+    console.log('[MIDDLEWARE] Skipping middleware for:', pathname);
     return NextResponse.next();
   }
 
   try {
-    console.log('[MIDDLEWARE] Checking site status for path:', pathname);
+    // Add this in middleware before checking site status as requested by admin
+    console.log('[MIDDLEWARE] Checking site status...');
     
     // Fetch site status from admin API - using correct endpoint
     const response = await fetch('https://eleveadmin.netlify.app/api/site-status', {
@@ -27,7 +32,7 @@ export async function middleware(request: NextRequest) {
       }
     });
 
-    console.log('[MIDDLEWARE] API response status:', response.status);
+    console.log('[MIDDLEWARE] API Response status:', response.status);
     
     if (!response.ok) {
       console.error('[MIDDLEWARE] API request failed:', response.status, response.statusText);
@@ -35,17 +40,13 @@ export async function middleware(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('[MIDDLEWARE] Full API response:', JSON.stringify(data, null, 2));
+    console.log('[MIDDLEWARE] Site status data:', data);
     
-    // Check different possible response formats
-    const isInactive = 
-      data?.status === 'inactive' || 
-      data?.active === false || 
-      data?.data?.active === false ||
-      data?.maintenance === true ||
-      data?.data?.maintenance === true;
+    // Check admin's exact format: {status: "inactive"} or {status: "active"}
+    const isInactive = data.status === 'inactive';
     
     console.log('[MIDDLEWARE] Site inactive check result:', isInactive);
+    console.log('[MIDDLEWARE] Current pathname:', pathname);
     
     // If site is inactive, redirect ALL traffic to waitlist
     if (isInactive) {
