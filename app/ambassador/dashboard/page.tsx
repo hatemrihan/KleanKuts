@@ -15,6 +15,7 @@ interface AmbassadorData {
   paymentsPending: number;
   paymentsPaid: number;
   productVideoLink?: string;
+  lastUpdated?: Date;
 }
 
 const AmbassadorDashboard = () => {
@@ -94,98 +95,93 @@ const AmbassadorDashboard = () => {
   }, [session, status, router]);
   
   // Function to submit video link to admin
+  const validateSocialMediaUrl = (url: string) => {
+    const socialMediaRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|facebook\.com|fb\.watch|instagram\.com|tiktok\.com|twitter\.com|threads\.net|vimeo\.com|snapchat\.com)\/.+/;
+    return socialMediaRegex.test(url);
+  };
+
   const submitVideoLink = async () => {
-    if (!videoLink || !session?.user?.email) return;
-    
-    setSubmitStatus('loading');
-    console.log('Submitting video link:', videoLink);
-    
-    try {
-      // Validate YouTube URL format before submission
-      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+/;
-      if (!youtubeRegex.test(videoLink)) {
-        console.error('Invalid YouTube URL format');
-        setSubmitStatus('error');
-        return;
-      }
-      
-      // Add retries for better reliability
-      let retries = 0;
-      const maxRetries = 3;
-      let success = false;
-      
-      while (retries < maxRetries && !success) {
-        try {
-          // Add direct logging of request details
-          console.log('Sending request:', {
-            url: '/api/ambassador/update-video-link',
-            method: 'POST',
-            email: session.user.email,
-            videoLink: videoLink
-          });
-          
-          const response = await fetch('/api/ambassador/update-video-link', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: session.user.email,
-              productVideoLink: videoLink
-            }),
-            // Add cache control to avoid caching issues
-            cache: 'no-store'
-          });
-          
-          // Log raw response
-          const responseText = await response.text();
-          console.log(`Response status: ${response.status}`, responseText);
-          
-          let responseData;
-          try {
-            // Try to parse response as JSON
-            responseData = JSON.parse(responseText);
-          } catch (parseError) {
-            console.warn('Response is not valid JSON:', responseText);
-          }
-          
-          if (response.ok) {
-            console.log('Video link submission successful:', responseData || responseText);
-            success = true;
-            setSubmitStatus('success');
-            // Update local state
-            if (ambassadorData) {
-              setAmbassadorData(prevData => {
-                if (!prevData) return null;
-                return {
-                  ...prevData,
-                  productVideoLink: videoLink
-                };
-              });
-            }
-            break;
-          } else {
-            console.warn(`Submission attempt ${retries + 1} failed:`, responseText);
-            retries++;
-          }
-        } catch (fetchError) {
-          console.error(`Submission attempt ${retries + 1} error:`, fetchError);
-          retries++;
-        }
-      }
-      
-      if (!success) {
-        setSubmitStatus('error');
-      }
-    } catch (error) {
-      console.error('Error updating video link:', error);
+    if (!videoLink || !session?.user?.email) {
       setSubmitStatus('error');
+      alert('Please enter a video link');
+      return;
     }
     
-    // Reset status after 3 seconds
+    if (!validateSocialMediaUrl(videoLink)) {
+      setSubmitStatus('error');
+      alert('Please enter a valid social media URL from YouTube, Facebook, Instagram, TikTok, Twitter, Threads, Vimeo, or Snapchat');
+      return;
+    }
+    
+    setSubmitStatus('loading');
+    
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch('/api/ambassador/update-video-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: session.user.email,
+            productVideoLink: videoLink
+          }),
+          cache: 'no-store'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Update was successful
+          setSubmitStatus('success');
+          // Update local state
+          setAmbassadorData(prevData => {
+            if (!prevData) return null;
+            return {
+              ...prevData,
+              productVideoLink: videoLink
+            };
+          });
+          
+          // Show success alert
+          alert('Video link updated successfully!');
+          return;
+        } else {
+          // Handle specific error cases
+          lastError = data.error || 'Failed to update video link';
+          
+          if (response.status === 404) {
+            alert('Ambassador account not found. Please try logging in again.');
+            return;
+          }
+          
+          // Only continue retrying on 500 errors
+          if (response.status !== 500) {
+            break;
+          }
+        }
+      } catch (error) {
+        console.error(`Attempt ${attempt + 1} failed:`, error);
+        lastError = 'Network error occurred';
+      }
+      
+      // Wait before retrying (exponential backoff)
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
+    
+    // If we get here, all attempts failed
+    setSubmitStatus('error');
+    alert(lastError || 'Failed to update video link. Please try again later.');
+    
+    // Reset status after 5 seconds
     setTimeout(() => {
       setSubmitStatus('idle');
-    }, 3000);
+    }, 5000);
   };
 
   if (status === 'loading' || loading) {
@@ -276,35 +272,62 @@ const AmbassadorDashboard = () => {
                 type="url"
                 value={videoLink}
                 onChange={(e) => setVideoLink(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
+                placeholder="Enter your social media content URL..."
                 className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600"
               />
-            </div>
-            <button
-              onClick={submitVideoLink}
-              disabled={submitStatus === 'loading'}
-              className={`w-full py-3 px-4 flex justify-center items-center gap-2 ${submitStatus === 'loading' ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-md text-sm font-medium transition-colors duration-300`}
-            >
-              {submitStatus === 'loading' ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Submitting...
-                </>
-              ) : 'Submit Video Link'}
-            </button>
-            {submitStatus === 'success' && (
-              <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                Video link submitted successfully!
-              </div>
-            )}
-            {submitStatus === 'error' && (
-              <div className="mt-2 text-sm text-red-600 dark:text-red-400">
-                Failed to submit video link. Please try again.
-              </div>
-            )}
+            </div>              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
+                Please enter a valid YouTube video URL (e.g., https://www.youtube.com/watch?v=...)
+              </p>
+              <button
+                onClick={submitVideoLink}
+                disabled={submitStatus === 'loading' || !videoLink}
+                className={`w-full py-3 px-4 flex justify-center items-center gap-2 
+                  ${!videoLink ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' :
+                    submitStatus === 'loading' ? 'bg-gray-400 dark:bg-gray-600' : 
+                    'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'} 
+                  text-white rounded-md text-sm font-medium transition-colors duration-300`}
+              >
+                {submitStatus === 'loading' ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Submit Video Link
+                  </>
+                )}
+              </button>
+              {submitStatus === 'success' && (
+                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <div className="flex items-center">
+                    <svg className="h-4 w-4 text-green-500 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-sm text-green-700 dark:text-green-300">
+                      Video link submitted successfully!
+                    </span>
+                  </div>
+                </div>
+              )}
+              {submitStatus === 'error' && (
+                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <div className="flex items-center">
+                    <svg className="h-4 w-4 text-red-500 dark:text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm text-red-700 dark:text-red-300">
+                      Failed to submit video link. Please check the URL and try again.
+                    </span>
+                  </div>
+                </div>
+              )}
           </div>
         </div>
 

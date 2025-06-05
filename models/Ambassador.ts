@@ -11,6 +11,8 @@ export interface IAmbassador {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
   updatedAt: Date;
+  lastUpdated?: Date;
+  productVideoLink?: string;
   referrals: number;
   orders: number;
   conversions: number;
@@ -57,6 +59,8 @@ const ambassadorSchema = new Schema<IAmbassador>(
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending'
     },
+    productVideoLink: { type: String },
+    lastUpdated: { type: Date },
     referrals: { type: Number, default: 0 },
     orders: { type: Number, default: 0 },
     conversions: { type: Number, default: 0 },

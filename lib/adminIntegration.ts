@@ -96,18 +96,42 @@ export const submitToWaitlist = async (
   source: string = 'website'
 ): Promise<boolean> => {
   try {
-    // Submit to the main waitlist endpoint
-    const mainResponse = await fetch('https://eleveadmin.netlify.app/api/waitlist', {
+    // Determine environment and set URLs accordingly
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const ADMIN_URL = isDevelopment ? 'http://localhost:3001' : 'https://eleveadmin.netlify.app';
+    const WEBSITE_URL = isDevelopment ? 'http://localhost:3000' : 'https://elevee.netlify.app';
+    
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Using admin URL:', ADMIN_URL);
+    console.log('Submitting to waitlist:', { email, source });
+    
+    const mainResponse = await fetch(`${ADMIN_URL}/api/waitlist`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Origin': WEBSITE_URL,
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache'
       },
-      body: JSON.stringify({ email, source })
+      mode: 'cors',
+      body: JSON.stringify({ 
+        email,
+        source,
+        timestamp: new Date().toISOString()
+      })
+    });
+
+    // Log the full response for debugging
+    console.log('Waitlist submission response:', {
+      status: mainResponse.status,
+      statusText: mainResponse.statusText
     });
     
     // Check if the main submission was successful
     if (mainResponse.status !== 201) {
-      console.error('Failed to submit to waitlist:', mainResponse.status);
+      const responseText = await mainResponse.text();
+      console.error('Failed to submit to waitlist:', mainResponse.status, responseText);
       return false;
     }
     
@@ -117,8 +141,16 @@ export const submitToWaitlist = async (
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Origin': 'https://elevee.netlify.app',
+          'Cache-Control': 'no-cache'
         },
-        body: JSON.stringify({ email, source })
+        credentials: 'omit',
+        body: JSON.stringify({
+          email,
+          source, 
+          timestamp: new Date().toISOString()
+        })
       });
       
       if (!countResponse.ok) {

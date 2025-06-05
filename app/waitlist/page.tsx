@@ -32,10 +32,9 @@ entranceAnimation();
       target.scrollIntoView({behavior:'smooth'});
     }
     const [isOpen, setIsOpen] = useState(false);
-  
-  // Animation will run automatically when component mounts (handled by the hook)
+    // Animation will run automatically when component mounts (handled by the hook)
 
-  // Exactly as requested: Submit using a hidden iframe technique with server response verification
+  // Submit using a hidden iframe technique with server response verification
   const submitViaIframe = (emailAddress: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
       console.log('Submitting with hidden iframe technique...');
@@ -45,16 +44,29 @@ entranceAnimation();
       const iframe = document.createElement('iframe');
       iframe.name = iframeName;
       iframe.style.display = 'none';
+      
+      // Add proper message handling for cross-origin response
+      const messageHandler = (event: MessageEvent) => {
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        const expectedOrigin = isDevelopment ? 'http://localhost:3001' : 'https://eleveadmin.netlify.app';
+        
+        if (event.origin === expectedOrigin) {
+          if (event.data === 'waitlist-success') {
+            console.log('Received success message from admin');
+            window.removeEventListener('message', messageHandler);
+            resolve(true);
+          }
+        }
+      };
+      
+      window.addEventListener('message', messageHandler);
+      
       iframe.onload = () => {
-        // Try to read the response from the iframe
-        try {
-          // We can't access iframe content directly due to CORS, so we'll consider load a success
+        // Set a success timeout in case message isn't received
+        setTimeout(() => {
           console.log('Iframe loaded, considering submission successful');
           resolve(true);
-        } catch (error) {
-          console.warn('Could not determine submission status from iframe:', error);
-          resolve(false); // Still resolve but with false to indicate uncertainty
-        }
+        }, 2000);
       };
       
       iframe.onerror = (error) => {
@@ -63,53 +75,77 @@ entranceAnimation();
       };
       
       document.body.appendChild(iframe);
-      
-      // Create a form with EXACTLY the fields requested by admin
+        // Determine the correct admin URL based on environment
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const ADMIN_URL = isDevelopment ? 'http://localhost:3001' : 'https://eleveadmin.netlify.app';
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Using admin URL:', ADMIN_URL);
+
       const form = document.createElement('form');
       form.target = iframeName;
       form.method = 'POST';
-      form.action = 'https://eleveadmin.netlify.app/api/waitlist';
+      form.action = `${ADMIN_URL}/api/waitlist`;
       form.style.display = 'none';
       
-      // ONLY include the exact fields specified by admin
-      // 'email' field (required)
+      // Add all required fields exactly as specified by admin
+      // Email field
       const emailField = document.createElement('input');
       emailField.type = 'email';
-      emailField.name = 'email'; // Exact field name as required
+      emailField.name = 'email';
       emailField.value = emailAddress;
       form.appendChild(emailField);
       
-      // 'source' field (set to 'website')
+      // Source field
       const sourceField = document.createElement('input');
       sourceField.type = 'text';
-      sourceField.name = 'source'; // Exact field name as required
-      sourceField.value = 'website'; // Exact value as required
+      sourceField.name = 'source';
+      sourceField.value = 'website';
       form.appendChild(sourceField);
+      
+      // Timestamp field
+      const timestampField = document.createElement('input');
+      timestampField.type = 'hidden';
+      timestampField.name = 'timestamp';
+      timestampField.value = new Date().toISOString();
+      form.appendChild(timestampField);
       
       document.body.appendChild(form);
       form.submit();
-      
-      // Set a timeout to prevent hanging forever
+        // Set a timeout to prevent hanging forever
       const timeoutId = setTimeout(() => {
         console.warn('Iframe submission timed out');
+        cleanup();
         reject(new Error('Submission timed out'));
       }, 10000);
-      
-      // Clean up function
+        // Clean up function with improved error handling and message handler reference
       const cleanup = () => {
         clearTimeout(timeoutId);
         try {
-          document.body.removeChild(form);
-          document.body.removeChild(iframe);
+          // Remove event listener first to prevent any race conditions
+          if (messageHandler) {
+            window.removeEventListener('message', messageHandler);
+          }
+          // Then remove DOM elements
+          if (form?.parentNode) {
+            form.parentNode.removeChild(form);
+          }
+          if (iframe?.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
         } catch (e) {
           console.warn('Cleanup error:', e);
         }
       };
       
-      // Attach cleanup to promise resolution
+      // Set up cleanup on success or error
       Promise.resolve().then(() => {
-        // Give the iframe time to load (5 seconds) before cleanup
-        setTimeout(cleanup, 5000);
+        // Give the iframe time to load and process before cleanup
+        setTimeout(() => {
+          cleanup();
+          // If we haven't resolved/rejected by now, consider it a success
+          // since the admin endpoint might not send a response
+          resolve(true);
+        }, 5000);
       });
     });
   };

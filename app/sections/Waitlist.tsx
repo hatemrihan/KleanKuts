@@ -6,7 +6,6 @@ import Nav from '@/app/sections/nav';
 import { toast } from 'react-hot-toast';
 import { useScroll, useTransform, motion } from 'framer-motion';
 import useTextRevealAnimation from '../hooks/UsingTextRevealAnimation';
-import { submitToWaitlist } from '../../lib/adminIntegration';
 
 const Waitlist = () => {
   const [email, setEmail] = useState('');
@@ -32,14 +31,14 @@ entranceAnimation();
       target.scrollIntoView({behavior:'smooth'});
     }
     const [isOpen, setIsOpen] = useState(false);
-  
+
   // Animation will run automatically when component mounts (handled by the hook)
 
   // Exactly as requested: Submit using a hidden iframe technique with server response verification
   const submitViaIframe = (emailAddress: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
       console.log('Submitting with hidden iframe technique...');
-      
+
       // Create a hidden iframe for target with message handling
       const iframeName = 'waitlist_submit_frame_' + Date.now();
       const iframe = document.createElement('iframe');
@@ -56,21 +55,26 @@ entranceAnimation();
           resolve(false); // Still resolve but with false to indicate uncertainty
         }
       };
-      
+
       iframe.onerror = (error) => {
         console.error('Iframe submission error:', error);
         reject(new Error('Iframe failed to load'));
       };
-      
+
       document.body.appendChild(iframe);
-      
-      // Create a form with EXACTLY the fields requested by admin
+
+      // Determine the correct admin URL based on environment
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const ADMIN_URL = isDevelopment ? 'http://localhost:3001' : 'https://eleveadmin.netlify.app';
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Using admin URL:', ADMIN_URL);
+
       const form = document.createElement('form');
       form.target = iframeName;
       form.method = 'POST';
-      form.action = 'https://eleveadmin.netlify.app/api/waitlist';
+      form.action = `${ADMIN_URL}/api/waitlist`;
       form.style.display = 'none';
-      
+
       // ONLY include the exact fields specified by admin
       // 'email' field (required)
       const emailField = document.createElement('input');
@@ -78,23 +82,23 @@ entranceAnimation();
       emailField.name = 'email'; // Exact field name as required
       emailField.value = emailAddress;
       form.appendChild(emailField);
-      
+
       // 'source' field (set to 'website')
       const sourceField = document.createElement('input');
       sourceField.type = 'text';
       sourceField.name = 'source'; // Exact field name as required
       sourceField.value = 'website'; // Exact value as required
       form.appendChild(sourceField);
-      
+
       document.body.appendChild(form);
       form.submit();
-      
+
       // Set a timeout to prevent hanging forever
       const timeoutId = setTimeout(() => {
         console.warn('Iframe submission timed out');
         reject(new Error('Submission timed out'));
       }, 10000);
-      
+
       // Clean up function
       const cleanup = () => {
         clearTimeout(timeoutId);
@@ -105,7 +109,7 @@ entranceAnimation();
           console.warn('Cleanup error:', e);
         }
       };
-      
+
       // Attach cleanup to promise resolution
       Promise.resolve().then(() => {
         // Give the iframe time to load (5 seconds) before cleanup
@@ -113,20 +117,42 @@ entranceAnimation();
       });
     });
   };
-  
+
   // Fallback to Fetch API if iframe approach fails
   const submitViaFetchApi = async (emailAddress: string): Promise<boolean> => {
     try {
       console.log('Submitting via Fetch API fallback...');
+
+      // Determine if we're in development or production
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const ADMIN_URL = isDevelopment ? 'http://localhost:3001' : 'https://eleveadmin.netlify.app';
+      const WEBSITE_URL = isDevelopment ? 'http://localhost:3000' : 'https://elevee.netlify.app';
       
-      // Use the centralized helper function to submit to waitlist
-      const success = await submitToWaitlist(emailAddress, 'website');
-      
-      if (success) {
-        console.log('Successfully submitted via Fetch API with helper function');
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Using admin URL for fetch:', ADMIN_URL);
+
+      const response = await fetch(`${ADMIN_URL}/api/waitlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Origin': WEBSITE_URL,
+          'Access-Control-Allow-Origin': '*',
+        },
+        mode: 'cors',
+        body: JSON.stringify({
+          email: emailAddress,
+          source: 'website',
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      // Check for 201 status code as specified
+      if (response.status === 201) {
+        console.log('Successfully submitted via Fetch API with 201 status');
         return true;
       } else {
-        console.error('Fetch API submission failed');
+        console.error('Fetch API submission failed with status:', response.status);
         return false;
       }
     } catch (error) {
@@ -134,7 +160,7 @@ entranceAnimation();
       return false;
     }
   };
-  
+
   // Try both methods and wait for confirmation before showing success
   const submitWithVerification = async (emailAddress: string): Promise<boolean> => {
     // Try hidden iframe approach first (as requested)
@@ -147,7 +173,7 @@ entranceAnimation();
     } catch (iframeError) {
       console.error('Hidden iframe submission failed:', iframeError);
     }
-    
+
     // If iframe approach fails, try fetch API as fallback
     try {
       const fetchSuccess = await submitViaFetchApi(emailAddress);
@@ -158,22 +184,22 @@ entranceAnimation();
     } catch (fetchError) {
       console.error('Fetch API submission failed:', fetchError);
     }
-    
+
     // If both methods fail, return false to show error message
     console.error('All submission methods failed');
     return false;
   };
-  
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.includes('@')) {
       toast.error('Please enter a valid email address');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Save to localStorage as backup in case of network issues
       try {
@@ -187,17 +213,17 @@ entranceAnimation();
       } catch (storageError) {
         console.error('Failed to save to localStorage:', storageError);
       }
-      
+
       // Submit with verification - only consider success if server confirms
       console.log('Submitting waitlist with verification...');
       const submissionSuccess = await submitWithVerification(email);
-      
+
       if (submissionSuccess) {
         // Only show success if we got server confirmation
         console.log('Server confirmed submission success');
         setIsSubmitted(true);
         toast.success('Thanks for joining our waitlist!');
-        
+
         // Update the localStorage status from pending to success
         try {
           const storageData = {
@@ -211,7 +237,7 @@ entranceAnimation();
         } catch (storageError) {
           console.error('Failed to update localStorage:', storageError);
         }
-        
+
         // Track analytics event if available
         if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
           (window as any).gtag('event', 'waitlist_submission_success', {
@@ -223,7 +249,7 @@ entranceAnimation();
         // If server did not confirm success, show error to user
         console.error('Server could not confirm submission success');
         toast.error('Unable to join waitlist. Please try again later.');
-        
+
         // Track failure event
         if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
           (window as any).gtag('event', 'waitlist_submission_error', {
@@ -243,7 +269,7 @@ entranceAnimation();
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col transition-colors duration-300">
       {/* Navigation */}
-     
+
       <main className="flex-grow flex flex-col">
         {/* Hero Section */}
         <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
@@ -252,13 +278,15 @@ entranceAnimation();
               ref={scope}
               initial={{ opacity: 0, y: 50 }}
               animate={controls}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-10 max-w-4xl uppercase tracking-wider"
+              className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-8 max-w-4xl uppercase tracking-wider"
             >
+              <span>Eleve Egypt | Luxury Clothing Brand in Egypt</span>
               <span>Eleve Egypt </span>
               <br />
+              <span>Premium Quality</span>
               <span className="font-light">Luxury StreetWear  </span>
             </motion.h1>
-            
+
             {!isSubmitted ? (
               <>
                 <p className="text-gray-600 dark:text-white/80 mb-12 transition-colors duration-300 uppercase tracking-widest font-medium">JOIN OUR WAITLIST</p>
@@ -288,7 +316,7 @@ entranceAnimation();
                 <h2 className="text-4xl md:text-5xl font-bold mb-8 text-black dark:text-white">
                   THANK YOU FOR JOINING OUR WAITLIST!
                 </h2>
-                
+
                 <div className="bg-green-50 dark:bg-green-900 p-6 rounded-lg w-full mb-8">
                   <div className="flex items-center justify-center mb-4">
                     <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -302,18 +330,18 @@ entranceAnimation();
                     We'll keep you updated on our latest collections and exclusive offers.
                   </p>
                 </div>
-                
+
                 <p className="text-gray-600 dark:text-gray-300 mb-8">
                   You'll be among the first to know when we launch new products and exclusive collections.
                 </p>
-                
+
                 <button 
                   onClick={() => setIsSubmitted(false)}
                   className="py-3 px-8 bg-black text-white dark:bg-white dark:text-black font-medium transition-colors hover:bg-gray-800 dark:hover:bg-gray-200 mb-4"
                 >
                   Subscribe Another Email
                 </button>
-                
+
                 {/* <Link href="/collection" className="text-black dark:text-white underline">
                   Explore Our Collection
                 </Link> */}
@@ -321,7 +349,7 @@ entranceAnimation();
             )}
           </div>
         </section>
-        
+
         {/* Video Section */}
         <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
           <div className=" overflow-hidden shadow-2xl shadow-gray-200 dark:shadow-white/10 w-full relative aspect-video transition-shadow duration-300">
@@ -337,7 +365,7 @@ entranceAnimation();
             </video>
           </div>
         </section>
-        
+
         {/* Thank You Section */}
         <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full text-center">
           <motion.h2 
@@ -347,7 +375,7 @@ entranceAnimation();
           >
             ELEVE
           </motion.h2>
-          
+
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={controls}
@@ -357,7 +385,7 @@ entranceAnimation();
             We just wanted to thank you all for such intense support over our first drop. We're dedicated to
             continuing growth of this store alongside our community, and look forward to what is to come.
           </motion.p>
-          
+
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={controls}
@@ -366,7 +394,7 @@ entranceAnimation();
           >
             P.S. TAKE ACTION.
           </motion.p>
-          
+
           <div className="flex justify-center space-x-8">
             {/* Instagram */}
             <motion.div
@@ -382,7 +410,7 @@ entranceAnimation();
                 </svg>
               </Link>
             </motion.div>
-            
+
             {/* TikTok */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -395,7 +423,7 @@ entranceAnimation();
                 </svg>
               </Link>
             </motion.div>
-            
+
             {/* Gmail */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
