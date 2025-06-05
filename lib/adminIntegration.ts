@@ -90,7 +90,7 @@ export const ensureCloudinaryImages = (product: any): any => {
  * @param email - The email to submit
  * @returns Whether the submission was successful
  */
-export const submitToWaitlist = async (email: string): Promise<boolean> => {
+export const submitToWaitlist = async (email: string, p0: string): Promise<boolean> => {
   try {
     console.log('Attempting to submit email to waitlist:', email);
     
