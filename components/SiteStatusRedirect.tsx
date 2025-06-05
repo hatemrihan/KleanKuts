@@ -15,7 +15,7 @@ export default function SiteStatusRedirect() {
 
     const checkSiteStatus = async () => {
       try {
-        console.log('[SITE REDIRECT] Checking site status...');
+        console.log('[SITE REDIRECT] Checking site status for path:', pathname);
         
         const response = await fetch('/api/site-status', {
           cache: 'no-store',
@@ -29,10 +29,19 @@ export default function SiteStatusRedirect() {
           console.log('[SITE REDIRECT] Site status:', data);
           
           if (data.status === 'inactive') {
-            console.log('[SITE REDIRECT] Site is inactive, redirecting to waitlist');
-            router.push('/waitlist');
-          } else {
-            console.log('[SITE REDIRECT] Site is active, allowing normal access');
+            // Site is inactive - redirect to waitlist if not already there
+            if (pathname !== '/waitlist') {
+              console.log('[SITE REDIRECT] Site is inactive, redirecting to waitlist');
+              router.push('/waitlist');
+            }
+          } else if (data.status === 'active') {
+            // Site is active - redirect away from waitlist to homepage
+            if (pathname === '/waitlist') {
+              console.log('[SITE REDIRECT] Site is active, redirecting to homepage');
+              router.push('/');
+            } else {
+              console.log('[SITE REDIRECT] Site is active, allowing normal access');
+            }
           }
         } else {
           console.error('[SITE REDIRECT] Failed to fetch site status:', response.status);
