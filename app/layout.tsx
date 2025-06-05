@@ -24,6 +24,12 @@ const StoreCurrentPathWithNoSSR = dynamic(
   { ssr: false }
 );
 
+// Dynamically import the SiteStatusRedirect component with SSR disabled
+const SiteStatusRedirectWithNoSSR = dynamic(
+  () => import('../components/SiteStatusRedirect'),
+  { ssr: false }
+);
+
 const openSans = Open_Sans({ subsets: ['latin'] });
 const abrilFatface = Abril_Fatface({ 
   weight: '400',
@@ -80,6 +86,8 @@ export default function RootLayout({
           <ThemeInitializer />
           {/* Store current path in localStorage */}
           <StoreCurrentPathWithNoSSR />
+          {/* Backup site status redirect */}
+          <SiteStatusRedirectWithNoSSR />
           <SiteStatusCheckWithNoSSR>
             {children}
           </SiteStatusCheckWithNoSSR>

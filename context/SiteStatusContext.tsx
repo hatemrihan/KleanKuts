@@ -82,10 +82,9 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
         try {
           // Add timestamp to URL to prevent caching
           const cacheBuster = Date.now();
-          const response = await fetch(`https://eleveadmin.netlify.app/api/site-status?t=${cacheBuster}`, {
+          const response = await fetch(`/api/site-status?t=${cacheBuster}`, {
             headers: {
               'Accept': 'application/json',
-              'Origin': 'https://elevee.netlify.app',
               'Cache-Control': 'no-cache, no-store, must-revalidate',
               'Pragma': 'no-cache'
             },

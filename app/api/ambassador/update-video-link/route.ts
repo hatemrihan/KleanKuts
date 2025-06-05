@@ -87,13 +87,10 @@ export async function POST(req: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.ADMIN_API_KEY || ''}`,
-          'Origin': process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'
         },
         body: JSON.stringify({ 
           email, 
-          productVideoLink,
-          ambassadorId: ambassador._id.toString()
+          productVideoLink
         }),
       });
 
