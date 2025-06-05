@@ -51,12 +51,8 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
           if (timeDiff < 300000) {
             console.log('Using cached site status');
 
-            // Check for any property that indicates the site is inactive
-            const siteInactive = 
-              parsedStatus.inactive === true || 
-              parsedStatus.status === 'INACTIVE' || 
-              parsedStatus.maintenance === true ||
-              parsedStatus.active === false;
+            // Check for admin's exact format: {status: "inactive"} or {status: "active"}
+            const siteInactive = parsedStatus.status === 'inactive';
 
             setStatus({
               isActive: !siteInactive,
@@ -110,17 +106,14 @@ export const SiteStatusProvider = ({ children }: { children: ReactNode }) => {
           sessionStorage.setItem('siteStatus', JSON.stringify(data));
           sessionStorage.setItem('siteStatusTime', Date.now().toString());
           
-          // Check for any property that indicates the site is inactive
-          // Log the raw status data for debugging
-          console.log('Raw site status data:', JSON.stringify(data));
+          // Check for admin's exact format: {status: "inactive"} or {status: "active"}
+          const siteInactive = data.status === 'inactive';
           
-          const siteInactive = 
-            data.inactive === true || 
-            data.status === 'INACTIVE' || 
-            data.maintenance === true ||
-            data.active === false ||
-            data.status?.toLowerCase() === 'inactive' ||
-            data.status?.toLowerCase() === 'maintenance';
+          console.log('Site status check:', {
+            rawStatus: data.status,
+            isInactive: siteInactive,
+            fullData: data
+          });
           
           setStatus({
             isActive: !siteInactive,
