@@ -113,39 +113,30 @@ export async function testApiConnection(): Promise<boolean> {
 
 /**
  * Send one e-mail to the Admin wait-list API.
- * Nothing fancy – just what the Admin developer asked for.
+ * Using our own API route to bypass CORS issues.
  */
 export async function submitToWaitlist(email: string): Promise<boolean> {
-  const fullURL = `${API_BASE_URL}/waitlist`;
-  
-  console.log('[DEBUG] Full URL being called:', fullURL);
-
   try {
-    const response = await fetch(fullURL, {
+    const response = await fetch('/api/waitlist', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        email,
-        source: 'e-commerce',
-        notes: 'Submitted from e-commerce site'
-      })
+      body: JSON.stringify({ email })
     });
 
     console.log('[DEBUG] Response status:', response.status);
-    console.log('[DEBUG] Response ok:', response.ok);
 
-    if (!response.ok) {
-      console.error('[WAITLIST] Admin API responded', response.status);
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[DEBUG] Response data:', data);
+      return true;
+    } else {
+      console.error('[WAITLIST] API responded', response.status);
       return false;
     }
-    
-    const data = await response.json();
-    console.log('[DEBUG] Response data:', data);
-    return true;
   } catch (err) {
-    console.error('[WAITLIST] network / CORS error', err);
+    console.error('[WAITLIST] network error', err);
     return false;
   }
 }
