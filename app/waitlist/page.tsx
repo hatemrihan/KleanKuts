@@ -2,7 +2,6 @@
 
 import React, { useState, FormEvent, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Nav from '@/app/sections/nav';
 import { toast } from 'react-hot-toast';
 import { useScroll, useTransform, motion } from 'framer-motion';
 import useTextRevealAnimation from '../hooks/UsingTextRevealAnimation';
@@ -20,7 +19,7 @@ const Waitlist = () => {
   const portraitWidth = useTransform(scrollYProgress, [0,1], ['100%', '240%']) ;
   const {scope, controls, entranceAnimation} = useTextRevealAnimation();
   useEffect(()=>{
-entranceAnimation();
+    entranceAnimation();
   },[entranceAnimation]);
    const handleClickMobileNavItem= (e:React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
@@ -32,209 +31,30 @@ entranceAnimation();
       target.scrollIntoView({behavior:'smooth'});
     }
     const [isOpen, setIsOpen] = useState(false);
-  
-  // Animation will run automatically when component mounts (handled by the hook)
+    // Animation will run automatically when component mounts (handled by the hook)
 
-  // Exactly as requested: Submit using a hidden iframe technique with server response verification
-  const submitViaIframe = (emailAddress: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      console.log('Submitting with hidden iframe technique...');
-      
-      // Create a hidden iframe for target with message handling
-      const iframeName = 'waitlist_submit_frame_' + Date.now();
-      const iframe = document.createElement('iframe');
-      iframe.name = iframeName;
-      iframe.style.display = 'none';
-      iframe.onload = () => {
-        // Try to read the response from the iframe
-        try {
-          // We can't access iframe content directly due to CORS, so we'll consider load a success
-          console.log('Iframe loaded, considering submission successful');
-          resolve(true);
-        } catch (error) {
-          console.warn('Could not determine submission status from iframe:', error);
-          resolve(false); // Still resolve but with false to indicate uncertainty
-        }
-      };
-      
-      iframe.onerror = (error) => {
-        console.error('Iframe submission error:', error);
-        reject(new Error('Iframe failed to load'));
-      };
-      
-      document.body.appendChild(iframe);
-      
-      // Create a form with EXACTLY the fields requested by admin
-      const form = document.createElement('form');
-      form.target = iframeName;
-      form.method = 'POST';
-      form.action = 'https://eleveadmin.netlify.app/api/waitlist';
-      form.style.display = 'none';
-      
-      // ONLY include the exact fields specified by admin
-      // 'email' field (required)
-      const emailField = document.createElement('input');
-      emailField.type = 'email';
-      emailField.name = 'email'; // Exact field name as required
-      emailField.value = emailAddress;
-      form.appendChild(emailField);
-      
-      // 'source' field (set to 'website')
-      const sourceField = document.createElement('input');
-      sourceField.type = 'text';
-      sourceField.name = 'source'; // Exact field name as required
-      sourceField.value = 'website'; // Exact value as required
-      form.appendChild(sourceField);
-      
-      document.body.appendChild(form);
-      form.submit();
-      
-      // Set a timeout to prevent hanging forever
-      const timeoutId = setTimeout(() => {
-        console.warn('Iframe submission timed out');
-        reject(new Error('Submission timed out'));
-      }, 10000);
-      
-      // Clean up function
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        try {
-          document.body.removeChild(form);
-          document.body.removeChild(iframe);
-        } catch (e) {
-          console.warn('Cleanup error:', e);
-        }
-      };
-      
-      // Attach cleanup to promise resolution
-      Promise.resolve().then(() => {
-        // Give the iframe time to load (5 seconds) before cleanup
-        setTimeout(cleanup, 5000);
-      });
-    });
-  };
-  
-  // Fallback to Fetch API if iframe approach fails
-  const submitViaFetchApi = async (emailAddress: string): Promise<boolean> => {
-    try {
-      console.log('Submitting via Fetch API fallback...');
-      
-      // Use the centralized helper function to submit to waitlist
-      const success = await submitToWaitlist(emailAddress, 'website');
-      
-      if (success) {
-        console.log('Successfully submitted via Fetch API with helper function');
-        return true;
-      } else {
-        console.error('Fetch API submission failed');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error submitting via Fetch API:', error);
-      return false;
-    }
-  };
-  
-  // Try both methods and wait for confirmation before showing success
-  const submitWithVerification = async (emailAddress: string): Promise<boolean> => {
-    // Try hidden iframe approach first (as requested)
-    try {
-      const iframeSuccess = await submitViaIframe(emailAddress);
-      if (iframeSuccess) {
-        console.log('Hidden iframe submission succeeded');
-        return true;
-      }
-    } catch (iframeError) {
-      console.error('Hidden iframe submission failed:', iframeError);
-    }
-    
-    // If iframe approach fails, try fetch API as fallback
-    try {
-      const fetchSuccess = await submitViaFetchApi(emailAddress);
-      if (fetchSuccess) {
-        console.log('Fetch API submission succeeded');
-        return true;
-      }
-    } catch (fetchError) {
-      console.error('Fetch API submission failed:', fetchError);
-    }
-    
-    // If both methods fail, return false to show error message
-    console.error('All submission methods failed');
-    return false;
-  };
-  
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
     if (!email || !email.includes('@')) {
-      toast.error('Please enter a valid email address');
+      toast.error('Please enter a valid e-mail');
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      // Save to localStorage as backup in case of network issues
-      try {
-        const storageData = {
-          email,
-          date: new Date().toISOString(),
-          status: 'pending'
-        };
-        localStorage.setItem('waitlist_pending', JSON.stringify(storageData));
-        console.log('Email saved to localStorage as pending');
-      } catch (storageError) {
-        console.error('Failed to save to localStorage:', storageError);
-      }
+      console.log('[SUBMIT] Submitting email:', email);
+      const success = await submitToWaitlist(email);
       
-      // Submit with verification - only consider success if server confirms
-      console.log('Submitting waitlist with verification...');
-      const submissionSuccess = await submitWithVerification(email);
-      
-      if (submissionSuccess) {
-        // Only show success if we got server confirmation
-        console.log('Server confirmed submission success');
+      if (success) {
         setIsSubmitted(true);
-        toast.success('Thanks for joining our waitlist!');
-        
-        // Update the localStorage status from pending to success
-        try {
-          const storageData = {
-            email,
-            date: new Date().toISOString(),
-            status: 'success'
-          };
-          localStorage.setItem('waitlist_last_submission', JSON.stringify(storageData));
-          // Remove from pending
-          localStorage.removeItem('waitlist_pending');
-        } catch (storageError) {
-          console.error('Failed to update localStorage:', storageError);
-        }
-        
-        // Track analytics event if available
-        if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-          (window as any).gtag('event', 'waitlist_submission_success', {
-            'event_category': 'engagement',
-            'event_label': 'waitlist'
-          });
-        }
+        toast.success('Thanks for joining our wait-list!');
       } else {
-        // If server did not confirm success, show error to user
-        console.error('Server could not confirm submission success');
-        toast.error('Unable to join waitlist. Please try again later.');
-        
-        // Track failure event
-        if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-          (window as any).gtag('event', 'waitlist_submission_error', {
-            'event_category': 'engagement',
-            'event_label': 'waitlist'
-          });
-        }
+        toast.error('Could not add e-mail – try again in a minute.');
       }
     } catch (error) {
-      console.error('Error submitting to waitlist:', error);
-      toast.error('Something went wrong. Please try again later.');
+      console.error('[SUBMIT] Error:', error);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -321,18 +141,58 @@ entranceAnimation();
             )}
           </div>
         </section>
-        
-        {/* Video Section */}
+          {/* Video Section */}
         <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
-          <div className=" overflow-hidden shadow-2xl shadow-gray-200 dark:shadow-white/10 w-full relative aspect-video transition-shadow duration-300">
+          <div className="overflow-hidden shadow-2xl shadow-gray-200 dark:shadow-white/10 w-full relative aspect-video transition-shadow duration-300">
             <video 
               autoPlay 
               loop 
               muted 
               playsInline
-              className="absolute inset-0 w-full h-full object-cover grayscale"
+              controls={false}
+              onError={(e) => {
+                console.error("Video loading error:", e);
+                const video = e.target as HTMLVideoElement;
+                if (video && typeof video.load === 'function') {
+                  // Try to reload the video with a different source
+                  video.src = process.env.NODE_ENV === 'development'
+                    ? '/videos/waitlist.mp4'  // Local path
+                    : 'https://elevee.netlify.app/videos/waitlist.mp4'; // Production path
+                  
+                  video.load();
+                  video.play().catch(err => {
+                    console.error("Video play error:", err);
+                    // If play fails, show the poster image
+                    if (video.parentElement) {
+                      video.parentElement.style.backgroundImage = "url('/images/brand-image.jpg')";
+                      video.parentElement.style.backgroundSize = "cover";
+                      video.parentElement.style.backgroundPosition = "center";
+                    }
+                  });
+                }
+              }}
+              onLoadedData={(e) => {
+                console.log("Video loaded successfully");
+                const video = e.target as HTMLVideoElement;
+                if (video) {
+                  video.play().catch(err => {
+                    console.error("Video play error:", err);
+                    // If autoplay fails, try without sound
+                    video.muted = true;
+                    video.play().catch(err2 => console.error("Muted play error:", err2));
+                  });
+                }
+              }}
+              className="absolute inset-0 w-full h-full object-cover"
+              poster="/images/brand-image.jpg"
             >
-              <source src="/videos/waitlist.mp4" type="video/mp4" />
+              <source 
+                src={process.env.NODE_ENV === 'development'
+                  ? '/videos/waitlist.mp4'  // Local path
+                  : 'https://elevee.netlify.app/videos/waitlist.mp4' // Production path
+                } 
+                type="video/mp4" 
+              />
               Your browser does not support the video tag.
             </video>
           </div>

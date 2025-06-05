@@ -85,48 +85,70 @@ export const ensureCloudinaryImages = (product: any): any => {
   return normalizedProduct;
 };
 
+// API base URL - use production for both since localhost CORS is not configured
+const API_BASE_URL = 'https://eleveadmin.netlify.app/api';
+
 /**
- * Submits an email to the waitlist using the admin-specified format
- * @param email - The email to submit
- * @returns Whether the submission was successful
+ * Test API connectivity as suggested by admin
  */
-export const submitToWaitlist = async (email: string, p0: string): Promise<boolean> => {
+export async function testApiConnection(): Promise<boolean> {
   try {
-    console.log('Attempting to submit email to waitlist:', email);
+    console.log('[API TEST] Testing connection to:', `${API_BASE_URL}/site-status`);
     
-    const requestBody = {
-      email: email,
-      source: 'e-commerce',
-      notes: 'Submitted from e-commerce site'
-    };
-    
-    console.log('Request body:', requestBody);
-    
-    const response = await fetch('https://eleveadmin.netlify.app/api/waitlist', {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/site-status`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Origin': 'https://elevee.netlify.app'
-      },
-      body: JSON.stringify(requestBody)
+      }
     });
-
-    console.log('Response status:', response.status);
-    const responseData = await response.text();
-    console.log('Response data:', responseData);
-
-    if (response.ok) {
-      console.log('Successfully submitted to waitlist');
-      return true;
-    } else {
-      console.error('Failed to submit to waitlist:', response.status, responseData);
-      return false;
-    }
+    
+    const data = await response.json();
+    console.log('API Connection Test:', data);
+    return true;
   } catch (error) {
-    console.error('Error submitting to waitlist:', error);
+    console.error('API Connection Failed:', error);
     return false;
   }
-};
+}
+
+/**
+ * Send one e-mail to the Admin wait-list API.
+ * Nothing fancy – just what the Admin developer asked for.
+ */
+export async function submitToWaitlist(email: string): Promise<boolean> {
+  const fullURL = `${API_BASE_URL}/waitlist`;
+  
+  console.log('[DEBUG] Full URL being called:', fullURL);
+
+  try {
+    const response = await fetch(fullURL, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        source: 'e-commerce',
+        notes: 'Submitted from e-commerce site'
+      })
+    });
+
+    console.log('[DEBUG] Response status:', response.status);
+    console.log('[DEBUG] Response ok:', response.ok);
+
+    if (!response.ok) {
+      console.error('[WAITLIST] Admin API responded', response.status);
+      return false;
+    }
+    
+    const data = await response.json();
+    console.log('[DEBUG] Response data:', data);
+    return true;
+  } catch (err) {
+    console.error('[WAITLIST] network / CORS error', err);
+    return false;
+  }
+}
 
 /**
  * Checks if the site is in maintenance mode (inactive)
