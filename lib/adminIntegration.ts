@@ -92,23 +92,34 @@ export const ensureCloudinaryImages = (product: any): any => {
  */
 export const submitToWaitlist = async (email: string): Promise<boolean> => {
   try {
+    console.log('Attempting to submit email to waitlist:', email);
+    
+    const requestBody = {
+      email: email,
+      source: 'e-commerce',
+      notes: 'Submitted from e-commerce site'
+    };
+    
+    console.log('Request body:', requestBody);
+    
     const response = await fetch('https://eleveadmin.netlify.app/api/waitlist', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Origin': 'https://elevee.netlify.app'
       },
-      body: JSON.stringify({
-        email: email,
-        source: 'e-commerce',
-        notes: 'Submitted from e-commerce site'
-      })
+      body: JSON.stringify(requestBody)
     });
 
+    console.log('Response status:', response.status);
+    const responseData = await response.text();
+    console.log('Response data:', responseData);
+
     if (response.ok) {
+      console.log('Successfully submitted to waitlist');
       return true;
     } else {
-      console.error('Failed to submit to waitlist:', response.status);
+      console.error('Failed to submit to waitlist:', response.status, responseData);
       return false;
     }
   } catch (error) {

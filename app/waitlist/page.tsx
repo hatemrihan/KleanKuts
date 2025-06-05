@@ -209,10 +209,11 @@ entranceAnimation();
     }
     
     setIsSubmitting(true);
+    console.log('Submitting email:', email);
     
     try {
-      // Submit to waitlist with the admin-specified format
       const submissionSuccess = await submitToWaitlist(email);
+      console.log('Submission result:', submissionSuccess);
       
       if (submissionSuccess) {
         setIsSubmitted(true);
@@ -327,7 +328,8 @@ entranceAnimation();
         </section>
           {/* Video Section */}
         <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
-          <div className="overflow-hidden shadow-2xl shadow-gray-200 dark:shadow-white/10 w-full relative aspect-video transition-shadow duration-300">            <video 
+          <div className="overflow-hidden shadow-2xl shadow-gray-200 dark:shadow-white/10 w-full relative aspect-video transition-shadow duration-300">
+            <video 
               autoPlay 
               loop 
               muted 
@@ -336,20 +338,22 @@ entranceAnimation();
               onError={(e) => {
                 console.error("Video loading error:", e);
                 const video = e.target as HTMLVideoElement;
-                // Retry loading if failed
                 video.load();
+                // Retry playback after a short delay
+                setTimeout(() => {
+                  video.play().catch(err => console.error("Video play retry error:", err));
+                }, 1000);
               }}
               onLoadedData={(e) => {
                 console.log("Video loaded successfully");
                 const video = e.target as HTMLVideoElement;
                 video.play().catch(err => console.error("Video play error:", err));
               }}
-              preload="metadata"
+              preload="auto"
               className="absolute inset-0 w-full h-full object-cover"
-              poster="/videos/waitlist.mp4"
+              poster="/images/brand-image.jpg"
             >
               <source src="/videos/waitlist.mp4" type="video/mp4" />
-            
               Your browser does not support the video tag.
             </video>
           </div>
