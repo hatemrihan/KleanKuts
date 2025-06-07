@@ -29,7 +29,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap');
 .loader-bg {
   position: absolute;
-  background: #bada55;
+  background: transparent;
   width: 100vw;
   height: 100vh;
   top: 0;

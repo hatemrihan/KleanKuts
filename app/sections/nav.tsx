@@ -294,7 +294,7 @@ const Nav = () => {
               
               <Link 
                 href="/cart" 
-                className="relative text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
+                className="relative text-yellow-500 dark:text-yellow-500 hover:text-red-500 dark:hover:text-red-400 px-3 py-2 text-sm font-light cursor-pointer group flex items-center gap-2"
                 onClick={handleCartClick}
               >
                 <div className="relative">
@@ -302,7 +302,7 @@ const Nav = () => {
                     className="w-5 h-5" 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    stroke="currentColor" 
+                    stroke="#eab308" 
                     strokeWidth="1.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
@@ -317,7 +317,7 @@ const Nav = () => {
                     </span>
                   )}
                 </div>
-                <span className="relative">
+                <span className="relative text-black dark:text-white">
                   Cart
                   <span className="absolute left-0 bottom-0 w-0 h-[1px] bg-black dark:bg-white transition-all duration-300 group-hover:w-full"></span>
                 </span>
@@ -375,7 +375,7 @@ const Nav = () => {
 
               <Link 
                 href="/cart" 
-                className="flex items-center justify-center text-black dark:text-white hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                className="flex items-center justify-center text-yellow-500 dark:text-yellow-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 onClick={handleCartClick}
               >
                 <div className="relative">
@@ -383,7 +383,7 @@ const Nav = () => {
                     className="w-6 h-6" 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    stroke="currentColor" 
+                    stroke="#eab308" 
                     strokeWidth="1.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"
@@ -474,14 +474,14 @@ const Nav = () => {
             
             {/* Cart centered in mobile menu */}
             <div className="flex justify-center w-full">
-              <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsOpen(false)} className='flex flex-col items-center justify-center'>
+              <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsOpen(false)} className='flex flex-col items-center justify-center text-yellow-500 dark:text-yellow-500'>
                 <div className="relative">
                   <svg 
                     xmlns="http://www.w3.org/2000/svg"
                     className="w-8 h-8" 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    stroke="currentColor" 
+                    stroke="#eab308" 
                     strokeWidth="1.5" 
                     strokeLinecap="round" 
                     strokeLinejoin="round"

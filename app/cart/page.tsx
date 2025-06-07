@@ -202,7 +202,15 @@ export default function CartPage() {
                       <div className="flex justify-between items-center mt-2">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => updateQuantity(item.id, item.size, Math.max(1, item.quantity - 1), item.color)}
+                            onClick={() => {
+                              if (item.quantity === 1) {
+                                // If quantity is 1, remove the item entirely
+                                removeFromCart(item.id, item.size, item.color);
+                              } else {
+                                // Otherwise, just decrease the quantity
+                                updateQuantity(item.id, item.size, item.quantity - 1, item.color);
+                              }
+                            }}
                             className="text-gray-500 hover:text-black"
                           >
                             -

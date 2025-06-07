@@ -331,51 +331,83 @@ const AmbassadorDashboard = () => {
           </div>
         </div>
 
-
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-medium mb-4">Coupon Code</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Share your coupon code with others. For every purchase someone makes using your coupon code, you get the credit
+        {/* Current Video Link Display */}
+        {ambassadorData?.productVideoLink && (
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+              Current Video Link:
+            </h3>
+            <div className="flex items-center gap-2">
+              <a 
+                href={ambassadorData.productVideoLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline break-all"
+              >
+                {ambassadorData.productVideoLink}
+              </a>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(ambassadorData.productVideoLink || '');
+                  alert('Link copied to clipboard!');
+                }}
+                className="flex-shrink-0 p-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                title="Copy link"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              You can submit a new video link anytime to update this.
             </p>
-            {ambassadorData.couponCode ? (
-              <div className="flex items-center">
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={ambassadorData.couponCode} 
-                  className="flex-grow p-2 border rounded-l-md text-sm bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:outline-none"
-                />
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(ambassadorData.couponCode);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-md text-sm font-medium transition-colors duration-200"
-                >
-                  Copy
-                </button>
-              </div>
-            ) : (
-              <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">No coupon code found</h3>
-                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      <p>You can request us for a coupon code to share with your followers.</p>
-                      <Link href="#" className="mt-2 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                        Contact us
-                      </Link>
-                    </div>
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-medium mb-4">Coupon Code</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Share your coupon code with others. For every purchase someone makes using your coupon code, you get the credit
+          </p>
+          {ambassadorData.couponCode ? (
+            <div className="flex items-center">
+              <input 
+                type="text" 
+                readOnly 
+                value={ambassadorData.couponCode} 
+                className="flex-grow p-2 border rounded-l-md text-sm bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:outline-none"
+              />
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(ambassadorData.couponCode);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-md text-sm font-medium transition-colors duration-200"
+              >
+                Copy
+              </button>
+            </div>
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">No coupon code found</h3>
+                  <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    <p>You can request us for a coupon code to share with your followers.</p>
+                    <Link href="#" className="mt-2 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                      Contact us
+                    </Link>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
         <h2 className="text-2xl font-semibold mb-6">Summary</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">

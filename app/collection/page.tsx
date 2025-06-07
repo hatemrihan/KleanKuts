@@ -25,7 +25,22 @@ interface Product {
   description: string;
   Material?: string[];
   sizes: SizeStock[];
+  stockStatus?: {
+    status: string;
+    hasStock: boolean;
+    totalStock: number;
+  };
+  isOutOfStock?: boolean;
   gender?: string;
+  sizeVariants?: Array<{
+    size: string;
+    colorVariants: Array<{
+      color: string;
+      stock: number;
+      hexCode?: string;
+    }>;
+  }>;
+  stock?: number;
 }
 
 interface MongoDBProduct {
@@ -37,8 +52,14 @@ interface MongoDBProduct {
   price?: number;
   discount?: number;
   description?: string;
-  selectedSizes?: SizeStock[];
+  selectedSizes?: string[];
   gender?: string;
+  stockStatus?: {
+    status: string;
+    hasStock: boolean;
+    totalStock: number;
+  };
+  isOutOfStock?: boolean;
 }
 
 // Your actual product IDs
@@ -200,18 +221,67 @@ export default function Collection() {
             price: product.price || 0,
             discount: product.discount && product.discount > 0 ? product.discount : undefined,
             description: product.description || '',
-            sizes: product.selectedSizes || [],
-            gender: product.gender || ''
+            sizes: (product.selectedSizes || []).map((size: string) => ({
+              size,
+              stock: 10, // Default for now, will be overridden by admin data
+              isPreOrder: false
+            })),
+            gender: product.gender || '',
+            stockStatus: product.stockStatus || undefined,
+            isOutOfStock: product.isOutOfStock || false,
+            // IMPORTANT: Preserve the sizeVariants field from admin API
+            ...(product as any).sizeVariants && { sizeVariants: (product as any).sizeVariants },
+            // Also preserve the legacy stock field if it exists
+            ...((product as any).stock !== undefined) && { stock: (product as any).stock }
           };
 
           return processedProduct;
         }).filter((product): product is Product => product !== null);
         
+        // Fetch live stock data from admin API for each product
+        console.log('Fetching live stock data from admin API...');
+        const productsWithStock = await Promise.all(
+          processedMongoProducts.map(async (product) => {
+            try {
+              // Fetch stock data from admin API
+              const stockResponse = await fetch(`/api/stock/sync?productId=${product._id}&timestamp=${Date.now()}`);
+              
+              if (stockResponse.ok) {
+                const stockData = await stockResponse.json();
+                console.log(`Collection: Got stock data for ${product.name}:`, stockData);
+                
+                // Merge stock data into product
+                if (stockData.sizeVariants) {
+                  product.sizeVariants = stockData.sizeVariants;
+                }
+                
+                if (stockData.stock !== undefined) {
+                  (product as any).stock = stockData.stock;
+                }
+                
+                if (stockData.stockStatus) {
+                  product.stockStatus = stockData.stockStatus;
+                }
+                
+                if (stockData.isOutOfStock !== undefined) {
+                  product.isOutOfStock = stockData.isOutOfStock;
+                }
+              } else {
+                console.warn(`Collection: Failed to fetch stock for ${product.name}`);
+              }
+            } catch (stockError) {
+              console.error(`Collection: Error fetching stock for ${product.name}:`, stockError);
+            }
+            
+            return product;
+          })
+        );
+        
         // Only use MongoDB products if we have them, don't mix with local products
         let productsToUse: Product[] = [];
-        if (processedMongoProducts.length > 0) {
-          console.log('Using real products from MongoDB:', processedMongoProducts.length);
-          productsToUse = processedMongoProducts;
+        if (productsWithStock.length > 0) {
+          console.log('Using real products from MongoDB with live stock data:', productsWithStock.length);
+          productsToUse = productsWithStock;
         } else {
           // Fall back to local products only if no MongoDB products are available
           const localProductsArray = Object.values(localProducts);
@@ -285,6 +355,11 @@ export default function Collection() {
       if (filterGender === 'women' && productGender !== 'woman' && productGender !== 'women') {
         return false;
       }
+      
+      // Add unisex filter logic
+      if (filterGender === 'unisex' && productGender !== 'unisex') {
+        return false;
+      }
     }
     
     // Category filter - skip if 'All' is selected
@@ -349,7 +424,7 @@ export default function Collection() {
           <div className="flex flex-col items-center mb-12">
             {/* Gender Filter */}
             <div className="flex gap-6 overflow-x-auto pb-2 mb-6">
-              {['All', 'Men', 'Women'].map((gender) => (
+              {['All', 'Men', 'Women', 'Unisex'].map((gender) => (
                 <button
                   key={gender}
                   className={`px-4 py-2 text-sm whitespace-nowrap ${selectedGender === gender ? 'border-b-2 border-black font-medium' : 'text-gray-500 hover:text-black'}`}
@@ -375,7 +450,7 @@ export default function Collection() {
               </div>
             )}
             
-            {/* Price Range Slider - Enhanced single slider */}
+            {/* Price Range Slider - Simple single slider starting from 0 */}
             <div className="w-full max-w-md mx-auto mb-6">
               <div className="flex justify-between mb-2">
                 <span className="text-sm text-gray-500">Max Price:</span>
@@ -437,19 +512,56 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
     : `${product.price} L.E`;
 
   const getStockStatus = () => {
-    // Only show SOLD OUT if we explicitly know the product is out of stock
-    // For products from the admin panel, we'll check if stock is 0 or if it's marked as pre-order
-    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
-      // Check if all sizes have zero stock or are pre-order
-      const allOutOfStock = product.sizes.every(size => 
-        (typeof size.stock === 'number' && size.stock <= 0) || 
-        size.isPreOrder === true
-      );
-      
-      if (allOutOfStock) {
-        return { text: 'SOLD OUT', class: 'bg-black text-white' };
+    // New logic to check the admin API format
+    function isProductOutOfStock(product: Product) {
+      // Check sizeVariants first (primary method from admin API)
+      if ((product as any).sizeVariants && Array.isArray((product as any).sizeVariants)) {
+        let totalStock = 0;
+
+        (product as any).sizeVariants.forEach((sizeVariant: any) => {
+          if (sizeVariant.colorVariants && Array.isArray(sizeVariant.colorVariants)) {
+            sizeVariant.colorVariants.forEach((colorVariant: any) => {
+              const stock = colorVariant.stock || 0;
+              totalStock += stock;
+            });
+          }
+        });
+
+        return totalStock === 0;
       }
+
+      // Check enhanced admin API fields if available
+      if (product.stockStatus) {
+        if (product.isOutOfStock || product.stockStatus.status === 'out-of-stock' || !product.stockStatus.hasStock) {
+          return true;
+        }
+      }
+
+      // Fallback to legacy stock field
+      if ((product as any).stock !== undefined) {
+        const stock = (product as any).stock || 0;
+        return stock === 0;
+      }
+
+      // Local variants checking (for fallback products)
+      if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+        const allOutOfStock = product.sizes.every(size => 
+          (typeof size.stock === 'number' && size.stock <= 0) || 
+          size.isPreOrder === true
+        );
+        return allOutOfStock;
+      }
+      
+      return false;
     }
+
+    // Check if product is out of stock using the new logic
+    const isOutOfStock = isProductOutOfStock(product);
+    
+    if (isOutOfStock) {
+      return { text: 'SOLD OUT', class: 'bg-black text-white' };
+    }
+    
     return null;
   };
 
@@ -477,7 +589,7 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
               unoptimized={false}
             />
             {stockStatus && (
-              <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-semibold rounded transition-colors duration-300">
+              <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
                 {stockStatus.text}
               </div>
             )}

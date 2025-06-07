@@ -14,21 +14,26 @@ interface SizeStock {
 }
 
 interface Product {
-  _id: string | object;
-  id?: string;
-  name: string;
+  _id: string;
+  name?: string;
   title?: string;
   price: number;
-  images: string[];
+  images?: string[];
   selectedImages?: string[];
+  category?: string;
+  variants?: any[];
+  sizes?: any[];
+  sizeVariants?: any[];
   discount?: number;
-  variants?: SizeStock[];
-  sizes?: SizeStock[];
-  sizeVariants?: SizeStock[];
   description?: string;
-  totalStock?: number;
   extractedId?: string; // Added for processed IDs
   gender?: string; // Added gender property
+  stockStatus?: {
+    status: string;
+    hasStock: boolean;
+    totalStock: number;
+  };
+  isOutOfStock?: boolean;
 }
 
 // ProductCard component to display individual products
@@ -38,21 +43,78 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
   // Get all product variants
   const allVariants = product.variants || product.sizes || product.sizeVariants || [];
 
-  // Determine if product is pre-order or sold out
+  // Determine if product is pre-order or sold out using admin API data
   const getStockStatus = () => {
-    if (allVariants.length === 0) return null;
-    
-    const allSoldOut = allVariants.every(variant => 
-      typeof variant.stock === 'number' && variant.stock <= 0
-    );
-    
-    if (allSoldOut) {
+    // New logic to check the admin API format
+    function isProductOutOfStock(product: Product) {
+      // Check sizeVariants first (primary method from admin API)
+      if (product.variants && Array.isArray(product.variants)) {
+        let totalStock = 0;
+
+        product.variants.forEach((sizeVariant: any) => {
+          if (sizeVariant.colorVariants && Array.isArray(sizeVariant.colorVariants)) {
+            sizeVariant.colorVariants.forEach((colorVariant: any) => {
+              totalStock += (colorVariant.stock || 0);
+            });
+          }
+        });
+
+        return totalStock === 0;
+      }
+
+      // Also check if the product has sizeVariants (direct from admin API)
+      if ((product as any).sizeVariants && Array.isArray((product as any).sizeVariants)) {
+        let totalStock = 0;
+
+        (product as any).sizeVariants.forEach((sizeVariant: any) => {
+          if (sizeVariant.colorVariants && Array.isArray(sizeVariant.colorVariants)) {
+            sizeVariant.colorVariants.forEach((colorVariant: any) => {
+              totalStock += (colorVariant.stock || 0);
+            });
+          }
+        });
+
+        return totalStock === 0;
+      }
+
+      // Check enhanced admin API fields if available
+      if (product.stockStatus) {
+        if (product.isOutOfStock || product.stockStatus.status === 'out-of-stock' || !product.stockStatus.hasStock) {
+          return true;
+        }
+      }
+
+      // Fallback to legacy stock field and local variant checking
+      if ((product as any).stock !== undefined) {
+        return ((product as any).stock || 0) === 0;
+      }
+
+      // Local variants checking (for fallback products)
+      if (allVariants.length === 0) return false;
+      
+      const allSoldOut = allVariants.every(variant => 
+        typeof variant.stock === 'number' && variant.stock <= 0
+      );
+      
+      return allSoldOut;
+    }
+
+    // Check if product is out of stock using the new logic
+    if (isProductOutOfStock(product)) {
       return { text: 'SOLD OUT', class: 'bg-black text-white' };
     }
+
+    // Check for low stock (enhanced admin API)
+    if (product.stockStatus?.status === 'low-stock') {
+      return { text: 'LOW STOCK', class: 'bg-orange-500 text-white' };
+    }
     
-    const allPreOrder = allVariants.every(variant => variant.isPreOrder);
-    if (allPreOrder) {
-      return { text: 'PRE-ORDER', class: 'bg-black text-white' };
+    // Check for pre-order (local variants)
+    if (allVariants.length > 0) {
+      const allPreOrder = allVariants.every(variant => variant.isPreOrder);
+      if (allPreOrder) {
+        return { text: 'PRE-ORDER', class: 'bg-black text-white' };
+      }
     }
     
     return null;
@@ -61,11 +123,8 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
   const stockStatus = getStockStatus();
   
   // Get product images
-  const productImages = product.images?.length > 0 
-    ? product.images 
-    : (product.selectedImages && product.selectedImages.length > 0)
-      ? product.selectedImages
-      : ['/images/try-image.jpg']; // Fallback image
+  const productImages = product.images?.length ? product.images : 
+                       (product.selectedImages?.length ? product.selectedImages : ['/images/try-image.jpg']);
 
   // Animation variants for the product card
   const cardVariants = {
@@ -106,7 +165,7 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
           />
           {/* Status Badge */}
           {stockStatus && (
-            <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-semibold" style={{ borderRadius: 0 }}>
+            <div className="absolute top-3 right-3 z-20 bg-black dark:bg-white text-white dark:text-black px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
               {stockStatus.text}
             </div>
           )}

@@ -164,6 +164,63 @@ const ProductPage = ({ params }: Props) => {
     return DEFAULT_MAX_STOCK;
   };
   
+  // Function to check if product is sold out using admin API format
+  const isProductSoldOut = (): boolean => {
+    if (!product) return false;
+
+    // Check sizeVariants first (primary method from admin API)
+    if ((product as any).sizeVariants && Array.isArray((product as any).sizeVariants)) {
+      let totalStock = 0;
+
+      (product as any).sizeVariants.forEach((sizeVariant: any) => {
+        if (sizeVariant.colorVariants && Array.isArray(sizeVariant.colorVariants)) {
+          sizeVariant.colorVariants.forEach((colorVariant: any) => {
+            totalStock += (colorVariant.stock || 0);
+          });
+        }
+      });
+
+      return totalStock === 0;
+    }
+
+    // Fallback to legacy stock field
+    if ((product as any).stock !== undefined) {
+      return ((product as any).stock || 0) === 0;
+    }
+
+    // Local variants checking (for fallback products)
+    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      const allOutOfStock = product.sizes.every(size => 
+        (typeof size.stock === 'number' && size.stock <= 0)
+      );
+      return allOutOfStock;
+    }
+    
+    return false;
+  };
+
+  // Function to check if selected size/color is sold out
+  const isSelectedVariantSoldOut = (): boolean => {
+    if (!product || !selectedSize) return false;
+
+    // For size variants with colors
+    if (product.sizeVariants && selectedColor) {
+      const sizeVariant = product.sizeVariants.find(sv => sv.size === selectedSize);
+      if (sizeVariant && sizeVariant.colorVariants) {
+        const colorVariant = sizeVariant.colorVariants.find(cv => cv.color === selectedColor);
+        return colorVariant ? (colorVariant.stock || 0) === 0 : true;
+      }
+    }
+
+    // For simple sizes
+    if (product.sizes) {
+      const sizeOption = product.sizes.find(s => s.size === selectedSize);
+      return sizeOption ? (sizeOption.stock || 0) === 0 : true;
+    }
+
+    return false;
+  };
+  
   // Effect to update available colors when size changes
   useEffect(() => {
     if (product && product.sizeVariants && selectedSize) {
@@ -1423,7 +1480,7 @@ const ProductPage = ({ params }: Props) => {
   ]
 
   // We're hiding stock status
-  const isSoldOut: boolean = false
+  const isSoldOut: boolean = isProductSoldOut();
 
   // Calculate price with discount
   const finalPrice = product.discount 
@@ -1753,24 +1810,39 @@ const ProductPage = ({ params }: Props) => {
                   <button
                     type="button"
                     onClick={handleAddToCartClick}
-                    className="w-full py-4 text-sm font-medium transition-colors bg-[#0F1824] text-white active:bg-black disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    disabled={!selectedSize || (product.sizeVariants && !selectedColor)}
+                    className={`w-full py-4 text-sm font-medium transition-colors ${
+                      isSoldOut || isSelectedVariantSoldOut()
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-[#0F1824] text-white active:bg-black'
+                    } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                    disabled={!selectedSize || (product.sizeVariants && !selectedColor) || isSoldOut || isSelectedVariantSoldOut()}
                   >
-ADD TO CART
+                    {isSoldOut || isSelectedVariantSoldOut() ? 'SOLD OUT' : 'ADD TO CART'}
                   </button>
                   <button
                     type="button"
                     onClick={handleBuyNowClick}
-                    className="w-full py-4 text-sm font-medium transition-colors bg-white text-black active:bg-[#0F1824] active:text-white disabled:bg-gray-200 disabled:cursor-not-allowed"
-                    disabled={!selectedSize || (product.sizeVariants && !selectedColor)}
+                    className={`w-full py-4 text-sm font-medium transition-colors ${
+                      isSoldOut || isSelectedVariantSoldOut()
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-white text-black active:bg-[#0F1824] active:text-white'
+                    } disabled:bg-gray-200 disabled:cursor-not-allowed`}
+                    disabled={!selectedSize || (product.sizeVariants && !selectedColor) || isSoldOut || isSelectedVariantSoldOut()}
                   >
-                    BUY IT NOW
+                    {isSoldOut || isSelectedVariantSoldOut() ? 'SOLD OUT' : 'BUY IT NOW'}
                   </button>
                 </div>
                 
                 {/* Selection Instructions */}
                 <div className="text-xs text-gray-500 mt-2 text-center">
-                  Please select a size and color
+                  {isSoldOut 
+                    ? 'This product is currently sold out'
+                    : isSelectedVariantSoldOut()
+                    ? 'Selected size/color is sold out'
+                    : (!selectedSize || (product.sizeVariants && !selectedColor))
+                    ? 'Please select a size and color'
+                    : 'Ready to add to cart'
+                  }
                 </div>
 
               </div>
