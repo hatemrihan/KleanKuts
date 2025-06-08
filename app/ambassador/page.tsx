@@ -826,7 +826,7 @@ const AmbassadorPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-2">Negotiation</h3>
-                  <p className="text-sm">Starting from 10% Commission</p>
+                  <p className="text-sm">Starting from 5% Commission</p>
                 </div>
                 <div>
                   <h3 className="text-xs uppercase tracking-wider text-black/60 dark:text-white/60 mb-2">Status</h3>
@@ -878,7 +878,7 @@ const AmbassadorPage = () => {
                 <div className="mb-4">
                   <p className="text-black/80 dark:text-white/80 text-sm leading-relaxed font-medium">4. Earn commissions</p>
                   <p className="text-black/70 dark:text-white/70 text-xs leading-relaxed">
-                    Earn a 25% commission on every purchase made with your referral link or code
+                    Earn a 15% commission on every purchase made with your referral link or code
                   </p>
                 </div>
               </div>
@@ -887,7 +887,7 @@ const AmbassadorPage = () => {
                 <h2 className="text-sm uppercase tracking-wider text-black/60 dark:text-white/60 mb-3">Benefits</h2>
                 <div className="space-y-2">
                   <p className="text-black/80 dark:text-white/80 text-sm leading-relaxed">
-                    • Earn up to 25% commission on all sales through your referral link or code
+                    • Earn up to 15% commission on all sales through your referral link or code
 
                   </p>
                   <p className="text-black/80 dark:text-white/80 text-sm leading-relaxed">
