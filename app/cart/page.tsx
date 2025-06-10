@@ -179,17 +179,19 @@ export default function CartPage() {
               <div className="lg:col-span-2 space-y-6">
                 {cart.map((item) => (
                   <div key={`${item.id}-${item.size}-${item.color || 'default'}`} className="flex gap-6 pb-6 border-b">
-                    <div className="relative w-24 h-24">
+                    <Link href={`/product/${item.id}`} className="relative w-24 h-24 hover:opacity-80 transition-opacity">
                       <Image 
                         src={optimizeCloudinaryUrl(item.image, { width: 200 })} 
                         alt={item.name} 
                         fill 
                         className="object-cover" 
                       />
-                    </div>
+                    </Link>
                     <div className="flex-1">
                       <div className="flex justify-between">
-                        <h3 className="font-light text-black dark:text-white transition-colors duration-300">{item.name}</h3>
+                        <Link href={`/product/${item.id}`} className="hover:underline">
+                          <h3 className="font-light text-black dark:text-white transition-colors duration-300">{item.name}</h3>
+                        </Link>
                         <button 
                           onClick={() => removeFromCart(item.id, item.size, item.color)}
                           className="text-sm text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300"

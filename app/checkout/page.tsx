@@ -304,6 +304,9 @@ const CheckoutPage = () => {
           paymentMethod: formData.paymentMethod,
           transactionScreenshot: screenshotUrl,
           totalAmount: totalWithShipping,
+          subtotal: cartTotal,
+          shippingCost: shippingCost,
+          discountAmount: discountAmount,
           status: 'pending',
           notes: formData.notes || '',
           orderDate: new Date().toISOString(),
@@ -454,7 +457,7 @@ const CheckoutPage = () => {
                   body: JSON.stringify({
                     code: promoDiscount.code,
                     orderId: orderId || Date.now().toString(),
-                    orderAmount: totalWithShipping,
+                    orderAmount: cartTotal - discountAmount,
                     customerEmail: formData.email.trim()
                   })
                 });

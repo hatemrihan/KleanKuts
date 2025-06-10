@@ -238,50 +238,11 @@ export default function Collection() {
           return processedProduct;
         }).filter((product): product is Product => product !== null);
         
-        // Fetch live stock data from admin API for each product
-        console.log('Fetching live stock data from admin API...');
-        const productsWithStock = await Promise.all(
-          processedMongoProducts.map(async (product) => {
-            try {
-              // Fetch stock data from admin API
-              const stockResponse = await fetch(`/api/stock/sync?productId=${product._id}&timestamp=${Date.now()}`);
-              
-              if (stockResponse.ok) {
-                const stockData = await stockResponse.json();
-                console.log(`Collection: Got stock data for ${product.name}:`, stockData);
-                
-                // Merge stock data into product
-                if (stockData.sizeVariants) {
-                  product.sizeVariants = stockData.sizeVariants;
-                }
-                
-                if (stockData.stock !== undefined) {
-                  (product as any).stock = stockData.stock;
-                }
-                
-                if (stockData.stockStatus) {
-                  product.stockStatus = stockData.stockStatus;
-                }
-                
-                if (stockData.isOutOfStock !== undefined) {
-                  product.isOutOfStock = stockData.isOutOfStock;
-                }
-              } else {
-                console.warn(`Collection: Failed to fetch stock for ${product.name}`);
-              }
-            } catch (stockError) {
-              console.error(`Collection: Error fetching stock for ${product.name}:`, stockError);
-            }
-            
-            return product;
-          })
-        );
-        
-        // Only use MongoDB products if we have them, don't mix with local products
+        // 🚀 PERFORMANCE OPTIMIZATION: Show products immediately
         let productsToUse: Product[] = [];
-        if (productsWithStock.length > 0) {
-          console.log('Using real products from MongoDB with live stock data:', productsWithStock.length);
-          productsToUse = productsWithStock;
+        if (processedMongoProducts.length > 0) {
+          console.log('Using real products from MongoDB:', processedMongoProducts.length);
+          productsToUse = processedMongoProducts;
         } else {
           // Fall back to local products only if no MongoDB products are available
           const localProductsArray = Object.values(localProducts);
@@ -303,9 +264,51 @@ export default function Collection() {
         setMaxPrice(roundedMaxPrice);
         setPriceRange([0, roundedMaxPrice]);
         
+        // 🚀 Show products immediately without waiting for stock data
         setProducts(productsToUse);
+        setLoading(false); // Stop loading immediately
         
-        console.log('Final products count:', productsToUse.length);
+        console.log('✅ Products displayed, now fetching stock data in background...');
+        
+        // 🚀 Fetch stock data in BACKGROUND (non-blocking)
+        if (processedMongoProducts.length > 0) {
+          Promise.all(
+            processedMongoProducts.map(async (product) => {
+              try {
+                // Fetch stock data from admin API
+                const stockResponse = await fetch(`/api/stock/sync?productId=${product._id}&timestamp=${Date.now()}`);
+                
+                if (stockResponse.ok) {
+                  const stockData = await stockResponse.json();
+                  console.log(`Collection: Got stock data for ${product.name}:`, stockData);
+                  
+                  // Update the specific product in state
+                  setProducts(prevProducts => 
+                    prevProducts.map(p => {
+                      if (p._id === product._id) {
+                        return {
+                          ...p,
+                          ...(stockData.sizeVariants && { sizeVariants: stockData.sizeVariants }),
+                          ...(stockData.stock !== undefined && { stock: stockData.stock }),
+                          ...(stockData.stockStatus && { stockStatus: stockData.stockStatus }),
+                          ...(stockData.isOutOfStock !== undefined && { isOutOfStock: stockData.isOutOfStock })
+                        };
+                      }
+                      return p;
+                    })
+                  );
+                } else {
+                  console.warn(`Collection: Failed to fetch stock for ${product.name}`);
+                }
+              } catch (stockError) {
+                console.error(`Collection: Error fetching stock for ${product.name}:`, stockError);
+              }
+            })
+          ).then(() => {
+            console.log('✅ All stock data loaded in background');
+          });
+        }
+        
       } catch (err: any) {
         console.error('Error fetching products:', err);
         setProducts(Object.values(localProducts));
@@ -319,7 +322,6 @@ export default function Collection() {
         } else {
           setError('Some products might not be available at the moment. Please try refreshing the page.');
         }
-      } finally {
         setLoading(false);
       }
     };
@@ -475,9 +477,32 @@ export default function Collection() {
 
           {/* Product Grid */}
           {loading ? (
+            <>
+              {/* Desktop Skeleton Grid */}
+              <div className="hidden lg:grid lg:grid-cols-4 gap-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="aspect-[3/4] w-full bg-gray-200 dark:bg-gray-700 mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile Skeleton Grid */}
+              <div className="grid grid-cols-2 gap-3 lg:hidden">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="aspect-[3/4] w-full bg-gray-200 dark:bg-gray-700 mb-1"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mx-auto"></div>
-              <p className="mt-4 text-gray-500">Loading products...</p>
+              <p className="text-gray-500 dark:text-gray-400">No products found matching your criteria.</p>
             </div>
           ) : (
             <>
@@ -585,7 +610,7 @@ const ProductCard = ({ product, isMobile = false }: { product: Product; isMobile
               width={500}
               height={625}
               className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-              priority={true}
+              loading="lazy"
               unoptimized={false}
             />
             {stockStatus && (

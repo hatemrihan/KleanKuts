@@ -23,6 +23,9 @@ interface OrderData {
   customer: CustomerInfo;
   products: OrderProduct[];
   totalAmount: number;
+  subtotal?: number;
+  shippingCost?: number;
+  discountAmount?: number;
   status?: string;
   notes?: string;
   orderDate?: string;
@@ -87,9 +90,32 @@ export async function POST(req: Request) {
         const couponValidation = await response.json();
         
         if (couponValidation.valid) {
-          // Calculate ambassador commission
+          // Calculate ambassador commission ONLY on product subtotal (excluding shipping)
           const commissionRate = couponValidation.commissionRate || 50;
-          const commission = (body.totalAmount * (commissionRate / 100)).toFixed(2);
+          
+          // Use subtotal if available, otherwise calculate from products
+          let commissionBaseAmount = body.subtotal || 0;
+          
+          // If subtotal is not provided, calculate from products
+          if (!commissionBaseAmount && body.products) {
+            commissionBaseAmount = body.products.reduce((total, product) => {
+              return total + (product.price * product.quantity);
+            }, 0);
+          }
+          
+          // Apply discount to the commission base if discount exists
+          if (body.discountAmount && body.discountAmount > 0) {
+            commissionBaseAmount = Math.max(0, commissionBaseAmount - body.discountAmount);
+          }
+          
+          const commission = (commissionBaseAmount * (commissionRate / 100)).toFixed(2);
+          
+          console.log(`🎯 Ambassador Commission Calculation:
+            - Product Subtotal: ${body.subtotal || 'calculated from products'} L.E
+            - Discount Applied: ${body.discountAmount || 0} L.E  
+            - Commission Base: ${commissionBaseAmount} L.E (excludes shipping)
+            - Commission Rate: ${commissionRate}%
+            - Final Commission: ${commission} L.E`);
           
           ambassadorData = {
             ambassadorId: couponValidation.ambassadorId,
@@ -100,8 +126,8 @@ export async function POST(req: Request) {
             paymentStatus: 'pending'
           };
           
-          // Update ambassador statistics
-          await updateAmbassadorStats(couponValidation.ambassadorId, parseFloat(commission), body.totalAmount);
+          // Update ambassador statistics (using commission base amount, not total with shipping)
+          await updateAmbassadorStats(couponValidation.ambassadorId, parseFloat(commission), commissionBaseAmount);
         }
       } catch (error) {
         console.error('Error validating coupon code:', error);
