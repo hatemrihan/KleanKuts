@@ -16,6 +16,7 @@ interface AmbassadorData {
   paymentsPaid: number;
   productVideoLink?: string;
   lastUpdated?: Date;
+  referralCode?: string;
 }
 
 const AmbassadorDashboard = () => {
@@ -364,6 +365,85 @@ const AmbassadorDashboard = () => {
             </p>
           </div>
         )}
+
+        {/* Ambassador Video Link History Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-medium mb-4">Video Link Submission History</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Track your video link submissions for admin review and approval.
+          </p>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-700">
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Ambassador ID
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Last Video Link Submitted
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Submission Date
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
+                    {ambassadorData?.referralCode || 'N/A'}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm">
+                    {ambassadorData?.productVideoLink ? (
+                      <a 
+                        href={ambassadorData.productVideoLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline break-all"
+                        title={ambassadorData.productVideoLink}
+                      >
+                        {ambassadorData.productVideoLink.length > 50 
+                          ? `${ambassadorData.productVideoLink.substring(0, 50)}...` 
+                          : ambassadorData.productVideoLink}
+                      </a>
+                    ) : (
+                      <span className="text-gray-500 dark:text-gray-400">No link submitted</span>
+                    )}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
+                    {ambassadorData?.lastUpdated 
+                      ? new Date(ambassadorData.lastUpdated).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'N/A'}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      ambassadorData?.productVideoLink 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                    }`}>
+                      {ambassadorData?.productVideoLink ? 'Submitted' : 'Pending'}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            <p>• This table shows your current video link submission status</p>
+            <p>• Admin can view all ambassador submissions through their dashboard</p>
+            <p>• Submit new links using the form above to update your entry</p>
+          </div>
+        </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-medium mb-4">Coupon Code</h2>

@@ -113,7 +113,8 @@ const ProductCard: React.FC<{ product: Product, index: number }> = ({ product, i
     if (allVariants.length > 0) {
       const allPreOrder = allVariants.every(variant => variant.isPreOrder);
       if (allPreOrder) {
-        return { text: 'PRE-ORDER', class: 'bg-black text-white' };
+        // Removed PRE-ORDER - user requested to delete it
+        // return { text: 'PRE-ORDER', class: 'bg-black text-white' };
       }
     }
     

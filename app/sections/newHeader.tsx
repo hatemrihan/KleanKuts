@@ -5,11 +5,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { gsap } from 'gsap';
 import { motion, useInView } from 'framer-motion';
+import sec from '@/public/images/sec.jpg'
+import third from '@/public/images/third.jpg'
+import four from '@/public/images/four.jpg'
 
 const productImages = [
-  '/images/try-image.jpg',
-  '/images/try-image.jpg',
-  '/images/try-image.jpg',
+  third,
+  sec,
+  four,
 ];
 
 const NewHeader = () => {
@@ -122,7 +125,7 @@ const NewHeader = () => {
         </motion.div>
        
         <motion.h1 
-          className="text-3xl sm:text-4xl font-bold text-black dark:text-white mb-6 leading-tight"
+          className="text-3xl sm:text-4xl font-light text-black dark:text-white mb-6 leading-tight tracking-widest"
           variants={itemVariants}
         >
           The Silent Elite 
@@ -149,19 +152,19 @@ const NewHeader = () => {
               variants={imageVariants}
             >
               <Image
-                src={img}
+                src={productImages[idx]}
                 alt={`Product ${idx + 1}`}
                 fill
-                className="object-contain transition-transform duration-500 hover:scale-105"
-                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover transition-transform duration-500 hover:scale-105"
+                sizes="(max-width: 768px) 192px, 192px"
                 priority={idx === 0}
                 onError={(e) => {
                   console.error('Error loading image:', e);
                 }}
               />
               <div className="absolute inset-0 flex flex-col items-center justify-center dark:bg-black/80 opacity-0 transition-opacity duration-300 hover:opacity-100 group-hover:opacity-100">
-                <h6 className="text-sm font-medium text-black dark:text-white">ZOHO Collection</h6>
-                <span className="text-xs text-black/70 dark:text-white/70">Oversized Style</span>
+                <h6 className="text-sm font-light text-black dark:text-white tracking-wide">ZOHO Collection</h6>
+                <span className="text-xs text-black/70 dark:text-white/70 font-light tracking-wide">Oversized Style</span>
               </div>
             </motion.div>
           ))}
@@ -174,7 +177,7 @@ const NewHeader = () => {
         >
           <Link 
             href="/collection" 
-            className="px-8 py-3 border border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-300 tracking-widest text-sm font-medium"
+            className="px-8 py-3 border border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-300 tracking-widest text-sm font-light"
           >
             EXPLORE
           </Link>
@@ -203,14 +206,14 @@ const NewHeader = () => {
             </motion.div>
             
             <motion.h1 
-              className="text-5xl font-bold text-black dark:text-white mb-6 leading-tight"
+              className="text-5xl font-light text-black dark:text-white mb-6 leading-tight tracking-widest"
               variants={itemVariants}
             >
-              ZOHO —<br />OVERSIZE SWEATSHIRT
+              The Silent Elite —<br />OVERSIZE SWEATSHIRT
             </motion.h1>
             
             <motion.p 
-              className="text-black/70 dark:text-white/70 mb-8"
+              className="text-black/70 dark:text-white/70 mb-8 font-light tracking-wide"
               variants={itemVariants}
             >
               Elevate your wardrobe with our premium oversized sweatshirt. Crafted from high-quality materials for ultimate comfort and style.
@@ -223,7 +226,7 @@ const NewHeader = () => {
             >
               <Link 
                 href="/collection" 
-                className="px-8 py-3 border border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-300 tracking-widest text-sm font-medium"
+                className="px-8 py-3 border border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-300 tracking-widest text-sm font-light"
               >
                 EXPLORE
               </Link>
@@ -244,16 +247,16 @@ const NewHeader = () => {
                 src={productImages[currentImage]}
                 alt="Featured Product"
                 fill
-                className="object-contain transition-transform duration-500 hover:scale-105"
-                sizes="(max-width: 1024px) 100vw, 33vw"
+                className="object-cover transition-transform duration-500 hover:scale-105"
+                sizes="(max-width: 1024px) 100vw, 384px"
                 priority
                 onError={(e) => {
                   console.error('Error loading image:', e);
                 }}
               />
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-black/80 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                <h6 className="text-lg font-medium text-black dark:text-white">ZOHO Collection</h6>
-                <span className="text-base text-black/70 dark:text-white/70">Premium Oversized Style</span>
+                <h6 className="text-lg font-light text-black dark:text-white tracking-wide">Eleve Collection</h6>
+                <span className="text-base text-black/70 dark:text-white/70 font-light tracking-wide">Premium Oversized Style</span>
               </div>
             </div>
           </motion.div>
@@ -277,18 +280,18 @@ const NewHeader = () => {
                 variants={imageVariants}
               >
                 <Image
-                  src={img}
+                  src={productImages[idx]}
                   alt={`Thumbnail ${idx + 1}`}
                   fill
-                  className="object-contain transition-transform duration-300 hover:scale-105"
+                  className="object-cover transition-transform duration-300 hover:scale-105"
                   sizes="96px"
                   onError={(e) => {
                     console.error('Error loading image:', e);
                   }}
                 />
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-black/0 opacity-0 transition-opacity duration-300 hover:opacity-100">
-                  <h6 className="text-xs font-medium text-black dark:text-white">ZOHO</h6>
-                  <span className="text-xs text-black/70 dark:text-white/70">Style</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-black/80 opacity-0 transition-opacity duration-300 hover:opacity-100">
+                  <h6 className="text-xs font-light text-black dark:text-white tracking-wide">White Silent Elite</h6>
+                  <span className="text-xs text-black/70 dark:text-white/70 font-light tracking-wide">Style</span>
                 </div>
               </motion.div>
             ))}

@@ -20,13 +20,10 @@ const ThankYouPage = () => {
   We currently ship *only within the Arab Republic of Egypt.
   <br />
 Carrier
-  Deliveries are handled via Engez courier service.
-  <br />
-Cost
-  Free shipping anywhere in Egypt, with no minimum order value.
+  Deliveries are handled via hashtag courier service.
   <br />
 Delivery Time
-  Orders arrive within 3–5 business days from confirmation. Same‑day delivery is not available.
+  Orders arrive within 3–7 business days from confirmation. Same‑day delivery is not available.
 <br />
 Order Tracking & Support
   For updates or questions, contact us via:

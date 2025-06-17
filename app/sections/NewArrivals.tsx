@@ -49,7 +49,8 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     
     const allPreOrder = allVariants.every(variant => variant.isPreOrder);
     if (allPreOrder) {
-      return { text: 'PRE-ORDER', class: 'bg-black text-white' };
+      // Removed PRE-ORDER - user requested to delete it
+      // return { text: 'PRE-ORDER', class: 'bg-black text-white' };
     }
     
     return null;
@@ -219,9 +220,6 @@ const Products = () => {
                   </div>
                   <div className="flex items-center gap-2 text-black/80 dark:text-white/80">
                     <span className="text-base md:text-lg">{product.price} L.E</span>
-                    {(product.variants || product.sizes || []).every(variant => variant.isPreOrder) && (
-                      <span className="text-xs font-semibold text-black dark:text-white border border-black dark:border-white px-2 py-1 ml-2">PRE-ORDER</span>
-                    )}
                   </div>
                 </div>
               </Link>

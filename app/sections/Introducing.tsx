@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Image from 'next/image'
-import ahlaImage from '@/public/images/try-image.jpg'
+import first from '@/public/images/first.jpg'
 import { motion } from 'framer-motion'
 import { useInView } from 'framer-motion'
 
@@ -45,31 +45,23 @@ const Introducing = () => {
       ref={containerRef}
       className="w-full min-h-screen bg-white dark:bg-black flex flex-col lg:flex-row items-stretch overflow-hidden"
     >
-      {/* Left: Small image and text block */}
+      {/* Left: Text content */}
       <motion.div 
         className="flex flex-col lg:flex-row flex-1"
         variants={containerVariants}
         initial="hidden"
         animate={isInView ? "visible" : "hidden"}
       >
-        {/* Small image on the left - visible only on mobile and tablet */}
-        <motion.div 
-          className="flex flex-col items-center justify-start pt-8 block lg:hidden px-4"
-          variants={itemVariants}
-        >
-          <div className="w-16 h-20 mb-6 relative">
-            <Image src={ahlaImage} alt="small" fill className="object-cover rounded" />
-          </div>
-        </motion.div>
-        
         {/* Center: Headline and text */}
-        <div className="flex-1 flex flex-col justify-center items-center lg:items-start px-4 md:px-8 py-8">
+        <div className="flex-1 flex flex-col justify-center items-center lg:items-start px-4 md:px-10 py-8">
           <motion.h1 
-            className="text-black dark:text-white font-bold text-4xl sm:text-6xl md:text-7xl lg:text-8xl leading-none mb-8 text-center lg:text-left" 
-            style={{lineHeight:1.05}}
+            className="text-black dark:text-white font-light text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-none mb-4 text-center lg:text-left tracking-widest" 
+            style={{lineHeight: 0.9}}
             variants={itemVariants}
           >
-            Be <br />Uniquely<br />Different<br />
+            <span className="block text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">Be</span>
+            <span className="block">Uniquely</span>
+            <span className="block">Different</span>
           </motion.h1>
           
           <motion.div 
@@ -77,15 +69,8 @@ const Introducing = () => {
             variants={itemVariants}
           >
             <div className="flex-1 text-center md:text-left">
-              <motion.p 
-                className="text-2xl font-light mb-2 text-black dark:text-white"
-                variants={itemVariants}
-              >
-                ПОЗВОЛЬТЕ СЕБЕ<br />БЫТЬ СОБОЙ<br />ПЕРЕД КАМЕРОЙ
-              </motion.p>
-              
               <motion.div 
-                className="flex flex-col md:flex-row gap-4 text-xs text-gray-700 dark:text-gray-300 mt-4"
+                className="flex flex-col md:flex-row gap-4 text-sm text-gray-700 dark:text-gray-300 mt-4 font-light tracking-wide"
                 variants={itemVariants}
               >
                 <div className="flex-1">
@@ -100,19 +85,20 @@ const Introducing = () => {
         </div>
       </motion.div>
       
-      {/* Right: Large portrait image */}
+      {/* Right: Large portrait image - reduced size */}
       <motion.div 
-        className="relative w-full lg:w-[420px] xl:w-[520px] min-h-[320px] h-[50vw] lg:h-auto flex-shrink-0"
+        className="relative w-full lg:w-[450px] xl:w-[600px] min-h-[450px] h-[50vh] lg:h-auto flex-shrink-0"
         variants={imageVariants}
         initial="hidden"
         animate={isInView ? "visible" : "hidden"}
       >
         <Image
-          src={ahlaImage}
-          alt="FW25 Collection Model"
+          src={first}
+          alt="Eleve Collection Model"
           fill
-          className="object-cover object-right"
+          className="object-contain object-center"
           priority
+          sizes="(max-width: 1024px) 100vw, 420px"
         />
       </motion.div>
     </section>
