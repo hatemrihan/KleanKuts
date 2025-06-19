@@ -18,26 +18,8 @@ const navItems = [
     label: 'SHOP COLLECTION',
     href: '/collection',
   },
-  {
-    label: 'ABOUT',
-    href: '/#about',
-    isScroll: true
-  },
-  // {
-  //   label: 'MEN COLLECTION',
-  //   href: '/collection/men',
-  //   isScroll: true
-  // },
-  // {
-  //   label: 'FAQS',
-  //   href: '/#faqs',
-  //   isScroll: true
-  // },
-  // {
-  //   label: 'SAY HI',
-  //   href: '/#contact',
-  //   isScroll: true
-  // },
+ 
+  
   {
     label: 'BE OUR AMBASSADOR',
     href: '/ambassador',
@@ -248,11 +230,11 @@ const Nav = () => {
               
               {/* Desktop Nav Links - Center Section */}
               <div className="flex space-x-8">
-                {navItems.map(({ label, href, isScroll }) => (
+                {navItems.map(({ label, href }) => (
                   <Link
                     key={label}
                     href={href}
-                    onClick={(e) => handleNavClick(e, href, isScroll)}
+                    onClick={(e) => handleNavClick(e, href)}
                     className="text-sm font-light text-black dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer relative group"
                   >
                     {label}
@@ -298,19 +280,6 @@ const Nav = () => {
                 onClick={handleCartClick}
               >
                 <div className="relative">
-                  <svg 
-                    className="w-5 h-5" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="#eab308" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="8" cy="21" r="1" />
-                    <circle cx="19" cy="21" r="1" />
-                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-                  </svg>
                   {itemCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
                       {itemCount}
@@ -379,19 +348,7 @@ const Nav = () => {
                 onClick={handleCartClick}
               >
                 <div className="relative">
-                  <svg 
-                    className="w-6 h-6" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="#eab308" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="8" cy="21" r="1" />
-                    <circle cx="19" cy="21" r="1" />
-                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-                  </svg>
+                  <span className="text-sm font-light">Cart</span>
                   {itemCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
                       {itemCount}
@@ -435,12 +392,12 @@ const Nav = () => {
         <div className="absolute inset-0 flex flex-col items-center justify-center w-full h-full">
           <div className="text-center space-y-8 w-full max-w-sm mx-auto">
             {/* Navigation links */}
-            {navItems.map(({ label, href, isScroll }) => (
+            {navItems.map(({ label, href }) => (
               <div key={label} className="text-center">
                 <Link
                   href={href}
                   onClick={(e) => {
-                    handleNavClick(e, href, isScroll);
+                    handleNavClick(e, href);
                     setIsOpen(false);
                   }}
                   className="relative inline-block text-black dark:text-white text-2xl font-light hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer text-center group"
@@ -476,27 +433,13 @@ const Nav = () => {
             <div className="flex justify-center w-full">
               <Link href={'/cart'} aria-label='Open cart' onClick={() => setIsOpen(false)} className='flex flex-col items-center justify-center text-yellow-500 dark:text-yellow-500'>
                 <div className="relative">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-8 h-8" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="#eab308" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="8" cy="21" r="1" />
-                    <circle cx="19" cy="21" r="1" />
-                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-                  </svg>
+                  <span className="text-2xl font-light text-black dark:text-white">Cart</span>
                   {itemCount > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
                       {itemCount}
                     </span>
                   )}
                 </div>
-                <span className="mt-1 text-lg">Cart</span>
               </Link>
             </div>
           </div>

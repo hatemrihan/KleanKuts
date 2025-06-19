@@ -51,16 +51,7 @@ const NewFooter = () => {
       <div className="max-w-7xl mx-auto">
         {/* Top Section - Email Subscription */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-          <div className="max-w-md" id="about">
-            <h3 className="text-xl font-light tracking-wider mb-4">ABOUT ELEVE</h3>
-            <p className="text-sm text-black/70 dark:text-white/70 mb-4">Élevé is about more than clothes—it's about you.
-
-We started this brand to create pieces that feel effortless, look timeless, and let you shine. It's not just fashion; it's a way to express who you are without saying a word.
-
-Élevé is for the dreamers, the creators, and those who choose to stand out while staying true to themselves.
-
-Welcome to the family. Welcome to Élevé.</p>
-          </div>
+         
           <form onSubmit={handleSubmit} className="w-full md:w-auto max-w-md">
             <div className="relative border-b border-black/20 dark:border-white/20 flex items-center">
               <input
