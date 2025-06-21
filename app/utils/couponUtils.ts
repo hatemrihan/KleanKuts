@@ -160,9 +160,6 @@ export async function reportSuccessfulOrder(orderDetails: any, couponCode: strin
  * Report to Admin API
  */
 async function reportToAdminAPI(orderDetails: any, couponCode: string) {
-  // Calculate commission base amount (subtotal minus discount, excluding shipping)
-  const commissionBaseAmount = (orderDetails.subtotal || orderDetails.total) - (orderDetails.discountAmount || 0);
-  
   const response = await fetch(`${ADMIN_API_URL}/coupon/redeem`, {
     method: 'POST',
     headers: { 
@@ -172,7 +169,10 @@ async function reportToAdminAPI(orderDetails: any, couponCode: string) {
     body: JSON.stringify({
       code: couponCode,
       orderId: orderDetails.orderId,
-      orderAmount: commissionBaseAmount, // Use subtotal minus discount, not total with shipping
+      total: orderDetails.total, // full order amount
+      subtotal: orderDetails.subtotal, // products only (no shipping)
+      shippingCost: orderDetails.shippingCost, // delivery fee
+      discountAmount: orderDetails.discountAmount, // discount applied
       customerEmail: orderDetails.email,
       products: orderDetails.products ? orderDetails.products.map((item: any) => ({
         id: item.id,

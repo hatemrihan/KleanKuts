@@ -457,7 +457,10 @@ const CheckoutPage = () => {
                   body: JSON.stringify({
                     code: promoDiscount.code,
                     orderId: orderId || Date.now().toString(),
-                    orderAmount: cartTotal - discountAmount,
+                    total: Number(totalWithShipping.toFixed(0)), // full order amount
+                    subtotal: cartTotal, // products only (no shipping)
+                    shippingCost: shippingCost, // delivery fee
+                    discountAmount: discountAmount, // discount applied
                     customerEmail: formData.email.trim()
                   })
                 });
