@@ -81,7 +81,6 @@ const NewFooter = () => {
               <li><Link href="https://www.instagram.com/eleve__egy?igsh=b3NnYWw4eWgxcTcw" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">INSTAGRAM</Link></li>
               <li><Link href="https://www.tiktok.com/@eleve__egy/" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">TIKTOK</Link></li>
               <li><Link href="mailto:eleve.egy.1@gmail.com" className="text-sm text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">GMAIL</Link></li>
-              <li><Link href="https://eleveadmin.netlify.app/" className="text-sm font-extralight text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white transition-colors">ad</Link></li>
             </ul>
           </div>
           <div>

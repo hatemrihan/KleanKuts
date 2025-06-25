@@ -447,8 +447,14 @@ const CheckoutPage = () => {
                 const reportResult = await reportSuccessfulOrder(orderDetails, promoDiscount.code);
                 console.log('Ambassador system report result:', reportResult);
                 
-                // ALSO track the coupon redemption for ambassador stats
-                console.log('Tracking coupon redemption for ambassador stats...');
+                // 🚀 CRITICAL: Track the coupon redemption for ambassador stats
+                console.log('🎯 TRACKING COUPON REDEMPTION - Ambassador Commission Time!');
+                console.log('Coupon Code:', promoDiscount.code);
+                console.log('Order Total:', Number(totalWithShipping.toFixed(0)));
+                console.log('Cart Subtotal:', cartTotal);
+                console.log('Shipping Cost:', shippingCost);
+                console.log('Discount Amount:', discountAmount);
+                
                 const couponRedeemResult = await fetch('/api/coupon/redeem', {
                   method: 'POST',
                   headers: {
@@ -467,10 +473,27 @@ const CheckoutPage = () => {
                 
                 if (couponRedeemResult.ok) {
                   const couponData = await couponRedeemResult.json();
-                  console.log('✅ Coupon redemption tracked successfully:', couponData);
+                  console.log('✅ AMBASSADOR COMMISSION TRACKED SUCCESSFULLY!');
+                  console.log('📊 Commission Data:', couponData);
+                  
+                  // Show success notification to user
+                  console.log('🎉 Ambassador will receive commission for this order!');
                 } else {
                   const couponError = await couponRedeemResult.text();
-                  console.error('⚠️ Failed to track coupon redemption:', couponError);
+                  console.error('🚨 CRITICAL: Failed to track ambassador commission!');
+                  console.error('Error Details:', couponError);
+                  console.error('Response Status:', couponRedeemResult.status);
+                  
+                  // Log the data that failed to send
+                  console.error('Failed Data Payload:', {
+                    code: promoDiscount.code,
+                    orderId: orderId || Date.now().toString(),
+                    total: Number(totalWithShipping.toFixed(0)),
+                    subtotal: cartTotal,
+                    shippingCost: shippingCost,
+                    discountAmount: discountAmount,
+                    customerEmail: formData.email.trim()
+                  });
                 }
               } catch (ambassadorError) {
                 console.error('Error reporting to ambassador system:', ambassadorError);

@@ -5,13 +5,13 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { gsap } from 'gsap';
 import { motion, useInView } from 'framer-motion';
-import sec from '@/public/images/sec.jpg'
-import third from '@/public/images/third.jpg'
+import six from '@/public/images/six.jpg'
+import fifth from '@/public/images/fifth.jpg'
 import four from '@/public/images/four.jpg'
 
 const productImages = [
-  third,
-  sec,
+  fifth,
+  six,
   four,
 ];
 
@@ -116,7 +116,7 @@ const NewHeader = () => {
         initial="hidden"
         animate={isInView ? "visible" : "hidden"}
       >
-        {/* Section Header */}
+        {/* sixtion Header */}
         <motion.div 
           className="mb-8"
           variants={itemVariants}
@@ -197,7 +197,7 @@ const NewHeader = () => {
             className="col-span-1"
             variants={itemVariants}
           >
-            {/* Section Header */}
+            {/* sixtion Header */}
             <motion.div 
               className="mb-8"
               variants={itemVariants}

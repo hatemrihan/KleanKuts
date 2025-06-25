@@ -128,6 +128,36 @@ export async function POST(req: Request) {
           
           // Update ambassador statistics (using commission base amount, not total with shipping)
           await updateAmbassadorStats(couponValidation.ambassadorId, parseFloat(commission), commissionBaseAmount);
+          
+          // CRITICAL: Report to admin system immediately after order creation
+          try {
+            console.log('🚀 Reporting ambassador order to admin system...');
+            const adminReportResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://elevee.netlify.app'}/api/coupon/redeem`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                code: body.couponCode,
+                orderId: Date.now().toString(), // Will be updated after order creation
+                total: body.totalAmount,
+                subtotal: body.subtotal || commissionBaseAmount,
+                shippingCost: body.shippingCost || 0,
+                discountAmount: body.discountAmount || 0,
+                customerEmail: body.customer.email
+              })
+            });
+
+            if (adminReportResponse.ok) {
+              const reportData = await adminReportResponse.json();
+              console.log('✅ Successfully reported to admin system:', reportData);
+            } else {
+              const reportError = await adminReportResponse.text();
+              console.error('⚠️ Failed to report to admin system:', reportError);
+            }
+          } catch (reportError) {
+            console.error('🚨 Error reporting to admin system:', reportError);
+          }
         }
       } catch (error) {
         console.error('Error validating coupon code:', error);
